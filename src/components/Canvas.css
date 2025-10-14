@@ -41,10 +41,23 @@
 }
 
 .fps-zoom,
-.fps-pos {
+.fps-pos,
+.fps-firestore {
   font-size: 0.75rem;
   color: #888;
   margin-top: 0.25rem;
+}
+
+.fps-firestore.connected {
+  color: #0f0;
+}
+
+.fps-firestore.error {
+  color: #f00;
+}
+
+.fps-firestore.testing {
+  color: #fa0;
 }
 
 /* Canvas Info Overlay */

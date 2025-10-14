@@ -53,3 +53,46 @@ export const SELECTION_WIDTH = 3;
 // Lock indicator styling
 export const LOCKED_OVERLAY_COLOR = 'rgba(255, 100, 100, 0.1)';
 
+// Default canvas ID (for MVP we use a single canvas)
+export const DEFAULT_CANVAS_ID = 'main-canvas';
+
+// Data Models
+
+/**
+ * Rectangle object structure
+ * {
+ *   id: string,              // Composite ID format: {userId}_{timestamp}
+ *   x: number,               // X position on canvas
+ *   y: number,               // Y position on canvas
+ *   width: number,           // Rectangle width
+ *   height: number,          // Rectangle height
+ *   color: string,           // Hex color code
+ *   createdBy: string,       // User ID of creator
+ *   lockedBy: string | null, // User ID of current lock holder, null if unlocked
+ *   timestamp: number,       // Creation timestamp
+ * }
+ */
+
+/**
+ * Cursor object structure
+ * {
+ *   userId: string,          // User ID
+ *   x: number,               // X position on canvas
+ *   y: number,               // Y position on canvas
+ *   userName: string,        // Display name
+ *   timestamp: number,       // Last update timestamp
+ *   arrivalTime: number,     // When cursor first appeared (for overlap resolution)
+ * }
+ */
+
+/**
+ * Presence object structure
+ * {
+ *   userId: string,          // User ID
+ *   userName: string,        // Display name
+ *   isOnline: boolean,       // Online status
+ *   lastSeen: number,        // Last activity timestamp
+ *   color: string,           // User's assigned color
+ * }
+ */
+

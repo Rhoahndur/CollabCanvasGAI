@@ -20,6 +20,7 @@ import {
   clamp,
   calculateFPS,
 } from '../utils/canvasUtils';
+import { testFirestoreConnection } from '../services/canvasService';
 import './Canvas.css';
 
 /**
@@ -48,6 +49,18 @@ function Canvas() {
   
   // Container dimensions
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  
+  // Firestore connection status
+  const [firestoreStatus, setFirestoreStatus] = useState('testing');
+  
+  // Test Firestore connection on mount
+  useEffect(() => {
+    const testConnection = async () => {
+      const success = await testFirestoreConnection();
+      setFirestoreStatus(success ? 'connected' : 'error');
+    };
+    testConnection();
+  }, []);
   
   // Update container size on mount and resize
   useEffect(() => {
@@ -289,6 +302,9 @@ function Canvas() {
           <div className="fps-zoom">Zoom: {(viewport.zoom * 100).toFixed(0)}%</div>
           <div className="fps-pos">
             Pos: ({Math.round(viewport.offsetX)}, {Math.round(viewport.offsetY)})
+          </div>
+          <div className={`fps-firestore ${firestoreStatus}`}>
+            Firestore: {firestoreStatus === 'connected' ? '✓' : firestoreStatus === 'error' ? '✗' : '...'}
           </div>
         </div>
       )}
