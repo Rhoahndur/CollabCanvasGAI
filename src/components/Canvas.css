@@ -82,10 +82,41 @@
   font-size: 0.9rem;
 }
 
+.canvas-hint {
+  color: #666;
+  font-size: 0.8rem;
+}
+
 .canvas-size {
   color: #666;
   font-size: 0.8rem;
   font-family: 'Monaco', 'Menlo', monospace;
+}
+
+/* Rectangle styling */
+.canvas-rectangle {
+  transition: opacity 0.1s ease;
+}
+
+.canvas-rectangle:hover {
+  opacity: 0.9;
+}
+
+.canvas-rectangle.locked {
+  opacity: 0.7;
+}
+
+.preview-rectangle {
+  animation: preview-pulse 1s ease-in-out infinite;
+}
+
+@keyframes preview-pulse {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 
 /* Grid styling is handled in SVG */

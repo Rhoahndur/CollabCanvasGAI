@@ -13,6 +13,7 @@ import {
   BOUNDARY_WIDTH,
   SHOW_FPS_COUNTER,
   FPS_UPDATE_INTERVAL,
+  MIN_RECTANGLE_SIZE,
 } from '../utils/constants';
 import {
   screenToCanvas,
@@ -20,7 +21,11 @@ import {
   clamp,
   calculateFPS,
 } from '../utils/canvasUtils';
-import { testFirestoreConnection } from '../services/canvasService';
+import { testFirestoreConnection, createRectangle } from '../services/canvasService';
+import { useCanvas } from '../hooks/useCanvas';
+import { useAuth } from '../hooks/useAuth';
+import { getRandomColor } from '../utils/colorUtils';
+import Rectangle from './Rectangle';
 import './Canvas.css';
 
 /**
@@ -29,6 +34,10 @@ import './Canvas.css';
 function Canvas() {
   const svgRef = useRef(null);
   const containerRef = useRef(null);
+  
+  // Auth and canvas state
+  const { user } = useAuth();
+  const { rectangles, selectedRectId, selectRectangle, deselectRectangle } = useCanvas();
   
   // Viewport state (pan and zoom)
   const [viewport, setViewport] = useState({
@@ -41,6 +50,11 @@ function Canvas() {
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  
+  // Rectangle creation state
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [drawStart, setDrawStart] = useState({ x: 0, y: 0 });
+  const [drawCurrent, setDrawCurrent] = useState({ x: 0, y: 0 });
   
   // FPS monitoring
   const [fps, setFps] = useState(0);
@@ -104,53 +118,104 @@ function Canvas() {
     return () => cancelAnimationFrame(animationFrameId);
   }, []);
   
-  // Handle mouse down for panning
+  // Handle mouse down for panning or drawing
   const handleMouseDown = useCallback((e) => {
-    // Only pan with left mouse button
+    // Only handle left mouse button
     if (e.button !== 0) return;
     
-    setIsPanning(true);
-    setPanStart({ x: e.clientX, y: e.clientY });
-    setPanOffset({ x: viewport.offsetX, y: viewport.offsetY });
+    if (!svgRef.current) return;
+    
+    const rect = svgRef.current.getBoundingClientRect();
+    const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, rect);
+    
+    // Check if holding Space key for pan, or if user holds Cmd/Ctrl for pan
+    const shouldPan = e.shiftKey || e.metaKey || e.ctrlKey;
+    
+    if (shouldPan) {
+      // Start panning
+      setIsPanning(true);
+      setPanStart({ x: e.clientX, y: e.clientY });
+      setPanOffset({ x: viewport.offsetX, y: viewport.offsetY });
+    } else {
+      // Start drawing rectangle
+      setIsDrawing(true);
+      setDrawStart(canvasPos);
+      setDrawCurrent(canvasPos);
+      deselectRectangle();
+    }
     
     // Prevent text selection while dragging
     e.preventDefault();
-  }, [viewport.offsetX, viewport.offsetY]);
+  }, [viewport, deselectRectangle]);
   
-  // Handle mouse move for panning
+  // Handle mouse move for panning or drawing
   const handleMouseMove = useCallback((e) => {
-    if (!isPanning) return;
-    
-    const dx = e.clientX - panStart.x;
-    const dy = e.clientY - panStart.y;
-    
-    // Calculate new offset (inverted because we're moving the viewport)
-    const newOffsetX = panOffset.x - dx / viewport.zoom;
-    const newOffsetY = panOffset.y - dy / viewport.zoom;
-    
-    // Clamp to canvas boundaries
-    const clamped = clampPanOffset(
-      newOffsetX,
-      newOffsetY,
-      viewport.zoom,
-      containerSize.width,
-      containerSize.height,
-      CANVAS_WIDTH,
-      CANVAS_HEIGHT,
-      PAN_PADDING
-    );
-    
-    setViewport(prev => ({
-      ...prev,
-      offsetX: clamped.offsetX,
-      offsetY: clamped.offsetY,
-    }));
-  }, [isPanning, panStart, panOffset, viewport.zoom, containerSize]);
+    if (isPanning) {
+      // Handle panning
+      const dx = e.clientX - panStart.x;
+      const dy = e.clientY - panStart.y;
+      
+      // Calculate new offset (inverted because we're moving the viewport)
+      const newOffsetX = panOffset.x - dx / viewport.zoom;
+      const newOffsetY = panOffset.y - dy / viewport.zoom;
+      
+      // Clamp to canvas boundaries
+      const clamped = clampPanOffset(
+        newOffsetX,
+        newOffsetY,
+        viewport.zoom,
+        containerSize.width,
+        containerSize.height,
+        CANVAS_WIDTH,
+        CANVAS_HEIGHT,
+        PAN_PADDING
+      );
+      
+      setViewport(prev => ({
+        ...prev,
+        offsetX: clamped.offsetX,
+        offsetY: clamped.offsetY,
+      }));
+    } else if (isDrawing && svgRef.current) {
+      // Handle drawing rectangle
+      const rect = svgRef.current.getBoundingClientRect();
+      const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, rect);
+      setDrawCurrent(canvasPos);
+    }
+  }, [isPanning, isDrawing, panStart, panOffset, viewport, containerSize]);
   
-  // Handle mouse up to stop panning
-  const handleMouseUp = useCallback(() => {
-    setIsPanning(false);
-  }, []);
+  // Handle mouse up to stop panning or finish drawing
+  const handleMouseUp = useCallback(async () => {
+    if (isPanning) {
+      setIsPanning(false);
+    } else if (isDrawing) {
+      setIsDrawing(false);
+      
+      // Calculate rectangle dimensions
+      const x = Math.min(drawStart.x, drawCurrent.x);
+      const y = Math.min(drawStart.y, drawCurrent.y);
+      const width = Math.abs(drawCurrent.x - drawStart.x);
+      const height = Math.abs(drawCurrent.y - drawStart.y);
+      
+      // Only create if rectangle meets minimum size
+      if (width >= MIN_RECTANGLE_SIZE && height >= MIN_RECTANGLE_SIZE && user) {
+        try {
+          const color = getRandomColor();
+          await createRectangle(undefined, {
+            x,
+            y,
+            width,
+            height,
+            color,
+            createdBy: user.uid,
+          });
+          console.log('Rectangle created successfully');
+        } catch (error) {
+          console.error('Failed to create rectangle:', error);
+        }
+      }
+    }
+  }, [isPanning, isDrawing, drawStart, drawCurrent, user]);
   
   // Handle mouse wheel for zooming
   const handleWheel = useCallback((e) => {
@@ -201,9 +266,9 @@ function Canvas() {
     });
   }, [viewport, containerSize]);
   
-  // Add global mouse event listeners for panning
+  // Add global mouse event listeners for panning and drawing
   useEffect(() => {
-    if (isPanning) {
+    if (isPanning || isDrawing) {
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
       
@@ -212,10 +277,18 @@ function Canvas() {
         window.removeEventListener('mouseup', handleMouseUp);
       };
     }
-  }, [isPanning, handleMouseMove, handleMouseUp]);
+  }, [isPanning, isDrawing, handleMouseMove, handleMouseUp]);
   
   // Calculate viewBox for SVG
   const viewBox = `${viewport.offsetX} ${viewport.offsetY} ${containerSize.width / viewport.zoom} ${containerSize.height / viewport.zoom}`;
+  
+  // Calculate preview rectangle during drawing
+  const previewRect = isDrawing ? {
+    x: Math.min(drawStart.x, drawCurrent.x),
+    y: Math.min(drawStart.y, drawCurrent.y),
+    width: Math.abs(drawCurrent.x - drawStart.x),
+    height: Math.abs(drawCurrent.y - drawStart.y),
+  } : null;
   
   // Generate grid lines
   const renderGrid = () => {
@@ -262,7 +335,9 @@ function Canvas() {
         viewBox={viewBox}
         onMouseDown={handleMouseDown}
         onWheel={handleWheel}
-        style={{ cursor: isPanning ? 'grabbing' : 'grab' }}
+        style={{ 
+          cursor: isPanning ? 'grabbing' : isDrawing ? 'crosshair' : 'crosshair'
+        }}
       >
         {/* Canvas background */}
         <rect
@@ -289,9 +364,34 @@ function Canvas() {
           strokeWidth={BOUNDARY_WIDTH / viewport.zoom}
         />
         
-        {/* Canvas content will go here */}
+        {/* Canvas content */}
         <g className="canvas-content">
-          {/* Rectangles, cursors, etc. will be rendered here */}
+          {/* Render all rectangles */}
+          {rectangles.map((rect) => (
+            <Rectangle
+              key={rect.id}
+              {...rect}
+              isSelected={rect.id === selectedRectId}
+              isLocked={rect.lockedBy !== null && rect.lockedBy !== user?.uid}
+            />
+          ))}
+          
+          {/* Preview rectangle while drawing */}
+          {previewRect && previewRect.width >= MIN_RECTANGLE_SIZE && previewRect.height >= MIN_RECTANGLE_SIZE && (
+            <rect
+              x={previewRect.x}
+              y={previewRect.y}
+              width={previewRect.width}
+              height={previewRect.height}
+              fill={getRandomColor()}
+              opacity={0.5}
+              stroke="#fff"
+              strokeWidth={2 / viewport.zoom}
+              strokeDasharray={`${10 / viewport.zoom} ${5 / viewport.zoom}`}
+              className="preview-rectangle"
+              style={{ pointerEvents: 'none' }}
+            />
+          )}
         </g>
       </svg>
       
@@ -311,8 +411,9 @@ function Canvas() {
       
       {/* Canvas info overlay */}
       <div className="canvas-info">
-        <p>🎨 Canvas ready! Pan with mouse drag, zoom with scroll wheel.</p>
-        <p className="canvas-size">Canvas: {CANVAS_WIDTH} × {CANVAS_HEIGHT}px</p>
+        <p>🎨 Click and drag to create rectangles!</p>
+        <p className="canvas-hint">Hold Shift/Cmd to pan • Scroll to zoom</p>
+        <p className="canvas-size">{rectangles.length} objects • {CANVAS_WIDTH} × {CANVAS_HEIGHT}px</p>
       </div>
     </div>
   );
