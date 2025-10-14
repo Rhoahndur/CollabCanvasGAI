@@ -1,0 +1,68 @@
+import { initializeApp } from 'firebase/app';
+import { getAuth, GithubAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
+
+// Firebase configuration from environment variables
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+
+// Initialize Firebase Authentication
+export const auth = getAuth(app);
+
+// Set up GitHub OAuth provider (primary for MVP)
+export const githubProvider = new GithubAuthProvider();
+
+// Initialize Firestore Database
+export const db = getFirestore(app);
+
+// Enable offline persistence
+try {
+  enableIndexedDbPersistence(db);
+} catch (err) {
+  if (err.code === 'failed-precondition') {
+    console.warn('Multiple tabs open, persistence can only be enabled in one tab at a time.');
+  } else if (err.code === 'unimplemented') {
+    console.warn('The current browser does not support offline persistence.');
+  }
+}
+
+// Authentication service functions
+
+/**
+ * Sign in with GitHub OAuth using popup
+ * This is the primary authentication method for MVP
+ * Architecture supports adding Google OAuth and email/password later
+ */
+export const signInWithGitHub = async () => {
+  try {
+    const result = await signInWithPopup(auth, githubProvider);
+    return result.user;
+  } catch (error) {
+    console.error('GitHub sign in error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Sign out the current user
+ */
+export const signOutUser = async () => {
+  try {
+    await signOut(auth);
+  } catch (error) {
+    console.error('Sign out error:', error);
+    throw error;
+  }
+};
+
+export default app;
+
