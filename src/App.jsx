@@ -1,5 +1,6 @@
 import { useAuth } from './hooks/useAuth'
 import LoginPage from './components/LoginPage'
+import Canvas from './components/Canvas'
 import './App.css'
 
 function App() {
@@ -45,9 +46,8 @@ function App() {
           </button>
         </div>
       </header>
-      <main className="app-main">
-        <p>Canvas will be implemented here...</p>
-        <p className="welcome-message">Welcome, {user.displayName}! 🎨</p>
+      <main className="app-main canvas-main">
+        <Canvas />
       </main>
     </div>
   )
