@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { subscribeToCursors, removeCursor } from '../services/canvasService';
 import { DEFAULT_CANVAS_ID } from '../utils/constants';
 
@@ -8,6 +8,17 @@ import { DEFAULT_CANVAS_ID } from '../utils/constants';
  */
 export function useCursors(currentSessionId, canvasId = DEFAULT_CANVAS_ID) {
   const [cursors, setCursors] = useState([]);
+  const [allCursorsData, setAllCursorsData] = useState([]);
+  const filterIntervalRef = useRef(null);
+
+  // Helper function to filter active cursors (not stale)
+  const filterActiveCursors = (cursorsData, currentSession) => {
+    const fortyFiveSecondsAgo = Date.now() - 45 * 1000;
+    return cursorsData.filter(c => 
+      c.sessionId !== currentSession && // Don't show our own cursor
+      c.timestamp > fortyFiveSecondsAgo // Only show recent cursors
+    );
+  };
 
   // Subscribe to Firestore cursors collection
   useEffect(() => {
@@ -16,28 +27,52 @@ export function useCursors(currentSessionId, canvasId = DEFAULT_CANVAS_ID) {
     console.log('Setting up cursor subscription for canvas:', canvasId);
     
     const unsubscribe = subscribeToCursors(canvasId, (allCursors) => {
-      // Filter out current session's cursor (we don't render our own)
-      const otherCursors = allCursors.filter(c => c.sessionId !== currentSessionId);
-      console.log('Received cursors from Firestore:', otherCursors.length);
-      setCursors(otherCursors);
+      setAllCursorsData(allCursors);
+      const activeCursors = filterActiveCursors(allCursors, currentSessionId);
+      console.log('Active cursors from Firestore:', activeCursors.length);
+      setCursors(activeCursors);
     });
+
+    // Client-side polling to re-filter stale cursors every 5 seconds
+    filterIntervalRef.current = setInterval(() => {
+      setAllCursorsData(prevData => {
+        const activeCursors = filterActiveCursors(prevData, currentSessionId);
+        setCursors(activeCursors);
+        return prevData;
+      });
+    }, 5000); // Re-filter every 5 seconds
 
     // Cleanup subscription on unmount
     return () => {
       console.log('Cleaning up cursor subscription');
+      if (filterIntervalRef.current) {
+        clearInterval(filterIntervalRef.current);
+      }
       unsubscribe();
     };
   }, [currentSessionId, canvasId]);
 
-  // Cleanup: remove cursor on unmount
+  // Cleanup: remove cursor on unmount and page unload
   useEffect(() => {
+    if (!currentSessionId) return;
+
+    // Handle page unload/refresh - cleanup cursor immediately
+    const handleBeforeUnload = () => {
+      removeCursor(canvasId, currentSessionId).catch(() => {
+        // Ignore errors during unload
+      });
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     return () => {
-      if (currentSessionId) {
-        // Silently remove cursor on cleanup
-        removeCursor(canvasId, currentSessionId).catch(() => {
-          // Ignore errors during cleanup
-        });
-      }
+      console.log('Cleaning up cursor for session:', currentSessionId);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      
+      // Remove cursor on component unmount
+      removeCursor(canvasId, currentSessionId).catch(() => {
+        // Ignore errors during cleanup
+      });
     };
   }, [currentSessionId, canvasId]);
 

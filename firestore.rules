@@ -52,13 +52,19 @@ service cloud.firestore {
                                    || request.resource.data.userId == request.auth.uid);
       }
       
-      // Presence/online status
-      match /presence/{userId} {
+      // Presence/online status (session-based)
+      match /presence/{sessionId} {
         // Anyone authenticated can read presence
         allow read: if isAuthenticated();
         
-        // Users can only write their own presence
-        allow write: if isOwner(userId);
+        // Users can write/delete their own presence sessions
+        // Check that the userId field in the document matches the authenticated user
+        allow create: if isAuthenticated() 
+                      && request.resource.data.userId == request.auth.uid;
+        
+        allow update, delete: if isAuthenticated() 
+                               && (resource.data.userId == request.auth.uid
+                                   || request.resource.data.userId == request.auth.uid);
       }
     }
   }

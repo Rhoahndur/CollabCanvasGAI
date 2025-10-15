@@ -1,10 +1,24 @@
+import { useRef, useEffect } from 'react'
 import { useAuth } from './hooks/useAuth'
+import { usePresence } from './hooks/usePresence'
 import LoginPage from './components/LoginPage'
 import Canvas from './components/Canvas'
+import PresenceSidebar from './components/PresenceSidebar'
 import './App.css'
 
 function App() {
+  // Generate unique session ID for this browser tab/window
+  const sessionIdRef = useRef(`session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`)
+  
+  // Store sessionId globally for access during sign out
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.__currentSessionId = sessionIdRef.current;
+    }
+  }, []);
+  
   const { user, loading, signIn, signOut } = useAuth()
+  const { onlineUsers } = usePresence(sessionIdRef.current, user?.uid, user?.displayName)
 
   // Show loading state while checking auth
   if (loading) {
@@ -47,7 +61,11 @@ function App() {
         </div>
       </header>
       <main className="app-main canvas-main">
-        <Canvas />
+        <Canvas sessionId={sessionIdRef.current} />
+        <PresenceSidebar 
+          onlineUsers={onlineUsers} 
+          currentSessionId={sessionIdRef.current}
+        />
       </main>
     </div>
   )

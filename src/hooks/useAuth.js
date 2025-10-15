@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../services/firebase';
 import { signInWithGitHub, signOutUser } from '../services/firebase';
-import { removeCursor } from '../services/canvasService';
+import { removeCursor, removePresence } from '../services/canvasService';
 import { DEFAULT_CANVAS_ID } from '../utils/constants';
 
 /**
@@ -53,14 +53,18 @@ export function useAuth() {
 
   const signOut = async () => {
     try {
-      // Remove cursor before signing out (while we still have auth)
+      // Remove cursor and presence before signing out (while we still have auth)
       const sessionId = typeof window !== 'undefined' ? window.__currentSessionId : null;
       if (sessionId) {
         try {
-          await removeCursor(DEFAULT_CANVAS_ID, sessionId);
-          console.log('Cursor removed before sign out');
+          // Remove both cursor and presence
+          await Promise.all([
+            removeCursor(DEFAULT_CANVAS_ID, sessionId),
+            removePresence(DEFAULT_CANVAS_ID, sessionId)
+          ]);
+          console.log('Cursor and presence removed before sign out');
         } catch (error) {
-          console.warn('Failed to remove cursor before sign out:', error);
+          console.warn('Failed to remove cursor/presence before sign out:', error);
         }
       }
       

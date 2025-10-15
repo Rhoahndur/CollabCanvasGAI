@@ -260,6 +260,7 @@ export const removeCursor = async (canvasId = DEFAULT_CANVAS_ID, sessionId) => {
 /**
  * Set user presence (online/offline status)
  * @param {string} canvasId - Canvas ID
+ * @param {string} sessionId - Session ID (unique per browser tab)
  * @param {string} userId - User ID
  * @param {string} userName - User display name
  * @param {string} color - User's assigned color
@@ -268,21 +269,23 @@ export const removeCursor = async (canvasId = DEFAULT_CANVAS_ID, sessionId) => {
  */
 export const setUserPresence = async (
   canvasId = DEFAULT_CANVAS_ID,
+  sessionId,
   userId,
   userName,
   color,
   isOnline = true
 ) => {
   try {
-    const presenceRef = doc(getPresenceRef(canvasId), userId);
+    const presenceRef = doc(getPresenceRef(canvasId), sessionId);
     await setDoc(presenceRef, {
+      sessionId,
       userId,
       userName,
       color,
       isOnline,
       lastSeen: Date.now(),
     });
-    console.log('Presence updated:', userId, isOnline ? 'online' : 'offline');
+    console.log('Presence updated:', userName, isOnline ? 'online' : 'offline');
   } catch (error) {
     console.error('Error setting presence:', error);
     throw error;
@@ -318,12 +321,12 @@ export const subscribeToPresence = (canvasId = DEFAULT_CANVAS_ID, callback) => {
 /**
  * Update user's lastSeen timestamp (heartbeat)
  * @param {string} canvasId - Canvas ID
- * @param {string} userId - User ID
+ * @param {string} sessionId - Session ID
  * @returns {Promise<void>}
  */
-export const updatePresenceHeartbeat = async (canvasId = DEFAULT_CANVAS_ID, userId) => {
+export const updatePresenceHeartbeat = async (canvasId = DEFAULT_CANVAS_ID, sessionId) => {
   try {
-    const presenceRef = doc(getPresenceRef(canvasId), userId);
+    const presenceRef = doc(getPresenceRef(canvasId), sessionId);
     await updateDoc(presenceRef, {
       lastSeen: Date.now(),
       isOnline: true,
@@ -331,6 +334,27 @@ export const updatePresenceHeartbeat = async (canvasId = DEFAULT_CANVAS_ID, user
   } catch (error) {
     console.error('Error updating presence heartbeat:', error);
     // Don't throw - heartbeat failures shouldn't break the app
+  }
+};
+
+/**
+ * Remove a specific presence session
+ * @param {string} canvasId - Canvas ID
+ * @param {string} sessionId - Session ID to remove
+ * @returns {Promise<void>}
+ */
+export const removePresence = async (canvasId = DEFAULT_CANVAS_ID, sessionId) => {
+  try {
+    const presenceRef = doc(getPresenceRef(canvasId), sessionId);
+    await deleteDoc(presenceRef);
+    console.log('Presence removed:', sessionId);
+  } catch (error) {
+    // Silently ignore if presence doesn't exist or permission denied
+    if (error.code === 'permission-denied' || error.code === 'not-found') {
+      console.log('Presence already removed or not found:', sessionId);
+    } else {
+      console.error('Error removing presence:', error);
+    }
   }
 };
 

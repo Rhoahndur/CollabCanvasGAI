@@ -24,7 +24,7 @@ import {
   calculateFPS,
   isPointInRect,
 } from '../utils/canvasUtils';
-import { testFirestoreConnection, createRectangle, updateRectangle, updateCursor, removeCursor } from '../services/canvasService';
+import { testFirestoreConnection, createRectangle, updateRectangle, updateCursor } from '../services/canvasService';
 import { useCanvas } from '../hooks/useCanvas';
 import { useCursors } from '../hooks/useCursors';
 import { useAuth } from '../hooks/useAuth';
@@ -36,41 +36,14 @@ import './Canvas.css';
 /**
  * Canvas component - SVG-based collaborative canvas with pan and zoom
  */
-function Canvas() {
+function Canvas({ sessionId }) {
   const svgRef = useRef(null);
   const containerRef = useRef(null);
-  
-  // Generate unique session ID for this browser tab/window
-  const sessionIdRef = useRef(`session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
   
   // Auth and canvas state
   const { user } = useAuth();
   const { rectangles, setRectangles, selectedRectId, selectRectangle, deselectRectangle, setIsDraggingLocal } = useCanvas(user?.uid, user?.displayName);
-  const { cursors, shouldShowLabel } = useCursors(sessionIdRef.current);
-  
-  // Store sessionId globally and handle cleanup on window close
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.__currentSessionId = sessionIdRef.current;
-    }
-    
-    // Cleanup cursor when window/tab closes
-    const handleBeforeUnload = () => {
-      const sessionId = sessionIdRef.current;
-      if (sessionId && user?.uid) {
-        // Note: We can't use async/await here, but removeCursor will fire
-        removeCursor(undefined, sessionId).catch(() => {
-          // Ignore errors during unload
-        });
-      }
-    };
-    
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [user]);
+  const { cursors, shouldShowLabel } = useCursors(sessionId);
   
   // Viewport state (pan and zoom)
   const [viewport, setViewport] = useState({
@@ -253,7 +226,7 @@ function Canvas() {
         // Update cursor position in Firestore
         updateCursor(
           undefined,
-          sessionIdRef.current,
+          sessionId,
           user.uid,
           canvasPos.x,
           canvasPos.y,

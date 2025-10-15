@@ -69,6 +69,8 @@ body {
 .canvas-main {
   padding: 0;
   overflow: hidden;
+  display: flex;
+  flex-direction: row;
 }
 
 button {
