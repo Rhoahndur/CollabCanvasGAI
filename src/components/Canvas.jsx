@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   CANVAS_WIDTH,
   CANVAS_HEIGHT,
@@ -29,6 +29,7 @@ import { useCanvas } from '../hooks/useCanvas';
 import { useCursors } from '../hooks/useCursors';
 import { useAuth } from '../hooks/useAuth';
 import { getRandomColor } from '../utils/colorUtils';
+import { setup500Test } from '../utils/testData';
 import Rectangle from './Rectangle';
 import Cursor from './Cursor';
 import './Canvas.css';
@@ -78,10 +79,12 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   
-  // FPS monitoring
+  // FPS and performance monitoring
   const [fps, setFps] = useState(0);
+  const [renderTime, setRenderTime] = useState(0);
   const frameTimesRef = useRef([]);
   const lastFpsUpdateRef = useRef(Date.now());
+  const renderStartRef = useRef(Date.now());
   
   // Container dimensions
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
@@ -105,6 +108,14 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
     testConnection();
   }, []);
   
+  // Setup test utilities in dev mode
+  useEffect(() => {
+    if (SHOW_FPS_COUNTER && user?.uid) {
+      setup500Test(user.uid);
+      console.log('🧪 Performance test utilities loaded. Check window.testCanvas');
+    }
+  }, [user?.uid]);
+  
   // Update container size on mount and resize
   useEffect(() => {
     const updateSize = () => {
@@ -120,25 +131,31 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
     return () => window.removeEventListener('resize', updateSize);
   }, []);
   
-  // FPS monitoring
+  // FPS and render time monitoring
   useEffect(() => {
     if (!SHOW_FPS_COUNTER) return;
     
     let animationFrameId;
     
     const updateFps = (timestamp) => {
+      // Track render time
+      const renderEnd = performance.now();
+      const currentRenderTime = renderEnd - renderStartRef.current;
+      
       frameTimesRef.current.push(timestamp);
       
       // Keep only last second of frame times
       const oneSecondAgo = timestamp - 1000;
       frameTimesRef.current = frameTimesRef.current.filter(t => t > oneSecondAgo);
       
-      // Update FPS display periodically
+      // Update FPS and render time display periodically
       if (timestamp - lastFpsUpdateRef.current > FPS_UPDATE_INTERVAL) {
         setFps(calculateFPS(frameTimesRef.current));
+        setRenderTime(Math.round(currentRenderTime * 100) / 100);
         lastFpsUpdateRef.current = timestamp;
       }
       
+      renderStartRef.current = performance.now();
       animationFrameId = requestAnimationFrame(updateFps);
     };
     
@@ -428,19 +445,25 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
     }
   }, [isPanning, isDrawing, isDragging, handleMouseMove, handleMouseUp]);
   
-  // Calculate viewBox for SVG
-  const viewBox = `${viewport.offsetX} ${viewport.offsetY} ${containerSize.width / viewport.zoom} ${containerSize.height / viewport.zoom}`;
+  // Calculate viewBox for SVG (memoized)
+  const viewBox = useMemo(() => 
+    `${viewport.offsetX} ${viewport.offsetY} ${containerSize.width / viewport.zoom} ${containerSize.height / viewport.zoom}`,
+    [viewport.offsetX, viewport.offsetY, viewport.zoom, containerSize.width, containerSize.height]
+  );
   
-  // Calculate preview rectangle during drawing
-  const previewRect = isDrawing ? {
-    x: Math.min(drawStart.x, drawCurrent.x),
-    y: Math.min(drawStart.y, drawCurrent.y),
-    width: Math.abs(drawCurrent.x - drawStart.x),
-    height: Math.abs(drawCurrent.y - drawStart.y),
-  } : null;
+  // Calculate preview rectangle during drawing (memoized)
+  const previewRect = useMemo(() => {
+    if (!isDrawing) return null;
+    return {
+      x: Math.min(drawStart.x, drawCurrent.x),
+      y: Math.min(drawStart.y, drawCurrent.y),
+      width: Math.abs(drawCurrent.x - drawStart.x),
+      height: Math.abs(drawCurrent.y - drawStart.y),
+    };
+  }, [isDrawing, drawStart.x, drawStart.y, drawCurrent.x, drawCurrent.y]);
   
-  // Generate grid lines
-  const renderGrid = () => {
+  // Generate grid lines (memoized - only recalculate when zoom changes)
+  const gridLines = useMemo(() => {
     const lines = [];
     
     // Vertical lines
@@ -474,7 +497,31 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
     }
     
     return lines;
-  };
+  }, [viewport.zoom]);
+  
+  // Viewport culling: only render rectangles visible in current viewport (memoized)
+  const visibleRectangles = useMemo(() => {
+    // Calculate visible area with buffer for smooth panning
+    const bufferSize = 200; // pixels of buffer around viewport
+    const viewportLeft = viewport.offsetX - bufferSize;
+    const viewportTop = viewport.offsetY - bufferSize;
+    const viewportRight = viewport.offsetX + (containerSize.width / viewport.zoom) + bufferSize;
+    const viewportBottom = viewport.offsetY + (containerSize.height / viewport.zoom) + bufferSize;
+    
+    // Filter rectangles that intersect with viewport
+    return rectangles.filter(rect => {
+      const rectRight = rect.x + rect.width;
+      const rectBottom = rect.y + rect.height;
+      
+      // Check if rectangle intersects with viewport
+      return !(
+        rect.x > viewportRight ||
+        rectRight < viewportLeft ||
+        rect.y > viewportBottom ||
+        rectBottom < viewportTop
+      );
+    });
+  }, [rectangles, viewport.offsetX, viewport.offsetY, viewport.zoom, containerSize.width, containerSize.height]);
   
   return (
     <div className="canvas-container" ref={containerRef}>
@@ -519,7 +566,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
         
         {/* Grid */}
         <g className="canvas-grid">
-          {renderGrid()}
+          {gridLines}
         </g>
         
         {/* Canvas boundary */}
@@ -535,8 +582,8 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
         
         {/* Canvas content */}
         <g className="canvas-content">
-          {/* Render all rectangles */}
-          {rectangles.map((rect) => (
+          {/* Render only visible rectangles (viewport culling for performance) */}
+          {visibleRectangles.map((rect) => (
             <Rectangle
               key={rect.id}
               {...rect}
@@ -619,6 +666,11 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       {SHOW_FPS_COUNTER && (
         <div className="fps-counter">
           <div className="fps-value">{fps} FPS</div>
+          <div className="fps-render">Render: {renderTime}ms</div>
+          <div className="fps-objects">
+            Objects: {visibleRectangles.length}/{rectangles.length}
+            {visibleRectangles.length < rectangles.length && ' (culled)'}
+          </div>
           <div className="fps-zoom">Zoom: {(viewport.zoom * 100).toFixed(0)}%</div>
           <div className="fps-pos">
             Pos: ({Math.round(viewport.offsetX)}, {Math.round(viewport.offsetY)})

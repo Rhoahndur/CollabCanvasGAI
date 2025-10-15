@@ -3,7 +3,8 @@ import {
   subscribeToPresence, 
   setUserPresence, 
   updatePresenceHeartbeat,
-  removePresence
+  removePresence,
+  cleanupStalePresence
 } from '../services/canvasService';
 import { DEFAULT_CANVAS_ID, PRESENCE_HEARTBEAT_INTERVAL } from '../utils/constants';
 import { getUserColor } from '../utils/colorUtils';
@@ -18,12 +19,26 @@ export function usePresence(sessionId, userId, userName, canvasId = DEFAULT_CANV
   const heartbeatIntervalRef = useRef(null);
   const filterIntervalRef = useRef(null);
 
-  // Helper function to filter active users
+  // Helper function to filter active users and deduplicate by sessionId
   const filterActiveUsers = (presenceData) => {
-    const fortyFiveSecondsAgo = Date.now() - 45 * 1000;
-    return presenceData.filter(user => 
-      user.isOnline && user.lastSeen > fortyFiveSecondsAgo
+    const fortySecondsAgo = Date.now() - 40 * 1000; // 40 second timeout
+    
+    // Deduplicate by sessionId first (in case Firestore sends duplicates)
+    const sessionMap = new Map();
+    presenceData.forEach(user => {
+      // Keep the most recent data for each sessionId
+      const existing = sessionMap.get(user.sessionId);
+      if (!existing || user.lastSeen > existing.lastSeen) {
+        sessionMap.set(user.sessionId, user);
+      }
+    });
+    
+    // Filter to only active sessions
+    const activeUsers = Array.from(sessionMap.values()).filter(user => 
+      user.isOnline && user.lastSeen > fortySecondsAgo
     );
+    
+    return activeUsers;
   };
 
   // Subscribe to presence updates
@@ -32,10 +47,20 @@ export function usePresence(sessionId, userId, userName, canvasId = DEFAULT_CANV
 
     console.log('Setting up presence for user:', userName, 'session:', sessionId);
 
+    // Clean up stale sessions on mount (especially helpful for Safari)
+    cleanupStalePresence(canvasId).catch(console.error);
+
     // Set user as online
     const userColor = getUserColor(userId);
-    setUserPresence(canvasId, sessionId, userId, userName, userColor, true)
-      .catch(console.error);
+    
+    // Small delay to ensure any cleanup from previous session completes
+    const setupTimeout = setTimeout(() => {
+      setUserPresence(canvasId, sessionId, userId, userName, userColor, true)
+        .catch(console.error);
+    }, 100);
+    
+    // If setup doesn't complete, clear the timeout
+    const clearSetupTimeout = () => clearTimeout(setupTimeout);
 
     // Subscribe to presence changes from Firestore
     const unsubscribe = subscribeToPresence(canvasId, (presenceData) => {
@@ -45,15 +70,16 @@ export function usePresence(sessionId, userId, userName, canvasId = DEFAULT_CANV
       setOnlineUsers(activeUsers);
     });
 
-    // Client-side polling to re-filter stale users every 5 seconds
+    // Client-side polling to re-filter stale users every 3 seconds
     // This ensures the UI updates even if Firestore doesn't send new data
+    // More frequent for faster cleanup of stale sessions
     filterIntervalRef.current = setInterval(() => {
       setAllPresenceData(prevData => {
         const activeUsers = filterActiveUsers(prevData);
         setOnlineUsers(activeUsers);
         return prevData;
       });
-    }, 5000); // Re-filter every 5 seconds
+    }, 3000); // Re-filter every 3 seconds
 
     // Start heartbeat to keep presence alive
     heartbeatIntervalRef.current = setInterval(() => {
@@ -89,6 +115,9 @@ export function usePresence(sessionId, userId, userName, canvasId = DEFAULT_CANV
     return () => {
       console.log('Cleaning up presence for session:', sessionId);
       
+      // Clear setup timeout
+      clearSetupTimeout();
+      
       // Clear intervals
       if (heartbeatIntervalRef.current) {
         clearInterval(heartbeatIntervalRef.current);
@@ -101,10 +130,10 @@ export function usePresence(sessionId, userId, userName, canvasId = DEFAULT_CANV
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('beforeunload', handleBeforeUnload);
       
-      // Remove presence document
+      // Remove presence document immediately
       removePresence(canvasId, sessionId).catch(console.error);
       
-      // Unsubscribe
+      // Unsubscribe from Firestore
       unsubscribe();
     };
   }, [sessionId, userId, userName, canvasId]);

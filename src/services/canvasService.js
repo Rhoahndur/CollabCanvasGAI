@@ -13,6 +13,7 @@ import {
   serverTimestamp,
   query,
   writeBatch,
+  getDocs,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { DEFAULT_CANVAS_ID } from '../utils/constants';
@@ -359,6 +360,43 @@ export const removePresence = async (canvasId = DEFAULT_CANVAS_ID, sessionId) =>
     } else {
       console.error('Error removing presence:', error);
     }
+  }
+};
+
+/**
+ * Clean up stale presence sessions (older than 60 seconds)
+ * @param {string} canvasId - Canvas ID
+ * @returns {Promise<number>} Number of sessions cleaned up
+ */
+export const cleanupStalePresence = async (canvasId = DEFAULT_CANVAS_ID) => {
+  try {
+    const q = query(getPresenceRef(canvasId));
+    const snapshot = await getDocs(q);
+    
+    const sixtySecondsAgo = Date.now() - 60 * 1000;
+    const staleDocIds = [];
+    
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      if (!data.isOnline || data.lastSeen < sixtySecondsAgo) {
+        staleDocIds.push(doc.id);
+      }
+    });
+    
+    // Delete stale sessions
+    if (staleDocIds.length > 0) {
+      const batch = writeBatch(db);
+      staleDocIds.forEach(docId => {
+        batch.delete(doc(getPresenceRef(canvasId), docId));
+      });
+      await batch.commit();
+      console.log(`🧹 Cleaned up ${staleDocIds.length} stale presence sessions`);
+    }
+    
+    return staleDocIds.length;
+  } catch (error) {
+    console.error('Error cleaning up stale presence:', error);
+    return 0;
   }
 };
 

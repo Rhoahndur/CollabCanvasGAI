@@ -41,6 +41,8 @@
   color: #0f0;
 }
 
+.fps-render,
+.fps-objects,
 .fps-zoom,
 .fps-pos,
 .fps-firestore {

@@ -24,16 +24,24 @@ export const githubProvider = new GithubAuthProvider();
 // Initialize Firestore Database
 export const db = getFirestore(app);
 
-// Enable offline persistence
-try {
-  enableIndexedDbPersistence(db);
-} catch (err) {
-  if (err.code === 'failed-precondition') {
-    console.warn('Multiple tabs open, persistence can only be enabled in one tab at a time.');
-  } else if (err.code === 'unimplemented') {
-    console.warn('The current browser does not support offline persistence.');
-  }
-}
+// Enable offline persistence (async for better Safari compatibility)
+enableIndexedDbPersistence(db, {
+  // Safari sometimes needs this for better compatibility
+  forceOwnership: false
+})
+  .then(() => {
+    console.log('✅ Firestore offline persistence enabled');
+  })
+  .catch((err) => {
+    if (err.code === 'failed-precondition') {
+      console.warn('⚠️ Multiple tabs open, persistence can only be enabled in one tab at a time.');
+    } else if (err.code === 'unimplemented') {
+      console.warn('⚠️ The current browser does not support offline persistence.');
+    } else {
+      console.warn('⚠️ Could not enable persistence:', err);
+    }
+    // App will continue to work without persistence
+  });
 
 // Authentication service functions
 

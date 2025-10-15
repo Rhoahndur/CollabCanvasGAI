@@ -1,11 +1,13 @@
+import { memo } from 'react';
 import { SELECTION_COLOR, SELECTION_WIDTH } from '../utils/constants';
 import { getUserColor, getContrastColor } from '../utils/colorUtils';
 
 /**
  * Rectangle component - SVG rectangle for collaborative canvas
  * Renders a single rectangle with optional selection highlight
+ * Memoized for performance with large numbers of objects
  */
-function Rectangle({ 
+const Rectangle = memo(function Rectangle({ 
   id,
   x, 
   y, 
@@ -116,7 +118,7 @@ function Rectangle({
       )}
     </g>
   );
-}
+});
 
 export default Rectangle;
 
