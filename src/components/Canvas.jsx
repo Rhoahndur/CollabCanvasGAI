@@ -230,14 +230,17 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       selectRectangle(rectId);
     }
     
-    // Start dragging
+    // Start dragging - ALWAYS use the current rectangle's position
     const svgRect = svgRef.current.getBoundingClientRect();
     const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, svgRect);
     
-    setIsDragging(true);
-    setIsDraggingLocal(true); // Tell hook we're dragging
+    // Set drag state with current rectangle's actual position
     setDragStart(canvasPos);
     setDragOffset({ x: rect.x, y: rect.y });
+    
+    // Set dragging flags AFTER setting positions to prevent race condition
+    setIsDragging(true);
+    setIsDraggingLocal(true); // Tell hook we're dragging
     
     e.preventDefault();
   }, [rectangles, user, selectedRectId, selectRectangle, viewport, setIsDraggingLocal]);
@@ -364,6 +367,10 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
     } else if (isDragging && selectedRectId) {
       setIsDragging(false);
       setIsDraggingLocal(false); // Tell hook we stopped dragging
+      
+      // Reset drag state to prevent stale offset on next drag
+      setDragStart({ x: 0, y: 0 });
+      setDragOffset({ x: 0, y: 0 });
       
       // Get the rectangle's current position from local state
       const rect = rectangles.find(r => r.id === selectedRectId);
