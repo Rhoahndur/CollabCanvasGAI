@@ -95,15 +95,30 @@
 
 /* Rectangle styling */
 .canvas-rectangle {
-  transition: opacity 0.1s ease;
+  transition: opacity 0.15s ease, filter 0.15s ease;
 }
 
 .canvas-rectangle:hover {
-  opacity: 0.9;
+  opacity: 0.95;
+  filter: brightness(1.1);
 }
 
 .canvas-rectangle.locked {
   opacity: 0.7;
+  cursor: not-allowed !important;
+}
+
+.selection-highlight {
+  animation: selection-pulse 2s ease-in-out infinite;
+}
+
+@keyframes selection-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 
 .preview-rectangle {

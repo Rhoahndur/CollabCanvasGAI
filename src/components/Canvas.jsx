@@ -20,8 +20,9 @@ import {
   clampPanOffset,
   clamp,
   calculateFPS,
+  isPointInRect,
 } from '../utils/canvasUtils';
-import { testFirestoreConnection, createRectangle } from '../services/canvasService';
+import { testFirestoreConnection, createRectangle, updateRectangle } from '../services/canvasService';
 import { useCanvas } from '../hooks/useCanvas';
 import { useAuth } from '../hooks/useAuth';
 import { getRandomColor } from '../utils/colorUtils';
@@ -37,7 +38,7 @@ function Canvas() {
   
   // Auth and canvas state
   const { user } = useAuth();
-  const { rectangles, selectedRectId, selectRectangle, deselectRectangle } = useCanvas();
+  const { rectangles, setRectangles, selectedRectId, selectRectangle, deselectRectangle, setIsDraggingLocal } = useCanvas(user?.uid);
   
   // Viewport state (pan and zoom)
   const [viewport, setViewport] = useState({
@@ -55,6 +56,11 @@ function Canvas() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawStart, setDrawStart] = useState({ x: 0, y: 0 });
   const [drawCurrent, setDrawCurrent] = useState({ x: 0, y: 0 });
+  
+  // Rectangle dragging state
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   
   // FPS monitoring
   const [fps, setFps] = useState(0);
@@ -118,8 +124,8 @@ function Canvas() {
     return () => cancelAnimationFrame(animationFrameId);
   }, []);
   
-  // Handle mouse down for panning or drawing
-  const handleMouseDown = useCallback((e) => {
+  // Handle click on background (canvas)
+  const handleCanvasMouseDown = useCallback((e) => {
     // Only handle left mouse button
     if (e.button !== 0) return;
     
@@ -128,7 +134,7 @@ function Canvas() {
     const rect = svgRef.current.getBoundingClientRect();
     const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, rect);
     
-    // Check if holding Space key for pan, or if user holds Cmd/Ctrl for pan
+    // Check if holding Shift/Cmd/Ctrl for pan
     const shouldPan = e.shiftKey || e.metaKey || e.ctrlKey;
     
     if (shouldPan) {
@@ -137,18 +143,66 @@ function Canvas() {
       setPanStart({ x: e.clientX, y: e.clientY });
       setPanOffset({ x: viewport.offsetX, y: viewport.offsetY });
     } else {
-      // Start drawing rectangle
+      // Start drawing rectangle (deselect any selected)
+      deselectRectangle();
       setIsDrawing(true);
       setDrawStart(canvasPos);
       setDrawCurrent(canvasPos);
-      deselectRectangle();
     }
     
     // Prevent text selection while dragging
     e.preventDefault();
   }, [viewport, deselectRectangle]);
   
-  // Handle mouse move for panning or drawing
+  // Handle click on rectangle
+  const handleRectangleClick = useCallback((rectId, e) => {
+    e.stopPropagation();
+    
+    const rect = rectangles.find(r => r.id === rectId);
+    if (!rect) return;
+    
+    // Check if locked by another user
+    if (rect.lockedBy && rect.lockedBy !== user?.uid) {
+      console.log('Rectangle is locked by another user');
+      return;
+    }
+    
+    // Select the rectangle
+    selectRectangle(rectId);
+  }, [rectangles, user, selectRectangle]);
+  
+  // Handle mouse down on rectangle (for dragging)
+  const handleRectangleMouseDown = useCallback((rectId, e) => {
+    e.stopPropagation();
+    
+    if (!svgRef.current) return;
+    
+    const rect = rectangles.find(r => r.id === rectId);
+    if (!rect) return;
+    
+    // Can't drag if locked by another user
+    if (rect.lockedBy && rect.lockedBy !== user?.uid) {
+      return;
+    }
+    
+    // If not selected, select it first
+    if (selectedRectId !== rectId) {
+      selectRectangle(rectId);
+    }
+    
+    // Start dragging
+    const svgRect = svgRef.current.getBoundingClientRect();
+    const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, svgRect);
+    
+    setIsDragging(true);
+    setIsDraggingLocal(true); // Tell hook we're dragging
+    setDragStart(canvasPos);
+    setDragOffset({ x: rect.x, y: rect.y });
+    
+    e.preventDefault();
+  }, [rectangles, user, selectedRectId, selectRectangle, viewport, setIsDraggingLocal]);
+  
+  // Handle mouse move for panning, drawing, or dragging
   const handleMouseMove = useCallback((e) => {
     if (isPanning) {
       // Handle panning
@@ -181,10 +235,27 @@ function Canvas() {
       const rect = svgRef.current.getBoundingClientRect();
       const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, rect);
       setDrawCurrent(canvasPos);
+    } else if (isDragging && svgRef.current && selectedRectId) {
+      // Handle dragging selected rectangle
+      const rect = svgRef.current.getBoundingClientRect();
+      const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, rect);
+      
+      const dx = canvasPos.x - dragStart.x;
+      const dy = canvasPos.y - dragStart.y;
+      
+      const newX = dragOffset.x + dx;
+      const newY = dragOffset.y + dy;
+      
+      // Optimistic update (update local state immediately for smooth dragging)
+      setRectangles(prev => prev.map(r => 
+        r.id === selectedRectId 
+          ? { ...r, x: newX, y: newY }
+          : r
+      ));
     }
-  }, [isPanning, isDrawing, panStart, panOffset, viewport, containerSize]);
+  }, [isPanning, isDrawing, isDragging, panStart, panOffset, viewport, containerSize, dragStart, dragOffset, selectedRectId]);
   
-  // Handle mouse up to stop panning or finish drawing
+  // Handle mouse up to stop panning, finish drawing, or finish dragging
   const handleMouseUp = useCallback(async () => {
     if (isPanning) {
       setIsPanning(false);
@@ -214,8 +285,26 @@ function Canvas() {
           console.error('Failed to create rectangle:', error);
         }
       }
+    } else if (isDragging && selectedRectId) {
+      setIsDragging(false);
+      setIsDraggingLocal(false); // Tell hook we stopped dragging
+      
+      // Get the rectangle's current position from local state
+      const rect = rectangles.find(r => r.id === selectedRectId);
+      if (rect && user) {
+        try {
+          // Sync to Firestore
+          await updateRectangle(undefined, selectedRectId, {
+            x: rect.x,
+            y: rect.y,
+          });
+          console.log('Rectangle position updated in Firestore');
+        } catch (error) {
+          console.error('Failed to update rectangle position:', error);
+        }
+      }
     }
-  }, [isPanning, isDrawing, drawStart, drawCurrent, user]);
+  }, [isPanning, isDrawing, isDragging, drawStart, drawCurrent, selectedRectId, rectangles, user, setIsDraggingLocal]);
   
   // Handle mouse wheel for zooming
   const handleWheel = useCallback((e) => {
@@ -266,9 +355,9 @@ function Canvas() {
     });
   }, [viewport, containerSize]);
   
-  // Add global mouse event listeners for panning and drawing
+  // Add global mouse event listeners for panning, drawing, and dragging
   useEffect(() => {
-    if (isPanning || isDrawing) {
+    if (isPanning || isDrawing || isDragging) {
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
       
@@ -277,7 +366,7 @@ function Canvas() {
         window.removeEventListener('mouseup', handleMouseUp);
       };
     }
-  }, [isPanning, isDrawing, handleMouseMove, handleMouseUp]);
+  }, [isPanning, isDrawing, isDragging, handleMouseMove, handleMouseUp]);
   
   // Calculate viewBox for SVG
   const viewBox = `${viewport.offsetX} ${viewport.offsetY} ${containerSize.width / viewport.zoom} ${containerSize.height / viewport.zoom}`;
@@ -333,10 +422,10 @@ function Canvas() {
         ref={svgRef}
         className="canvas-svg"
         viewBox={viewBox}
-        onMouseDown={handleMouseDown}
+        onMouseDown={handleCanvasMouseDown}
         onWheel={handleWheel}
         style={{ 
-          cursor: isPanning ? 'grabbing' : isDrawing ? 'crosshair' : 'crosshair'
+          cursor: isPanning ? 'grabbing' : isDragging ? 'move' : isDrawing ? 'crosshair' : 'crosshair'
         }}
       >
         {/* Canvas background */}
@@ -373,6 +462,8 @@ function Canvas() {
               {...rect}
               isSelected={rect.id === selectedRectId}
               isLocked={rect.lockedBy !== null && rect.lockedBy !== user?.uid}
+              onClick={handleRectangleClick}
+              onMouseDown={handleRectangleMouseDown}
             />
           ))}
           
@@ -411,8 +502,8 @@ function Canvas() {
       
       {/* Canvas info overlay */}
       <div className="canvas-info">
-        <p>🎨 Click and drag to create rectangles!</p>
-        <p className="canvas-hint">Hold Shift/Cmd to pan • Scroll to zoom</p>
+        <p>🎨 {selectedRectId ? 'Drag to move selected rectangle!' : 'Click rectangles to select • Drag to create'}</p>
+        <p className="canvas-hint">Hold Shift/Cmd to pan • Scroll to zoom • Click empty space to deselect</p>
         <p className="canvas-size">{rectangles.length} objects • {CANVAS_WIDTH} × {CANVAS_HEIGHT}px</p>
       </div>
     </div>
