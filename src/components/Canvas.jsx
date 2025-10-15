@@ -36,13 +36,24 @@ import './Canvas.css';
 /**
  * Canvas component - SVG-based collaborative canvas with pan and zoom
  */
-function Canvas({ sessionId }) {
+function Canvas({ sessionId, onlineUsersCount = 0 }) {
   const svgRef = useRef(null);
   const containerRef = useRef(null);
   
   // Auth and canvas state
   const { user } = useAuth();
-  const { rectangles, setRectangles, selectedRectId, selectRectangle, deselectRectangle, setIsDraggingLocal } = useCanvas(user?.uid, user?.displayName);
+  const { 
+    rectangles, 
+    setRectangles, 
+    selectedRectId, 
+    selectRectangle, 
+    deselectRectangle, 
+    loading: canvasLoading,
+    error: canvasError,
+    connectionStatus,
+    setIsDraggingLocal,
+    notifyFirestoreActivity 
+  } = useCanvas(user?.uid, user?.displayName);
   const { cursors, shouldShowLabel } = useCursors(sessionId);
   
   // Viewport state (pan and zoom)
@@ -232,7 +243,10 @@ function Canvas({ sessionId }) {
           canvasPos.y,
           user.displayName,
           cursorArrivalTime.current
-        ).catch(console.error);
+        ).then(() => {
+          // Notify of successful Firestore operation (for connection detection)
+          notifyFirestoreActivity();
+        }).catch(console.error);
         
         lastCursorUpdate.current = now;
       }
@@ -297,7 +311,7 @@ function Canvas({ sessionId }) {
         lastDragUpdate.current = now;
       }
     }
-  }, [isPanning, isDrawing, isDragging, panStart, panOffset, viewport, containerSize, dragStart, dragOffset, selectedRectId, user]);
+  }, [isPanning, isDrawing, isDragging, panStart, panOffset, viewport, containerSize, dragStart, dragOffset, selectedRectId, user, sessionId, notifyFirestoreActivity]);
   
   // Handle mouse up to stop panning, finish drawing, or finish dragging
   const handleMouseUp = useCallback(async () => {
@@ -325,6 +339,7 @@ function Canvas({ sessionId }) {
             createdBy: user.uid,
           });
           console.log('Rectangle created successfully');
+          notifyFirestoreActivity(); // Notify of successful operation
         } catch (error) {
           console.error('Failed to create rectangle:', error);
         }
@@ -343,12 +358,13 @@ function Canvas({ sessionId }) {
             y: rect.y,
           });
           console.log('Rectangle position updated in Firestore');
+          notifyFirestoreActivity(); // Notify of successful operation
         } catch (error) {
           console.error('Failed to update rectangle position:', error);
         }
       }
     }
-  }, [isPanning, isDrawing, isDragging, drawStart, drawCurrent, selectedRectId, rectangles, user, setIsDraggingLocal]);
+  }, [isPanning, isDrawing, isDragging, drawStart, drawCurrent, selectedRectId, rectangles, user, setIsDraggingLocal, notifyFirestoreActivity]);
   
   // Handle mouse wheel for zooming
   const handleWheel = useCallback((e) => {
@@ -462,6 +478,26 @@ function Canvas({ sessionId }) {
   
   return (
     <div className="canvas-container" ref={containerRef}>
+      {/* Loading overlay */}
+      {canvasLoading && (
+        <div className="canvas-loading-overlay">
+          <div className="loading-spinner"></div>
+          <p>Loading canvas...</p>
+        </div>
+      )}
+      
+      {/* Error overlay */}
+      {canvasError && (
+        <div className="canvas-error-overlay">
+          <div className="error-content">
+            <div className="error-icon">⚠️</div>
+            <h3>Connection Error</h3>
+            <p>{canvasError}</p>
+            <p className="error-hint">Please check your internet connection and refresh the page.</p>
+          </div>
+        </div>
+      )}
+      
       <svg
         ref={svgRef}
         className="canvas-svg"
@@ -529,19 +565,55 @@ function Canvas({ sessionId }) {
             />
           )}
           
-          {/* Other users' cursors */}
-          {cursors.map((cursor) => (
-            <Cursor
-              key={cursor.sessionId}
-              userId={cursor.userId}
-              x={cursor.x}
-              y={cursor.y}
-              userName={cursor.userName}
-              showLabel={shouldShowLabel(cursor)}
-            />
-          ))}
+          {/* Other users' cursors - render in separate layer */}
+          <g className="cursors-layer">
+            {cursors.map((cursor) => (
+              <Cursor
+                key={cursor.sessionId}
+                userId={cursor.userId}
+                x={cursor.x}
+                y={cursor.y}
+                userName={cursor.userName}
+                showLabel={shouldShowLabel(cursor)}
+              />
+            ))}
+          </g>
         </g>
       </svg>
+      
+      {/* Connection status indicator */}
+      <div className={`connection-status connection-status-${connectionStatus}`}>
+        {connectionStatus === 'connecting' && (
+          <>
+            <span className="status-dot"></span>
+            <span>Connecting...</span>
+          </>
+        )}
+        {connectionStatus === 'connected' && (
+          <>
+            <span className="status-dot"></span>
+            <span>Connected</span>
+          </>
+        )}
+        {connectionStatus === 'reconnecting' && (
+          <>
+            <span className="status-dot"></span>
+            <span>Reconnecting...</span>
+          </>
+        )}
+        {connectionStatus === 'offline' && (
+          <>
+            <span className="status-dot"></span>
+            <span>Offline</span>
+          </>
+        )}
+        {connectionStatus === 'error' && (
+          <>
+            <span className="status-dot"></span>
+            <span>Connection Error</span>
+          </>
+        )}
+      </div>
       
       {/* FPS Counter */}
       {SHOW_FPS_COUNTER && (
@@ -561,7 +633,7 @@ function Canvas({ sessionId }) {
       <div className="canvas-info">
         <p>🎨 {selectedRectId ? 'Drag to move selected rectangle!' : 'Click rectangles to select • Drag to create'}</p>
         <p className="canvas-hint">Hold Shift/Cmd to pan • Scroll to zoom • Click empty space to deselect</p>
-        <p className="canvas-size">{rectangles.length} objects • {cursors.length} {cursors.length === 1 ? 'user' : 'users'} online • {CANVAS_WIDTH} × {CANVAS_HEIGHT}px</p>
+        <p className="canvas-size">{rectangles.length} objects • {onlineUsersCount} {onlineUsersCount === 1 ? 'user' : 'users'} online • {CANVAS_WIDTH} × {CANVAS_HEIGHT}px</p>
       </div>
     </div>
   );

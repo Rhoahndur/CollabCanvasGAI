@@ -143,9 +143,10 @@ export const unlockObject = async (canvasId = DEFAULT_CANVAS_ID, rectId) => {
  * Subscribe to real-time object updates
  * @param {string} canvasId - Canvas ID
  * @param {Function} callback - Callback function receiving array of objects
+ * @param {Function} errorCallback - Optional error callback
  * @returns {Function} Unsubscribe function
  */
-export const subscribeToObjects = (canvasId = DEFAULT_CANVAS_ID, callback) => {
+export const subscribeToObjects = (canvasId = DEFAULT_CANVAS_ID, callback, errorCallback) => {
   const q = query(getObjectsRef(canvasId));
   
   const unsubscribe = onSnapshot(
@@ -159,6 +160,9 @@ export const subscribeToObjects = (canvasId = DEFAULT_CANVAS_ID, callback) => {
     },
     (error) => {
       console.error('Error subscribing to objects:', error);
+      if (errorCallback) {
+        errorCallback(error);
+      }
     }
   );
   

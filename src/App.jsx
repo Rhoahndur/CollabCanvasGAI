@@ -61,7 +61,10 @@ function App() {
         </div>
       </header>
       <main className="app-main canvas-main">
-        <Canvas sessionId={sessionIdRef.current} />
+        <Canvas 
+          sessionId={sessionIdRef.current} 
+          onlineUsersCount={onlineUsers.length}
+        />
         <PresenceSidebar 
           onlineUsers={onlineUsers} 
           currentSessionId={sessionIdRef.current}
