@@ -245,6 +245,18 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
     e.preventDefault();
   }, [rectangles, user, selectedRectId, selectRectangle, viewport, setIsDraggingLocal]);
   
+  // Handle mouse leave on rectangle (auto-deselect when cursor leaves)
+  const handleRectangleMouseLeave = useCallback((rectId, e) => {
+    e.stopPropagation();
+    
+    // Only deselect if:
+    // 1. This is the currently selected rectangle
+    // 2. We're not actively dragging it
+    if (rectId === selectedRectId && !isDragging) {
+      deselectRectangle();
+    }
+  }, [selectedRectId, isDragging, deselectRectangle]);
+  
   // Handle mouse move for panning, drawing, dragging, and cursor tracking
   const handleMouseMove = useCallback((e) => {
     // Track cursor position for multiplayer (throttled)
@@ -599,6 +611,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
               lockedByUserName={rect.lockedByUserName}
               onClick={handleRectangleClick}
               onMouseDown={handleRectangleMouseDown}
+              onMouseLeave={handleRectangleMouseLeave}
             />
           ))}
           
