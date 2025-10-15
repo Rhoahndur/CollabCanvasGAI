@@ -40,6 +40,7 @@ export const FPS_UPDATE_INTERVAL = 500; // Update FPS every 500ms
 
 // Firestore configuration
 export const CURSOR_UPDATE_THROTTLE = 50; // Max cursor updates per second (ms)
+export const DRAG_UPDATE_THROTTLE = 50; // Throttle rectangle drag updates (ms)
 export const PRESENCE_HEARTBEAT_INTERVAL = 30000; // Update presence every 30 seconds
 
 // Canvas boundary styling

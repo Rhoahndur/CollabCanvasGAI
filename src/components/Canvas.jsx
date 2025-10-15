@@ -14,6 +14,8 @@ import {
   SHOW_FPS_COUNTER,
   FPS_UPDATE_INTERVAL,
   MIN_RECTANGLE_SIZE,
+  CURSOR_UPDATE_THROTTLE,
+  DRAG_UPDATE_THROTTLE,
 } from '../utils/constants';
 import {
   screenToCanvas,
@@ -22,11 +24,13 @@ import {
   calculateFPS,
   isPointInRect,
 } from '../utils/canvasUtils';
-import { testFirestoreConnection, createRectangle, updateRectangle } from '../services/canvasService';
+import { testFirestoreConnection, createRectangle, updateRectangle, updateCursor, removeCursor } from '../services/canvasService';
 import { useCanvas } from '../hooks/useCanvas';
+import { useCursors } from '../hooks/useCursors';
 import { useAuth } from '../hooks/useAuth';
 import { getRandomColor } from '../utils/colorUtils';
 import Rectangle from './Rectangle';
+import Cursor from './Cursor';
 import './Canvas.css';
 
 /**
@@ -36,9 +40,37 @@ function Canvas() {
   const svgRef = useRef(null);
   const containerRef = useRef(null);
   
+  // Generate unique session ID for this browser tab/window
+  const sessionIdRef = useRef(`session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  
   // Auth and canvas state
   const { user } = useAuth();
-  const { rectangles, setRectangles, selectedRectId, selectRectangle, deselectRectangle, setIsDraggingLocal } = useCanvas(user?.uid);
+  const { rectangles, setRectangles, selectedRectId, selectRectangle, deselectRectangle, setIsDraggingLocal } = useCanvas(user?.uid, user?.displayName);
+  const { cursors, shouldShowLabel } = useCursors(sessionIdRef.current);
+  
+  // Store sessionId globally and handle cleanup on window close
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.__currentSessionId = sessionIdRef.current;
+    }
+    
+    // Cleanup cursor when window/tab closes
+    const handleBeforeUnload = () => {
+      const sessionId = sessionIdRef.current;
+      if (sessionId && user?.uid) {
+        // Note: We can't use async/await here, but removeCursor will fire
+        removeCursor(undefined, sessionId).catch(() => {
+          // Ignore errors during unload
+        });
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [user]);
   
   // Viewport state (pan and zoom)
   const [viewport, setViewport] = useState({
@@ -72,6 +104,13 @@ function Canvas() {
   
   // Firestore connection status
   const [firestoreStatus, setFirestoreStatus] = useState('testing');
+  
+  // Cursor tracking
+  const lastCursorUpdate = useRef(0);
+  const cursorArrivalTime = useRef(Date.now());
+  
+  // Drag update tracking (for throttling real-time updates)
+  const lastDragUpdate = useRef(0);
   
   // Test Firestore connection on mount
   useEffect(() => {
@@ -202,8 +241,30 @@ function Canvas() {
     e.preventDefault();
   }, [rectangles, user, selectedRectId, selectRectangle, viewport, setIsDraggingLocal]);
   
-  // Handle mouse move for panning, drawing, or dragging
+  // Handle mouse move for panning, drawing, dragging, and cursor tracking
   const handleMouseMove = useCallback((e) => {
+    // Track cursor position for multiplayer (throttled)
+    if (svgRef.current && user) {
+      const now = Date.now();
+      if (now - lastCursorUpdate.current > CURSOR_UPDATE_THROTTLE) {
+        const rect = svgRef.current.getBoundingClientRect();
+        const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, rect);
+        
+        // Update cursor position in Firestore
+        updateCursor(
+          undefined,
+          sessionIdRef.current,
+          user.uid,
+          canvasPos.x,
+          canvasPos.y,
+          user.displayName,
+          cursorArrivalTime.current
+        ).catch(console.error);
+        
+        lastCursorUpdate.current = now;
+      }
+    }
+    
     if (isPanning) {
       // Handle panning
       const dx = e.clientX - panStart.x;
@@ -252,8 +313,18 @@ function Canvas() {
           ? { ...r, x: newX, y: newY }
           : r
       ));
+      
+      // Send throttled updates to Firestore during drag for real-time sync
+      const now = Date.now();
+      if (now - lastDragUpdate.current > DRAG_UPDATE_THROTTLE) {
+        updateRectangle(undefined, selectedRectId, {
+          x: newX,
+          y: newY,
+        }).catch(console.error);
+        lastDragUpdate.current = now;
+      }
     }
-  }, [isPanning, isDrawing, isDragging, panStart, panOffset, viewport, containerSize, dragStart, dragOffset, selectedRectId]);
+  }, [isPanning, isDrawing, isDragging, panStart, panOffset, viewport, containerSize, dragStart, dragOffset, selectedRectId, user]);
   
   // Handle mouse up to stop panning, finish drawing, or finish dragging
   const handleMouseUp = useCallback(async () => {
@@ -462,6 +533,7 @@ function Canvas() {
               {...rect}
               isSelected={rect.id === selectedRectId}
               isLocked={rect.lockedBy !== null && rect.lockedBy !== user?.uid}
+              lockedByUserName={rect.lockedByUserName}
               onClick={handleRectangleClick}
               onMouseDown={handleRectangleMouseDown}
             />
@@ -483,6 +555,18 @@ function Canvas() {
               style={{ pointerEvents: 'none' }}
             />
           )}
+          
+          {/* Other users' cursors */}
+          {cursors.map((cursor) => (
+            <Cursor
+              key={cursor.sessionId}
+              userId={cursor.userId}
+              x={cursor.x}
+              y={cursor.y}
+              userName={cursor.userName}
+              showLabel={shouldShowLabel(cursor)}
+            />
+          ))}
         </g>
       </svg>
       
@@ -504,7 +588,7 @@ function Canvas() {
       <div className="canvas-info">
         <p>🎨 {selectedRectId ? 'Drag to move selected rectangle!' : 'Click rectangles to select • Drag to create'}</p>
         <p className="canvas-hint">Hold Shift/Cmd to pan • Scroll to zoom • Click empty space to deselect</p>
-        <p className="canvas-size">{rectangles.length} objects • {CANVAS_WIDTH} × {CANVAS_HEIGHT}px</p>
+        <p className="canvas-size">{rectangles.length} objects • {cursors.length} {cursors.length === 1 ? 'user' : 'users'} online • {CANVAS_WIDTH} × {CANVAS_HEIGHT}px</p>
       </div>
     </div>
   );

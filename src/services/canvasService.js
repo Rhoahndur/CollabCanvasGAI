@@ -50,6 +50,7 @@ export const createRectangle = async (canvasId = DEFAULT_CANVAS_ID, rectData) =>
       ...rectData,
       id: objectId,
       lockedBy: null,
+      lockedByUserName: null,
       timestamp: Date.now(),
     });
     
@@ -101,15 +102,17 @@ export const deleteRectangle = async (canvasId = DEFAULT_CANVAS_ID, rectId) => {
  * @param {string} canvasId - Canvas ID
  * @param {string} rectId - Rectangle ID
  * @param {string} userId - User ID acquiring the lock
+ * @param {string} userName - User display name
  * @returns {Promise<void>}
  */
-export const lockObject = async (canvasId = DEFAULT_CANVAS_ID, rectId, userId) => {
+export const lockObject = async (canvasId = DEFAULT_CANVAS_ID, rectId, userId, userName = '') => {
   try {
     const objectRef = doc(getObjectsRef(canvasId), rectId);
     await updateDoc(objectRef, {
       lockedBy: userId,
+      lockedByUserName: userName,
     });
-    console.log('Object locked:', rectId, 'by', userId);
+    console.log('Object locked:', rectId, 'by', userName);
   } catch (error) {
     console.error('Error locking object:', error);
     throw error;
@@ -127,6 +130,7 @@ export const unlockObject = async (canvasId = DEFAULT_CANVAS_ID, rectId) => {
     const objectRef = doc(getObjectsRef(canvasId), rectId);
     await updateDoc(objectRef, {
       lockedBy: null,
+      lockedByUserName: null,
     });
     console.log('Object unlocked:', rectId);
   } catch (error) {
@@ -168,7 +172,8 @@ export const subscribeToObjects = (canvasId = DEFAULT_CANVAS_ID, callback) => {
 /**
  * Update cursor position
  * @param {string} canvasId - Canvas ID
- * @param {string} userId - User ID
+ * @param {string} sessionId - Unique session ID for this browser tab
+ * @param {string} userId - User ID (for identifying the user)
  * @param {number} x - X position
  * @param {number} y - Y position
  * @param {string} userName - User display name
@@ -177,6 +182,7 @@ export const subscribeToObjects = (canvasId = DEFAULT_CANVAS_ID, callback) => {
  */
 export const updateCursor = async (
   canvasId = DEFAULT_CANVAS_ID,
+  sessionId,
   userId,
   x,
   y,
@@ -184,8 +190,9 @@ export const updateCursor = async (
   arrivalTime
 ) => {
   try {
-    const cursorRef = doc(getCursorsRef(canvasId), userId);
+    const cursorRef = doc(getCursorsRef(canvasId), sessionId);
     await setDoc(cursorRef, {
+      sessionId,
       userId,
       x,
       y,
@@ -228,16 +235,21 @@ export const subscribeToCursors = (canvasId = DEFAULT_CANVAS_ID, callback) => {
 /**
  * Remove cursor (on disconnect)
  * @param {string} canvasId - Canvas ID
- * @param {string} userId - User ID
+ * @param {string} sessionId - Unique session ID for this browser tab
  * @returns {Promise<void>}
  */
-export const removeCursor = async (canvasId = DEFAULT_CANVAS_ID, userId) => {
+export const removeCursor = async (canvasId = DEFAULT_CANVAS_ID, sessionId) => {
   try {
-    const cursorRef = doc(getCursorsRef(canvasId), userId);
+    const cursorRef = doc(getCursorsRef(canvasId), sessionId);
     await deleteDoc(cursorRef);
+    console.log('Cursor removed:', sessionId);
   } catch (error) {
-    console.error('Error removing cursor:', error);
-    throw error;
+    // Silently ignore if cursor doesn't exist or permission denied (already cleaned up)
+    if (error.code === 'permission-denied' || error.code === 'not-found') {
+      console.log('Cursor already removed or not found:', sessionId);
+    } else {
+      console.error('Error removing cursor:', error);
+    }
   }
 };
 

@@ -6,7 +6,7 @@ import { DEFAULT_CANVAS_ID } from '../utils/constants';
  * Custom hook for managing canvas state with Firestore sync
  * Handles rectangles, selection, locking, and real-time updates
  */
-export function useCanvas(userId, canvasId = DEFAULT_CANVAS_ID) {
+export function useCanvas(userId, userName = '', canvasId = DEFAULT_CANVAS_ID) {
   const [rectangles, setRectangles] = useState([]);
   const [selectedRectId, setSelectedRectId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -74,13 +74,13 @@ export function useCanvas(userId, canvasId = DEFAULT_CANVAS_ID) {
     
     try {
       // Lock the object
-      await lockObject(canvasId, rectId, userId);
+      await lockObject(canvasId, rectId, userId, userName);
       setSelectedRectId(rectId);
       console.log('Rectangle selected and locked:', rectId);
     } catch (error) {
       console.error('Failed to lock rectangle:', error);
     }
-  }, [rectangles, userId, canvasId]);
+  }, [rectangles, userId, userName, canvasId]);
 
   // Deselect current rectangle and unlock it
   const deselectRectangle = useCallback(async () => {

@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../services/firebase';
 import { signInWithGitHub, signOutUser } from '../services/firebase';
+import { removeCursor } from '../services/canvasService';
+import { DEFAULT_CANVAS_ID } from '../utils/constants';
 
 /**
  * Custom hook for managing authentication state
@@ -51,6 +53,18 @@ export function useAuth() {
 
   const signOut = async () => {
     try {
+      // Remove cursor before signing out (while we still have auth)
+      const sessionId = typeof window !== 'undefined' ? window.__currentSessionId : null;
+      if (sessionId) {
+        try {
+          await removeCursor(DEFAULT_CANVAS_ID, sessionId);
+          console.log('Cursor removed before sign out');
+        } catch (error) {
+          console.warn('Failed to remove cursor before sign out:', error);
+        }
+      }
+      
+      // Now sign out
       await signOutUser();
     } catch (error) {
       console.error('Sign out error:', error);
