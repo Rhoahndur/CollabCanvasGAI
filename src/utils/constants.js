@@ -35,7 +35,7 @@ export const GRID_SIZE = 50;
 export const GRID_COLOR = 'rgba(255, 255, 255, 0.1)';
 
 // Performance monitoring
-export const SHOW_FPS_COUNTER = true; // Set to false in production
+export const SHOW_FPS_COUNTER = import.meta.env.DEV; // Only show in development
 export const FPS_UPDATE_INTERVAL = 500; // Update FPS every 500ms
 
 // Firestore configuration

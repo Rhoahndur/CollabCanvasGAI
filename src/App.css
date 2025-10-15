@@ -342,3 +342,123 @@ button:focus-visible {
   }
 }
 
+/* Error Boundary Styles */
+.error-boundary {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d1a1a 100%);
+  padding: 2rem;
+}
+
+.error-boundary-content {
+  background: rgba(40, 20, 20, 0.95);
+  border: 2px solid #d32f2f;
+  border-radius: 16px;
+  padding: 3rem;
+  max-width: 600px;
+  text-align: center;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.error-boundary .error-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-10px); }
+  75% { transform: translateX(10px); }
+}
+
+.error-boundary h1 {
+  color: #ff6b6b;
+  font-size: 2rem;
+  margin: 0 0 1rem 0;
+}
+
+.error-message {
+  color: #ccc;
+  font-size: 1.1rem;
+  line-height: 1.6;
+  margin: 0 0 2rem 0;
+}
+
+.error-details {
+  text-align: left;
+  margin: 2rem 0;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid #666;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.error-details summary {
+  color: #ff9800;
+  cursor: pointer;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.error-stack {
+  color: #f44336;
+  font-size: 0.85rem;
+  font-family: 'Monaco', 'Menlo', monospace;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.error-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin: 2rem 0;
+}
+
+.error-boundary .btn-primary {
+  background: #4caf50;
+  color: white;
+  border: none;
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.error-boundary .btn-primary:hover {
+  background: #45a049;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+}
+
+.error-boundary .btn-secondary {
+  background: transparent;
+  color: #aaa;
+  border: 2px solid #666;
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.error-boundary .btn-secondary:hover {
+  border-color: #888;
+  color: #fff;
+  transform: translateY(-2px);
+}
+
+.error-hint {
+  color: #888;
+  font-size: 0.9rem;
+  margin-top: 2rem;
+}
+
