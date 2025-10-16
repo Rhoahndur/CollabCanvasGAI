@@ -21,7 +21,6 @@ const Polygon = memo(function Polygon({
   lockedByUserName = null,
   onClick,
   onMouseDown,
-  onMouseLeave,
 }) {
   // Calculate polygon points
   const calculatePoints = (cx, cy, r, numSides) => {
@@ -55,13 +54,6 @@ const Polygon = memo(function Polygon({
     }
   };
 
-  const handleMouseLeave = (e) => {
-    e.stopPropagation();
-    if (onMouseLeave) {
-      onMouseLeave(id, e);
-    }
-  };
-
   // Rotation transform around center
   const transform = rotation ? `rotate(${rotation} ${x} ${y})` : undefined;
 
@@ -77,7 +69,6 @@ const Polygon = memo(function Polygon({
         }}
         onClick={handleClick}
         onMouseDown={handleMouseDown}
-        onMouseLeave={handleMouseLeave}
       />
       
       {/* Selection highlight */}

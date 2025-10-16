@@ -1,15 +1,24 @@
 import { memo } from 'react';
-import { SHAPE_TYPES } from '../utils/constants';
+import { TOOL_TYPES } from '../utils/constants';
 import './ShapePalette.css';
 
 /**
- * ShapePalette component - Tool selector for different shape types
+ * ShapePalette component - Tool selector for different shape types and selection tool
  * Displays a vertical palette on the left side of the canvas
  */
 const ShapePalette = memo(function ShapePalette({ selectedTool, onSelectTool }) {
   const tools = [
     {
-      type: SHAPE_TYPES.RECTANGLE,
+      type: TOOL_TYPES.SELECT,
+      icon: (
+        <svg viewBox="0 0 24 24" width="24" height="24">
+          <path d="M3 3 L8 20 L12 13 L19 16 L3 3 Z" fill="currentColor" stroke="currentColor" strokeWidth="1" strokeLinejoin="round" />
+        </svg>
+      ),
+      label: 'Select',
+    },
+    {
+      type: TOOL_TYPES.RECTANGLE,
       icon: (
         <svg viewBox="0 0 24 24" width="24" height="24">
           <rect x="4" y="6" width="16" height="12" fill="none" stroke="currentColor" strokeWidth="2" />
@@ -18,7 +27,7 @@ const ShapePalette = memo(function ShapePalette({ selectedTool, onSelectTool }) 
       label: 'Rectangle',
     },
     {
-      type: SHAPE_TYPES.CIRCLE,
+      type: TOOL_TYPES.CIRCLE,
       icon: (
         <svg viewBox="0 0 24 24" width="24" height="24">
           <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" strokeWidth="2" />
@@ -27,7 +36,7 @@ const ShapePalette = memo(function ShapePalette({ selectedTool, onSelectTool }) 
       label: 'Circle',
     },
     {
-      type: SHAPE_TYPES.POLYGON,
+      type: TOOL_TYPES.POLYGON,
       icon: (
         <svg viewBox="0 0 24 24" width="24" height="24">
           <polygon points="12,4 20,9 18,18 6,18 4,9" fill="none" stroke="currentColor" strokeWidth="2" />

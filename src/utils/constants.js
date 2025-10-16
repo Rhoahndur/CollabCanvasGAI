@@ -23,6 +23,12 @@ export const SHAPE_TYPES = {
   POLYGON: 'polygon',
 };
 
+// Tool types
+export const TOOL_TYPES = {
+  SELECT: 'select',
+  ...SHAPE_TYPES,
+};
+
 // Shape defaults
 export const MIN_SHAPE_SIZE = 20; // Minimum width/height/radius for shapes
 export const MIN_RECTANGLE_SIZE = 20; // Minimum width/height for rectangles (kept for backward compatibility)

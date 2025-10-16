@@ -21,7 +21,6 @@ const Rectangle = memo(function Rectangle({
   lockedByUserName = null,
   onClick,
   onMouseDown,
-  onMouseLeave,
 }) {
   const handleClick = (e) => {
     e.stopPropagation();
@@ -34,13 +33,6 @@ const Rectangle = memo(function Rectangle({
     e.stopPropagation();
     if (onMouseDown) {
       onMouseDown(id, e);
-    }
-  };
-
-  const handleMouseLeave = (e) => {
-    e.stopPropagation();
-    if (onMouseLeave) {
-      onMouseLeave(id, e);
     }
   };
 
@@ -64,7 +56,6 @@ const Rectangle = memo(function Rectangle({
         }}
         onClick={handleClick}
         onMouseDown={handleMouseDown}
-        onMouseLeave={handleMouseLeave}
       />
       
       {/* Selection highlight */}

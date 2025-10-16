@@ -20,6 +20,7 @@ import {
   CURSOR_UPDATE_THROTTLE,
   DRAG_UPDATE_THROTTLE,
   SHAPE_TYPES,
+  TOOL_TYPES,
   DEFAULT_POLYGON_SIDES,
 } from '../utils/constants';
 import {
@@ -87,6 +88,8 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [draggedShapeIds, setDraggedShapeIds] = useState([]); // For multi-shape drag
+  const [dragInitialPositions, setDragInitialPositions] = useState({}); // Store initial positions of all dragged shapes
   
   // Resize state
   const [isResizing, setIsResizing] = useState(false);
@@ -100,7 +103,15 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
   const [rotateInitial, setRotateInitial] = useState(0); // Initial rotation angle
   
   // Selected drawing tool
-  const [selectedTool, setSelectedTool] = useState(SHAPE_TYPES.RECTANGLE);
+  const [selectedTool, setSelectedTool] = useState(TOOL_TYPES.SELECT);
+  
+  // Multiple selected shape IDs (for multi-select with SELECT tool)
+  const [selectedShapeIds, setSelectedShapeIds] = useState([]);
+  
+  // Selection rectangle (for multi-select)
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [selectStart, setSelectStart] = useState({ x: 0, y: 0 });
+  const [selectCurrent, setSelectCurrent] = useState({ x: 0, y: 0 });
   
   // FPS and performance monitoring
   const [fps, setFps] = useState(0);
@@ -205,9 +216,15 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       setIsPanning(true);
       setPanStart({ x: e.clientX, y: e.clientY });
       setPanOffset({ x: viewport.offsetX, y: viewport.offsetY });
+    } else if (selectedTool === TOOL_TYPES.SELECT) {
+      // Start selection rectangle (multi-select)
+      setIsSelecting(true);
+      setSelectStart(canvasPos);
+      setSelectCurrent(canvasPos);
     } else {
-      // Start drawing rectangle (deselect any selected)
+      // Start drawing shape (deselect any selected)
       deselectRectangle();
+      setSelectedShapeIds([]);
       setIsDrawing(true);
       setDrawStart(canvasPos);
       setDrawCurrent(canvasPos);
@@ -217,22 +234,11 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
     e.preventDefault();
   }, [viewport, deselectRectangle]);
   
-  // Handle click on rectangle
+  // Handle click on rectangle (selection happens on mouse down, this is just for compatibility)
   const handleRectangleClick = useCallback((rectId, e) => {
     e.stopPropagation();
-    
-    const rect = rectangles.find(r => r.id === rectId);
-    if (!rect) return;
-    
-    // Check if locked by another user
-    if (rect.lockedBy && rect.lockedBy !== user?.uid) {
-      console.log('Rectangle is locked by another user');
-      return;
-    }
-    
-    // Select the rectangle
-    selectRectangle(rectId);
-  }, [rectangles, user, selectRectangle]);
+    // Selection now handled in mouse down
+  }, []);
   
   // Handle mouse down on rectangle (for dragging)
   const handleRectangleMouseDown = useCallback((rectId, e) => {
@@ -248,37 +254,46 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       return;
     }
     
-    // If not selected, select it first
-    if (selectedRectId !== rectId) {
-      selectRectangle(rectId);
+    // Determine which shapes to drag
+    let shapesToDrag = [];
+    if (selectedShapeIds.length > 0 && selectedShapeIds.includes(rectId)) {
+      // Multi-select drag: drag all selected shapes
+      shapesToDrag = selectedShapeIds;
+    } else {
+      // Single shape drag
+      if (selectedRectId !== rectId) {
+        selectRectangle(rectId);
+      }
+      shapesToDrag = [rectId];
     }
     
-    // Start dragging - ALWAYS use the current rectangle's position
+    // Start dragging
     const svgRect = svgRef.current.getBoundingClientRect();
     const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, svgRect);
     
-    // Set drag state with current rectangle's actual position
+    // Store initial positions of all shapes being dragged
+    const initialPositions = {};
+    shapesToDrag.forEach(id => {
+      const shape = rectangles.find(r => r.id === id);
+      if (shape) {
+        initialPositions[id] = { x: shape.x, y: shape.y };
+      }
+    });
+    
     setDragStart(canvasPos);
-    setDragOffset({ x: rect.x, y: rect.y });
+    setDragOffset({ x: rect.x, y: rect.y }); // Offset for the clicked shape
+    setDraggedShapeIds(shapesToDrag);
+    setDragInitialPositions(initialPositions);
+    
+    // Reset interaction flag
+    didInteractRef.current = false;
     
     // Set dragging flags AFTER setting positions to prevent race condition
     setIsDragging(true);
     setIsDraggingLocal(true); // Tell hook we're dragging
     
     e.preventDefault();
-  }, [rectangles, user, selectedRectId, selectRectangle, viewport, setIsDraggingLocal]);
-  
-  // Handle mouse leave on rectangle (auto-deselect when cursor leaves)
-  const handleRectangleMouseLeave = useCallback((rectId, e) => {
-    e.stopPropagation();
-    
-    // Only deselect if:
-    // 1. This is the currently selected rectangle
-    // 2. We're not actively dragging, resizing, or rotating it
-    if (rectId === selectedRectId && !isDragging && !isResizing && !isRotating) {
-      deselectRectangle();
-    }
-  }, [selectedRectId, isDragging, isResizing, isRotating, deselectRectangle]);
+  }, [rectangles, user, selectedRectId, selectedShapeIds, selectRectangle, viewport, setIsDraggingLocal]);
   
   // Handle resize start
   const handleResizeStart = useCallback((handle, e) => {
@@ -372,36 +387,52 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
         offsetX: clamped.offsetX,
         offsetY: clamped.offsetY,
       }));
+    } else if (isSelecting && svgRef.current) {
+      // Handle drawing selection rectangle
+      const rect = svgRef.current.getBoundingClientRect();
+      const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, rect);
+      setSelectCurrent(canvasPos);
     } else if (isDrawing && svgRef.current) {
-      // Handle drawing rectangle
+      // Handle drawing shape
       const rect = svgRef.current.getBoundingClientRect();
       const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, rect);
       setDrawCurrent(canvasPos);
-    } else if (isDragging && svgRef.current && selectedRectId) {
-      // Handle dragging selected rectangle
+    } else if (isDragging && svgRef.current && (selectedRectId || draggedShapeIds.length > 0)) {
+      // Handle dragging selected shapes (single or multiple)
       const rect = svgRef.current.getBoundingClientRect();
       const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, rect);
       
       const dx = canvasPos.x - dragStart.x;
       const dy = canvasPos.y - dragStart.y;
       
-      const newX = dragOffset.x + dx;
-      const newY = dragOffset.y + dy;
+      // Mark that we actually moved the shape(s)
+      didInteractRef.current = true;
       
       // Optimistic update (update local state immediately for smooth dragging)
-      setRectangles(prev => prev.map(r => 
-        r.id === selectedRectId 
-          ? { ...r, x: newX, y: newY }
-          : r
-      ));
+      setRectangles(prev => prev.map(r => {
+        if (draggedShapeIds.includes(r.id)) {
+          // Move this shape by the same delta
+          const initial = dragInitialPositions[r.id];
+          if (initial) {
+            return { ...r, x: initial.x + dx, y: initial.y + dy };
+          }
+        }
+        return r;
+      }));
       
       // Send throttled updates to Firestore during drag for real-time sync
       const now = Date.now();
       if (now - lastDragUpdate.current > DRAG_UPDATE_THROTTLE) {
-        updateShape(undefined, selectedRectId, {
-          x: newX,
-          y: newY,
-        }).catch(console.error);
+        draggedShapeIds.forEach(id => {
+          const shape = rectangles.find(r => r.id === id);
+          const initial = dragInitialPositions[id];
+          if (shape && initial) {
+            updateShape(undefined, id, {
+              x: initial.x + dx,
+              y: initial.y + dy,
+            }).catch(console.error);
+          }
+        });
         lastDragUpdate.current = now;
       }
     } else if (isResizing && svgRef.current && selectedRectId && resizeInitial) {
@@ -460,6 +491,9 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
         updates = { radius: newRadius };
       }
       
+      // Mark that we actually resized the shape
+      didInteractRef.current = true;
+      
       // Optimistic update
       setRectangles(prev => prev.map(r => 
         r.id === selectedRectId 
@@ -486,6 +520,9 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       const startAngle = Math.atan2(rotateStart.y - centerY, rotateStart.x - centerX) * (180 / Math.PI);
       const rotation = rotateInitial + (angle - startAngle);
       
+      // Mark that we actually rotated the shape
+      didInteractRef.current = true;
+      
       // Optimistic update
       setRectangles(prev => prev.map(r => 
         r.id === selectedRectId 
@@ -493,12 +530,49 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
           : r
       ));
     }
-  }, [isPanning, isDrawing, isDragging, isResizing, isRotating, panStart, panOffset, viewport, containerSize, dragStart, dragOffset, resizeStart, resizeHandle, resizeInitial, rotateStart, rotateInitial, selectedRectId, user, sessionId, notifyFirestoreActivity]);
+  }, [isPanning, isSelecting, isDrawing, isDragging, isResizing, isRotating, panStart, panOffset, viewport, containerSize, dragStart, dragOffset, draggedShapeIds, dragInitialPositions, resizeStart, resizeHandle, resizeInitial, rotateStart, rotateInitial, selectedRectId, rectangles, user, sessionId, notifyFirestoreActivity]);
   
   // Handle mouse up to stop panning, finish drawing, or finish dragging
   const handleMouseUp = useCallback(async () => {
     if (isPanning) {
       setIsPanning(false);
+    } else if (isSelecting) {
+      setIsSelecting(false);
+      
+      // Calculate selection rectangle bounds
+      const minX = Math.min(selectStart.x, selectCurrent.x);
+      const maxX = Math.max(selectStart.x, selectCurrent.x);
+      const minY = Math.min(selectStart.y, selectCurrent.y);
+      const maxY = Math.max(selectStart.y, selectCurrent.y);
+      
+      // Find all shapes that intersect with selection rectangle
+      const selected = rectangles.filter(shape => {
+        let shapeLeft, shapeRight, shapeTop, shapeBottom;
+        
+        if (shape.type === SHAPE_TYPES.RECTANGLE) {
+          shapeLeft = shape.x;
+          shapeRight = shape.x + shape.width;
+          shapeTop = shape.y;
+          shapeBottom = shape.y + shape.height;
+        } else if (shape.type === SHAPE_TYPES.CIRCLE || shape.type === SHAPE_TYPES.POLYGON) {
+          shapeLeft = shape.x - shape.radius;
+          shapeRight = shape.x + shape.radius;
+          shapeTop = shape.y - shape.radius;
+          shapeBottom = shape.y + shape.radius;
+        } else {
+          // Legacy shapes without type - assume rectangle
+          shapeLeft = shape.x;
+          shapeRight = shape.x + (shape.width || 0);
+          shapeTop = shape.y;
+          shapeBottom = shape.y + (shape.height || 0);
+        }
+        
+        // Check if selection rectangle intersects with shape
+        return !(shapeRight < minX || shapeLeft > maxX || shapeBottom < minY || shapeTop > maxY);
+      });
+      
+      setSelectedShapeIds(selected.map(s => s.id));
+      console.log(`Selected ${selected.length} shapes`);
     } else if (isDrawing) {
       setIsDrawing(false);
       
@@ -567,7 +641,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
           console.error('Failed to create shape:', error);
         }
       }
-    } else if (isDragging && selectedRectId) {
+    } else if (isDragging && (selectedRectId || draggedShapeIds.length > 0)) {
       setIsDragging(false);
       setIsDraggingLocal(false); // Tell hook we stopped dragging
       
@@ -580,21 +654,40 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       setDragStart({ x: 0, y: 0 });
       setDragOffset({ x: 0, y: 0 });
       
-      // Get the rectangle's current position from local state
-      const rect = rectangles.find(r => r.id === selectedRectId);
-      if (rect && user) {
-        try {
-          // Sync to Firestore
-          await updateShape(undefined, selectedRectId, {
-            x: rect.x,
-            y: rect.y,
-          });
-          console.log('Shape position updated in Firestore');
-          notifyFirestoreActivity(); // Notify of successful operation
-        } catch (error) {
-          console.error('Failed to update shape position:', error);
+      // If we didn't actually drag (just clicked), deselect the shape
+      if (!didInteractRef.current) {
+        if (draggedShapeIds.length === 1) {
+          // Single shape click - deselect
+          deselectRectangle();
+        }
+        // For multi-select, keep selection on click
+      } else {
+        // Sync all dragged shapes to Firestore
+        if (user) {
+          try {
+            await Promise.all(
+              draggedShapeIds.map(id => {
+                const shape = rectangles.find(r => r.id === id);
+                if (shape) {
+                  return updateShape(undefined, id, {
+                    x: shape.x,
+                    y: shape.y,
+                  });
+                }
+                return Promise.resolve();
+              })
+            );
+            console.log(`${draggedShapeIds.length} shape(s) position updated in Firestore`);
+            notifyFirestoreActivity(); // Notify of successful operation
+          } catch (error) {
+            console.error('Failed to update shape positions:', error);
+          }
         }
       }
+      
+      // Clear multi-drag state
+      setDraggedShapeIds([]);
+      setDragInitialPositions({});
     } else if (isResizing && selectedRectId) {
       setIsResizing(false);
       setIsDraggingLocal(false);
@@ -646,7 +739,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
         }
       }
     }
-  }, [isPanning, isDrawing, isDragging, isResizing, isRotating, drawStart, drawCurrent, selectedRectId, rectangles, user, sessionId, selectedTool, setIsDraggingLocal, notifyFirestoreActivity]);
+  }, [isPanning, isSelecting, isDrawing, isDragging, isResizing, isRotating, selectStart, selectCurrent, drawStart, drawCurrent, selectedRectId, draggedShapeIds, rectangles, user, sessionId, selectedTool, setIsDraggingLocal, notifyFirestoreActivity, deselectRectangle]);
   
   // Handle mouse wheel for zooming
   const handleWheel = useCallback((e) => {
@@ -697,9 +790,9 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
     });
   }, [viewport, containerSize]);
   
-  // Add global mouse event listeners for panning, drawing, dragging, resizing, and rotating
+  // Add global mouse event listeners for panning, selecting, drawing, dragging, resizing, and rotating
   useEffect(() => {
-    if (isPanning || isDrawing || isDragging || isResizing || isRotating) {
+    if (isPanning || isSelecting || isDrawing || isDragging || isResizing || isRotating) {
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
       
@@ -708,34 +801,44 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
         window.removeEventListener('mouseup', handleMouseUp);
       };
     }
-  }, [isPanning, isDrawing, isDragging, isResizing, isRotating, handleMouseMove, handleMouseUp]);
+  }, [isPanning, isSelecting, isDrawing, isDragging, isResizing, isRotating, handleMouseMove, handleMouseUp]);
   
   // Add keyboard event listener for Delete key
   useEffect(() => {
     const handleKeyDown = async (e) => {
-      // Delete selected shape when Delete or Backspace is pressed
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedRectId && !isDrawing && !isDragging && !isResizing && !isRotating) {
+      // Delete selected shapes when Delete or Backspace is pressed
+      if ((e.key === 'Delete' || e.key === 'Backspace') && (selectedRectId || selectedShapeIds.length > 0) && !isDrawing && !isDragging && !isResizing && !isRotating && !isSelecting) {
         e.preventDefault(); // Prevent browser back navigation on Backspace
         
-        const shape = rectangles.find(r => r.id === selectedRectId);
-        if (!shape) return;
+        // Determine which shapes to delete
+        const shapesToDelete = selectedShapeIds.length > 0 ? selectedShapeIds : [selectedRectId];
         
-        // Can't delete if locked by another user
-        if (shape.lockedBy && shape.lockedBy !== user?.uid) {
-          console.log('Cannot delete - locked by another user');
+        // Filter out locked shapes
+        const deletableShapes = shapesToDelete.filter(id => {
+          const shape = rectangles.find(r => r.id === id);
+          return shape && (!shape.lockedBy || shape.lockedBy === user?.uid);
+        });
+        
+        if (deletableShapes.length === 0) {
+          console.log('Cannot delete - all shapes are locked by other users');
           return;
         }
         
         try {
           // Deselect first (will unlock)
-          await deselectRectangle();
+          if (selectedRectId) {
+            await deselectRectangle();
+          }
+          setSelectedShapeIds([]);
           
-          // Delete from Firestore
-          await deleteShape(undefined, selectedRectId);
-          console.log('Shape deleted successfully');
+          // Delete all deletable shapes from Firestore
+          await Promise.all(
+            deletableShapes.map(id => deleteShape(undefined, id))
+          );
+          console.log(`${deletableShapes.length} shape(s) deleted successfully`);
           notifyFirestoreActivity();
         } catch (error) {
-          console.error('Failed to delete shape:', error);
+          console.error('Failed to delete shapes:', error);
         }
       }
     };
@@ -745,7 +848,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [selectedRectId, rectangles, user, isDrawing, isDragging, isResizing, isRotating, deselectRectangle, notifyFirestoreActivity]);
+  }, [selectedRectId, selectedShapeIds, rectangles, user, isDrawing, isDragging, isResizing, isRotating, isSelecting, deselectRectangle, notifyFirestoreActivity]);
   
   // Calculate viewBox for SVG (memoized)
   const viewBox = useMemo(() => 
@@ -895,12 +998,11 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
             const shapeProps = {
               key: shape.id,
               ...shape,
-              isSelected: shape.id === selectedRectId,
+              isSelected: shape.id === selectedRectId || selectedShapeIds.includes(shape.id),
               isLocked: shape.lockedBy !== null && shape.lockedBy !== user?.uid,
               lockedByUserName: shape.lockedByUserName,
               onClick: handleRectangleClick,
               onMouseDown: handleRectangleMouseDown,
-              onMouseLeave: handleRectangleMouseLeave,
             };
             
             // Render appropriate component based on shape type
@@ -1001,6 +1103,29 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
               }
             }
             return null;
+          })()}
+          
+          {/* Selection rectangle while multi-selecting */}
+          {isSelecting && (() => {
+            const x = Math.min(selectStart.x, selectCurrent.x);
+            const y = Math.min(selectStart.y, selectCurrent.y);
+            const width = Math.abs(selectCurrent.x - selectStart.x);
+            const height = Math.abs(selectCurrent.y - selectStart.y);
+            
+            return (
+              <rect
+                x={x}
+                y={y}
+                width={width}
+                height={height}
+                fill="rgba(100, 108, 255, 0.1)"
+                stroke="#646cff"
+                strokeWidth={2 / viewport.zoom}
+                strokeDasharray={`${5 / viewport.zoom} ${3 / viewport.zoom}`}
+                className="selection-rectangle"
+                style={{ pointerEvents: 'none' }}
+              />
+            );
           })()}
           
           {/* Other users' cursors - render in separate layer */}

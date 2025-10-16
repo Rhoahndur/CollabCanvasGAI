@@ -20,7 +20,6 @@ const Circle = memo(function Circle({
   lockedByUserName = null,
   onClick,
   onMouseDown,
-  onMouseLeave,
 }) {
   const handleClick = (e) => {
     e.stopPropagation();
@@ -33,13 +32,6 @@ const Circle = memo(function Circle({
     e.stopPropagation();
     if (onMouseDown) {
       onMouseDown(id, e);
-    }
-  };
-
-  const handleMouseLeave = (e) => {
-    e.stopPropagation();
-    if (onMouseLeave) {
-      onMouseLeave(id, e);
     }
   };
 
@@ -60,7 +52,6 @@ const Circle = memo(function Circle({
         }}
         onClick={handleClick}
         onMouseDown={handleMouseDown}
-        onMouseLeave={handleMouseLeave}
       />
       
       {/* Selection highlight */}
