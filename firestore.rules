@@ -17,7 +17,7 @@ service cloud.firestore {
       // For MVP, we'll use a single default canvas
       // In future, can expand to multiple canvases with ownership
       
-      // Canvas objects (rectangles, shapes)
+      // Canvas objects (rectangles, circles, polygons, and other shapes)
       match /objects/{objectId} {
         // Anyone authenticated can read objects
         allow read: if isAuthenticated();

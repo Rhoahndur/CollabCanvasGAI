@@ -14,8 +14,13 @@ import {
   SHOW_FPS_COUNTER,
   FPS_UPDATE_INTERVAL,
   MIN_RECTANGLE_SIZE,
+  MIN_CIRCLE_RADIUS,
+  MIN_POLYGON_RADIUS,
+  MIN_SHAPE_SIZE,
   CURSOR_UPDATE_THROTTLE,
   DRAG_UPDATE_THROTTLE,
+  SHAPE_TYPES,
+  DEFAULT_POLYGON_SIDES,
 } from '../utils/constants';
 import {
   screenToCanvas,
@@ -24,14 +29,17 @@ import {
   calculateFPS,
   isPointInRect,
 } from '../utils/canvasUtils';
-import { testFirestoreConnection, createRectangle, updateRectangle, updateCursor, removeCursor } from '../services/canvasService';
+import { testFirestoreConnection, createShape, updateShape, updateCursor, removeCursor } from '../services/canvasService';
 import { useCanvas } from '../hooks/useCanvas';
 import { useCursors } from '../hooks/useCursors';
 import { useAuth } from '../hooks/useAuth';
 import { getRandomColor } from '../utils/colorUtils';
 import { setup500Test } from '../utils/testData';
 import Rectangle from './Rectangle';
+import Circle from './Circle';
+import Polygon from './Polygon';
 import Cursor from './Cursor';
+import ShapePalette from './ShapePalette';
 import './Canvas.css';
 
 /**
@@ -78,6 +86,9 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  
+  // Selected drawing tool
+  const [selectedTool, setSelectedTool] = useState(SHAPE_TYPES.RECTANGLE);
   
   // FPS and performance monitoring
   const [fps, setFps] = useState(0);
@@ -338,7 +349,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       // Send throttled updates to Firestore during drag for real-time sync
       const now = Date.now();
       if (now - lastDragUpdate.current > DRAG_UPDATE_THROTTLE) {
-        updateRectangle(undefined, selectedRectId, {
+        updateShape(undefined, selectedRectId, {
           x: newX,
           y: newY,
         }).catch(console.error);
@@ -354,28 +365,68 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
     } else if (isDrawing) {
       setIsDrawing(false);
       
-      // Calculate rectangle dimensions
-      const x = Math.min(drawStart.x, drawCurrent.x);
-      const y = Math.min(drawStart.y, drawCurrent.y);
-      const width = Math.abs(drawCurrent.x - drawStart.x);
-      const height = Math.abs(drawCurrent.y - drawStart.y);
+      const dx = Math.abs(drawCurrent.x - drawStart.x);
+      const dy = Math.abs(drawCurrent.y - drawStart.y);
       
-      // Only create if rectangle meets minimum size
-      if (width >= MIN_RECTANGLE_SIZE && height >= MIN_RECTANGLE_SIZE && user) {
+      // Create shape based on selected tool
+      if (user) {
         try {
           const color = getRandomColor();
-          await createRectangle(undefined, {
-            x,
-            y,
-            width,
-            height,
+          let shapeData = {
+            type: selectedTool,
             color,
             createdBy: user.uid,
-          });
-          console.log('Rectangle created successfully');
-          notifyFirestoreActivity(); // Notify of successful operation
+          };
+          
+          if (selectedTool === SHAPE_TYPES.RECTANGLE) {
+            // Calculate rectangle dimensions
+            const x = Math.min(drawStart.x, drawCurrent.x);
+            const y = Math.min(drawStart.y, drawCurrent.y);
+            const width = dx;
+            const height = dy;
+            
+            // Only create if rectangle meets minimum size
+            if (width >= MIN_RECTANGLE_SIZE && height >= MIN_RECTANGLE_SIZE) {
+              shapeData = { ...shapeData, x, y, width, height };
+              await createShape(undefined, shapeData);
+              console.log('Rectangle created successfully');
+              notifyFirestoreActivity();
+            }
+          } else if (selectedTool === SHAPE_TYPES.CIRCLE) {
+            // Calculate circle radius from bounding box
+            const radius = Math.sqrt(dx * dx + dy * dy) / 2;
+            const centerX = (drawStart.x + drawCurrent.x) / 2;
+            const centerY = (drawStart.y + drawCurrent.y) / 2;
+            
+            // Only create if circle meets minimum size
+            if (radius >= MIN_CIRCLE_RADIUS) {
+              shapeData = { ...shapeData, x: centerX, y: centerY, radius };
+              await createShape(undefined, shapeData);
+              console.log('Circle created successfully');
+              notifyFirestoreActivity();
+            }
+          } else if (selectedTool === SHAPE_TYPES.POLYGON) {
+            // Calculate polygon radius from bounding box
+            const radius = Math.sqrt(dx * dx + dy * dy) / 2;
+            const centerX = (drawStart.x + drawCurrent.x) / 2;
+            const centerY = (drawStart.y + drawCurrent.y) / 2;
+            
+            // Only create if polygon meets minimum size
+            if (radius >= MIN_POLYGON_RADIUS) {
+              shapeData = { 
+                ...shapeData, 
+                x: centerX, 
+                y: centerY, 
+                radius, 
+                sides: DEFAULT_POLYGON_SIDES 
+              };
+              await createShape(undefined, shapeData);
+              console.log('Polygon created successfully');
+              notifyFirestoreActivity();
+            }
+          }
         } catch (error) {
-          console.error('Failed to create rectangle:', error);
+          console.error('Failed to create shape:', error);
         }
       }
     } else if (isDragging && selectedRectId) {
@@ -396,18 +447,18 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       if (rect && user) {
         try {
           // Sync to Firestore
-          await updateRectangle(undefined, selectedRectId, {
+          await updateShape(undefined, selectedRectId, {
             x: rect.x,
             y: rect.y,
           });
-          console.log('Rectangle position updated in Firestore');
+          console.log('Shape position updated in Firestore');
           notifyFirestoreActivity(); // Notify of successful operation
         } catch (error) {
-          console.error('Failed to update rectangle position:', error);
+          console.error('Failed to update shape position:', error);
         }
       }
     }
-  }, [isPanning, isDrawing, isDragging, drawStart, drawCurrent, selectedRectId, rectangles, user, sessionId, setIsDraggingLocal, notifyFirestoreActivity]);
+  }, [isPanning, isDrawing, isDragging, drawStart, drawCurrent, selectedRectId, rectangles, user, sessionId, selectedTool, setIsDraggingLocal, notifyFirestoreActivity]);
   
   // Handle mouse wheel for zooming
   const handleWheel = useCallback((e) => {
@@ -551,6 +602,12 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
   
   return (
     <div className="canvas-container" ref={containerRef}>
+      {/* Shape Palette */}
+      <ShapePalette 
+        selectedTool={selectedTool} 
+        onSelectTool={setSelectedTool} 
+      />
+      
       {/* Loading overlay */}
       {canvasLoading && (
         <div className="canvas-loading-overlay">
@@ -608,36 +665,108 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
         
         {/* Canvas content */}
         <g className="canvas-content">
-          {/* Render only visible rectangles (viewport culling for performance) */}
-          {visibleRectangles.map((rect) => (
-            <Rectangle
-              key={rect.id}
-              {...rect}
-              isSelected={rect.id === selectedRectId}
-              isLocked={rect.lockedBy !== null && rect.lockedBy !== user?.uid}
-              lockedByUserName={rect.lockedByUserName}
-              onClick={handleRectangleClick}
-              onMouseDown={handleRectangleMouseDown}
-              onMouseLeave={handleRectangleMouseLeave}
-            />
-          ))}
+          {/* Render only visible shapes (viewport culling for performance) */}
+          {visibleRectangles.map((shape) => {
+            const shapeProps = {
+              key: shape.id,
+              ...shape,
+              isSelected: shape.id === selectedRectId,
+              isLocked: shape.lockedBy !== null && shape.lockedBy !== user?.uid,
+              lockedByUserName: shape.lockedByUserName,
+              onClick: handleRectangleClick,
+              onMouseDown: handleRectangleMouseDown,
+              onMouseLeave: handleRectangleMouseLeave,
+            };
+            
+            // Render appropriate component based on shape type
+            if (shape.type === SHAPE_TYPES.CIRCLE) {
+              return <Circle {...shapeProps} />;
+            } else if (shape.type === SHAPE_TYPES.POLYGON) {
+              return <Polygon {...shapeProps} />;
+            } else {
+              // Default to rectangle (including legacy shapes without type field)
+              return <Rectangle {...shapeProps} />;
+            }
+          })}
           
-          {/* Preview rectangle while drawing */}
-          {previewRect && previewRect.width >= MIN_RECTANGLE_SIZE && previewRect.height >= MIN_RECTANGLE_SIZE && (
-            <rect
-              x={previewRect.x}
-              y={previewRect.y}
-              width={previewRect.width}
-              height={previewRect.height}
-              fill={getRandomColor()}
-              opacity={0.5}
-              stroke="#fff"
-              strokeWidth={2 / viewport.zoom}
-              strokeDasharray={`${10 / viewport.zoom} ${5 / viewport.zoom}`}
-              className="preview-rectangle"
-              style={{ pointerEvents: 'none' }}
-            />
-          )}
+          {/* Preview shape while drawing */}
+          {isDrawing && previewRect && (() => {
+            const dx = Math.abs(drawCurrent.x - drawStart.x);
+            const dy = Math.abs(drawCurrent.y - drawStart.y);
+            
+            if (selectedTool === SHAPE_TYPES.RECTANGLE && 
+                previewRect.width >= MIN_RECTANGLE_SIZE && 
+                previewRect.height >= MIN_RECTANGLE_SIZE) {
+              return (
+                <rect
+                  x={previewRect.x}
+                  y={previewRect.y}
+                  width={previewRect.width}
+                  height={previewRect.height}
+                  fill={getRandomColor()}
+                  opacity={0.5}
+                  stroke="#fff"
+                  strokeWidth={2 / viewport.zoom}
+                  strokeDasharray={`${10 / viewport.zoom} ${5 / viewport.zoom}`}
+                  className="preview-shape"
+                  style={{ pointerEvents: 'none' }}
+                />
+              );
+            } else if (selectedTool === SHAPE_TYPES.CIRCLE) {
+              const radius = Math.sqrt(dx * dx + dy * dy) / 2;
+              const centerX = (drawStart.x + drawCurrent.x) / 2;
+              const centerY = (drawStart.y + drawCurrent.y) / 2;
+              
+              if (radius >= MIN_CIRCLE_RADIUS) {
+                return (
+                  <circle
+                    cx={centerX}
+                    cy={centerY}
+                    r={radius}
+                    fill={getRandomColor()}
+                    opacity={0.5}
+                    stroke="#fff"
+                    strokeWidth={2 / viewport.zoom}
+                    strokeDasharray={`${10 / viewport.zoom} ${5 / viewport.zoom}`}
+                    className="preview-shape"
+                    style={{ pointerEvents: 'none' }}
+                  />
+                );
+              }
+            } else if (selectedTool === SHAPE_TYPES.POLYGON) {
+              const radius = Math.sqrt(dx * dx + dy * dy) / 2;
+              const centerX = (drawStart.x + drawCurrent.x) / 2;
+              const centerY = (drawStart.y + drawCurrent.y) / 2;
+              
+              if (radius >= MIN_POLYGON_RADIUS) {
+                // Calculate polygon points
+                const points = [];
+                const angleStep = (Math.PI * 2) / DEFAULT_POLYGON_SIDES;
+                const startAngle = -Math.PI / 2;
+                
+                for (let i = 0; i < DEFAULT_POLYGON_SIDES; i++) {
+                  const angle = startAngle + angleStep * i;
+                  const px = centerX + radius * Math.cos(angle);
+                  const py = centerY + radius * Math.sin(angle);
+                  points.push(`${px},${py}`);
+                }
+                
+                return (
+                  <polygon
+                    points={points.join(' ')}
+                    fill={getRandomColor()}
+                    opacity={0.5}
+                    stroke="#fff"
+                    strokeWidth={2 / viewport.zoom}
+                    strokeDasharray={`${10 / viewport.zoom} ${5 / viewport.zoom}`}
+                    className="preview-shape"
+                    style={{ pointerEvents: 'none' }}
+                  />
+                );
+              }
+            }
+            return null;
+          })()}
           
           {/* Other users' cursors - render in separate layer */}
           <g className="cursors-layer">

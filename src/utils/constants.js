@@ -16,10 +16,22 @@ export const DEFAULT_ZOOM = 1;
 // Pan configuration
 export const PAN_PADDING = 200; // Allow panning slightly beyond canvas edges
 
-// Rectangle defaults
-export const MIN_RECTANGLE_SIZE = 20; // Minimum width/height for rectangles
+// Shape types
+export const SHAPE_TYPES = {
+  RECTANGLE: 'rectangle',
+  CIRCLE: 'circle',
+  POLYGON: 'polygon',
+};
+
+// Shape defaults
+export const MIN_SHAPE_SIZE = 20; // Minimum width/height/radius for shapes
+export const MIN_RECTANGLE_SIZE = 20; // Minimum width/height for rectangles (kept for backward compatibility)
 export const DEFAULT_RECTANGLE_WIDTH = 100;
 export const DEFAULT_RECTANGLE_HEIGHT = 100;
+export const MIN_CIRCLE_RADIUS = 10;
+export const DEFAULT_CIRCLE_RADIUS = 50;
+export const MIN_POLYGON_RADIUS = 10;
+export const DEFAULT_POLYGON_SIDES = 5; // Pentagon by default
 
 // Hardcoded colors for pseudorandom assignment (3-5 colors as per spec)
 export const CANVAS_COLORS = [
@@ -60,17 +72,27 @@ export const DEFAULT_CANVAS_ID = 'main-canvas';
 // Data Models
 
 /**
- * Rectangle object structure
+ * Shape object structure (base for all shapes)
  * {
  *   id: string,              // Composite ID format: {userId}_{timestamp}
- *   x: number,               // X position on canvas
+ *   type: string,            // Shape type: 'rectangle', 'circle', or 'polygon'
+ *   x: number,               // X position on canvas (center for circle/polygon, top-left for rectangle)
  *   y: number,               // Y position on canvas
- *   width: number,           // Rectangle width
- *   height: number,          // Rectangle height
  *   color: string,           // Hex color code
  *   createdBy: string,       // User ID of creator
  *   lockedBy: string | null, // User ID of current lock holder, null if unlocked
  *   timestamp: number,       // Creation timestamp
+ *   
+ *   // Rectangle-specific
+ *   width: number,           // Rectangle width (only for rectangles)
+ *   height: number,          // Rectangle height (only for rectangles)
+ *   
+ *   // Circle-specific
+ *   radius: number,          // Circle radius (only for circles)
+ *   
+ *   // Polygon-specific
+ *   radius: number,          // Polygon radius (only for polygons)
+ *   sides: number,           // Number of sides (only for polygons)
  * }
  */
 

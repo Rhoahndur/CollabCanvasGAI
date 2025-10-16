@@ -33,69 +33,100 @@ export const generateObjectId = (userId) => {
 };
 
 // ============================================================================
-// RECTANGLE OPERATIONS
+// SHAPE OPERATIONS (supports rectangles, circles, polygons)
 // ============================================================================
 
 /**
- * Create a new rectangle on the canvas
+ * Create a new shape on the canvas
  * @param {string} canvasId - Canvas ID
- * @param {Object} rectData - Rectangle data {x, y, width, height, color, createdBy}
- * @returns {Promise<string>} Created rectangle ID
+ * @param {Object} shapeData - Shape data (type, x, y, color, createdBy, and type-specific props)
+ * @returns {Promise<string>} Created shape ID
  */
-export const createRectangle = async (canvasId = DEFAULT_CANVAS_ID, rectData) => {
+export const createShape = async (canvasId = DEFAULT_CANVAS_ID, shapeData) => {
   try {
-    const objectId = generateObjectId(rectData.createdBy);
+    const objectId = generateObjectId(shapeData.createdBy);
     const objectRef = doc(getObjectsRef(canvasId), objectId);
     
     await setDoc(objectRef, {
-      ...rectData,
+      ...shapeData,
       id: objectId,
       lockedBy: null,
       lockedByUserName: null,
       timestamp: Date.now(),
     });
     
-    console.log('Rectangle created:', objectId);
+    console.log('Shape created:', shapeData.type, objectId);
     return objectId;
   } catch (error) {
-    console.error('Error creating rectangle:', error);
+    console.error('Error creating shape:', error);
     throw error;
   }
 };
 
 /**
- * Update an existing rectangle
+ * Create a new rectangle on the canvas (backward compatibility)
+ * @param {string} canvasId - Canvas ID
+ * @param {Object} rectData - Rectangle data {x, y, width, height, color, createdBy}
+ * @returns {Promise<string>} Created rectangle ID
+ */
+export const createRectangle = async (canvasId = DEFAULT_CANVAS_ID, rectData) => {
+  return createShape(canvasId, { ...rectData, type: 'rectangle' });
+};
+
+/**
+ * Update an existing shape
+ * @param {string} canvasId - Canvas ID
+ * @param {string} shapeId - Shape ID
+ * @param {Object} updates - Fields to update
+ * @returns {Promise<void>}
+ */
+export const updateShape = async (canvasId = DEFAULT_CANVAS_ID, shapeId, updates) => {
+  try {
+    const objectRef = doc(getObjectsRef(canvasId), shapeId);
+    await updateDoc(objectRef, updates);
+    console.log('Shape updated:', shapeId);
+  } catch (error) {
+    console.error('Error updating shape:', error);
+    throw error;
+  }
+};
+
+/**
+ * Update an existing rectangle (backward compatibility)
  * @param {string} canvasId - Canvas ID
  * @param {string} rectId - Rectangle ID
  * @param {Object} updates - Fields to update
  * @returns {Promise<void>}
  */
 export const updateRectangle = async (canvasId = DEFAULT_CANVAS_ID, rectId, updates) => {
+  return updateShape(canvasId, rectId, updates);
+};
+
+/**
+ * Delete a shape
+ * @param {string} canvasId - Canvas ID
+ * @param {string} shapeId - Shape ID
+ * @returns {Promise<void>}
+ */
+export const deleteShape = async (canvasId = DEFAULT_CANVAS_ID, shapeId) => {
   try {
-    const objectRef = doc(getObjectsRef(canvasId), rectId);
-    await updateDoc(objectRef, updates);
-    console.log('Rectangle updated:', rectId);
+    const objectRef = doc(getObjectsRef(canvasId), shapeId);
+    await deleteDoc(objectRef);
+    console.log('Shape deleted:', shapeId);
   } catch (error) {
-    console.error('Error updating rectangle:', error);
+    console.error('Error deleting shape:', error);
     throw error;
   }
 };
 
 /**
- * Delete a rectangle
+ * Delete a rectangle (backward compatibility)
  * @param {string} canvasId - Canvas ID
  * @param {string} rectId - Rectangle ID
  * @returns {Promise<void>}
  */
 export const deleteRectangle = async (canvasId = DEFAULT_CANVAS_ID, rectId) => {
-  try {
-    const objectRef = doc(getObjectsRef(canvasId), rectId);
-    await deleteDoc(objectRef);
-    console.log('Rectangle deleted:', rectId);
-  } catch (error) {
-    console.error('Error deleting rectangle:', error);
-    throw error;
-  }
+  return deleteShape(canvasId, rectId);
 };
 
 /**

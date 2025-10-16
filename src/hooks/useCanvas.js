@@ -4,11 +4,11 @@ import { DEFAULT_CANVAS_ID } from '../utils/constants';
 
 /**
  * Custom hook for managing canvas state with Firestore sync
- * Handles rectangles, selection, locking, and real-time updates
+ * Handles shapes (rectangles, circles, polygons), selection, locking, and real-time updates
  */
 export function useCanvas(userId, userName = '', canvasId = DEFAULT_CANVAS_ID) {
-  const [rectangles, setRectangles] = useState([]);
-  const [selectedRectId, setSelectedRectId] = useState(null);
+  const [rectangles, setRectangles] = useState([]); // Note: named 'rectangles' for backward compatibility, but holds all shape types
+  const [selectedRectId, setSelectedRectId] = useState(null); // Note: named 'selectedRectId' for backward compatibility, but works for all shapes
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState('connecting'); // 'connecting' | 'connected' | 'reconnecting' | 'offline' | 'error'
