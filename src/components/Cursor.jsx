@@ -9,7 +9,6 @@ function Cursor({
   x, 
   y, 
   userName,
-  showLabel = true, // Always show by default
 }) {
   const userColor = getUserColor(userId);
   const textColor = getContrastColor(userColor);
@@ -20,42 +19,40 @@ function Cursor({
       transform={`translate(${x}, ${y})`}
       style={{ pointerEvents: 'none' }}
     >
-      {/* User name label - always visible */}
+      {/* User name label - ALWAYS visible */}
       {/* Render label FIRST so it appears BEHIND cursor in DOM order */}
-      {showLabel && (
-        <g 
-          transform="translate(18, -32)" 
-          style={{ pointerEvents: 'none' }}
+      <g 
+        transform="translate(18, -32)" 
+        style={{ pointerEvents: 'none' }}
+      >
+        {/* Label background */}
+        <rect
+          x="0"
+          y="0"
+          width={userName.length * 7 + 16}
+          height="24"
+          fill={userColor}
+          rx="4"
+          ry="4"
+          opacity="0.95"
+          style={{ 
+            filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.3))',
+            pointerEvents: 'none'
+          }}
+        />
+        {/* User name text */}
+        <text
+          x="8"
+          y="16"
+          fill={textColor}
+          fontSize="13"
+          fontWeight="600"
+          fontFamily="system-ui, -apple-system, sans-serif"
+          style={{ pointerEvents: 'none', userSelect: 'none' }}
         >
-          {/* Label background */}
-          <rect
-            x="0"
-            y="0"
-            width={userName.length * 7 + 16}
-            height="24"
-            fill={userColor}
-            rx="4"
-            ry="4"
-            opacity="0.95"
-            style={{ 
-              filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.3))',
-              pointerEvents: 'none'
-            }}
-          />
-          {/* User name text */}
-          <text
-            x="8"
-            y="16"
-            fill={textColor}
-            fontSize="13"
-            fontWeight="600"
-            fontFamily="system-ui, -apple-system, sans-serif"
-            style={{ pointerEvents: 'none', userSelect: 'none' }}
-          >
-            {userName}
-          </text>
-        </g>
-      )}
+          {userName}
+        </text>
+      </g>
 
       {/* Cursor pointer (SVG cursor icon) */}
       <g style={{ pointerEvents: 'none' }}>

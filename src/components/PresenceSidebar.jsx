@@ -10,20 +10,36 @@ function PresenceSidebar({ onlineUsers, currentSessionId }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    <aside 
-      className={`presence-sidebar ${isExpanded ? 'expanded' : 'collapsed'}`}
-      onMouseEnter={() => setIsExpanded(true)}
-      onMouseLeave={() => setIsExpanded(false)}
-    >
-      {/* Tab indicator (always visible when collapsed) */}
-      <div className="sidebar-tab">
-        <div className="tab-icon">
-          <span className="user-count-badge">{onlineUsers.length}</span>
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM8 9c-3.5 0-6 2-6 4v1h12v-1c0-2-2.5-4-6-4Z"/>
-          </svg>
+    <>
+      {/* Invisible hover trigger zone (wider area on the right) */}
+      <div 
+        className="sidebar-hover-zone"
+        onMouseEnter={() => setIsExpanded(true)}
+        style={{
+          position: 'fixed',
+          right: 0,
+          top: '64px',
+          width: '80px',
+          height: 'calc(100% - 64px)',
+          zIndex: 99,
+          pointerEvents: isExpanded ? 'none' : 'auto',
+        }}
+      />
+      
+      <aside 
+        className={`presence-sidebar ${isExpanded ? 'expanded' : 'collapsed'}`}
+        onMouseEnter={() => setIsExpanded(true)}
+        onMouseLeave={() => setIsExpanded(false)}
+      >
+        {/* Tab indicator (always visible when collapsed) */}
+        <div className="sidebar-tab">
+          <div className="tab-icon">
+            <span className="user-count-badge">{onlineUsers.length}</span>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM8 9c-3.5 0-6 2-6 4v1h12v-1c0-2-2.5-4-6-4Z"/>
+            </svg>
+          </div>
         </div>
-      </div>
 
       <div className="presence-header">
         <h3>Online Users</h3>
@@ -70,6 +86,7 @@ function PresenceSidebar({ onlineUsers, currentSessionId }) {
         )}
       </div>
     </aside>
+    </>
   );
 }
 

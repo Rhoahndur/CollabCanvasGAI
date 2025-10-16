@@ -17,12 +17,40 @@ export function useAuth() {
     // Listen for auth state changes
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
-        // Prioritize GitHub username over real name (displayName)
+        // Try to get GitHub username from localStorage (saved during sign-in)
+        const storedGithubUsername = localStorage.getItem('github_username');
+        
+        // Debug: Log available user data to find GitHub username
+        console.log('🔍 Auth user data:', {
+          storedGithubUsername,
+          displayName: currentUser.displayName,
+          email: currentUser.email,
+          reloadUserInfo: currentUser.reloadUserInfo,
+          providerData: currentUser.providerData,
+        });
+        
+        // Extract GitHub username (handle) from provider data
+        let githubUsername = null;
+        
+        // Try multiple sources for GitHub username
+        if (currentUser.providerData && currentUser.providerData.length > 0) {
+          const githubProvider = currentUser.providerData.find(p => p.providerId === 'github.com');
+          if (githubProvider) {
+            // GitHub username is often in the displayName for GitHub provider
+            githubUsername = githubProvider.displayName;
+          }
+        }
+        
+        // Fallback chain: Stored GitHub username > reloadUserInfo.screenName > provider displayName > user displayName > email
         const displayName = 
+          storedGithubUsername ||
           currentUser.reloadUserInfo?.screenName || 
+          githubUsername ||
           currentUser.displayName || 
           currentUser.email?.split('@')[0] || 
           'Anonymous User';
+        
+        console.log('✅ Using display name:', displayName);
 
         setUser({
           uid: currentUser.uid,

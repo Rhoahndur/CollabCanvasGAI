@@ -2,7 +2,7 @@
 
 .presence-sidebar {
   position: fixed;
-  right: 0;
+  right: -232px; /* Hidden by default, show only 48px tab */
   top: 64px; /* Below header */
   height: calc(100% - 64px);
   width: 280px;
@@ -12,18 +12,18 @@
   flex-direction: column;
   overflow: hidden;
   backdrop-filter: blur(10px);
-  transition: transform 0.3s ease-in-out;
+  transition: right 0.3s ease-in-out;
   z-index: 100;
 }
 
 /* Collapsed state - slide off-screen except for tab */
 .presence-sidebar.collapsed {
-  transform: translateX(calc(100% - 48px)); /* Show only 48px tab */
+  right: -232px; /* Show only 48px tab (280px - 48px = 232px) */
 }
 
 /* Expanded state - fully visible */
 .presence-sidebar.expanded {
-  transform: translateX(0);
+  right: 0;
 }
 
 /* Tab indicator (visible when collapsed) */
@@ -42,11 +42,13 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.3);
 }
 
 .sidebar-tab:hover {
   background: rgba(40, 40, 40, 0.95);
+  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.5);
 }
 
 .tab-icon {

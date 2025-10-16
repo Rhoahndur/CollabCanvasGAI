@@ -53,6 +53,21 @@ enableIndexedDbPersistence(db, {
 export const signInWithGitHub = async () => {
   try {
     const result = await signInWithPopup(auth, githubProvider);
+    
+    // Extract GitHub username from the auth response
+    if (result.additionalUserInfo && result.additionalUserInfo.username) {
+      const githubUsername = result.additionalUserInfo.username;
+      console.log('🎯 GitHub username from OAuth:', githubUsername);
+      
+      // Store in localStorage so we can access it later
+      localStorage.setItem('github_username', githubUsername);
+    }
+    
+    console.log('📦 Sign in result:', {
+      user: result.user.displayName,
+      additionalUserInfo: result.additionalUserInfo,
+    });
+    
     return result.user;
   } catch (error) {
     console.error('GitHub sign in error:', error);
@@ -65,6 +80,9 @@ export const signInWithGitHub = async () => {
  */
 export const signOutUser = async () => {
   try {
+    // Clean up localStorage
+    localStorage.removeItem('github_username');
+    
     await signOut(auth);
   } catch (error) {
     console.error('Sign out error:', error);
