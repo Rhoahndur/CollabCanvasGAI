@@ -13,7 +13,8 @@ const Polygon = memo(function Polygon({
   y, 
   radius,
   sides = 5,
-  color, 
+  color,
+  rotation = 0,
   isSelected = false,
   isLocked = false,
   lockedBy = null,
@@ -61,8 +62,11 @@ const Polygon = memo(function Polygon({
     }
   };
 
+  // Rotation transform around center
+  const transform = rotation ? `rotate(${rotation} ${x} ${y})` : undefined;
+
   return (
-    <g className="polygon-group">
+    <g className="polygon-group" transform={transform}>
       {/* Main polygon */}
       <polygon
         points={points}

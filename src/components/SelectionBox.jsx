@@ -1,0 +1,162 @@
+import { memo } from 'react';
+import { 
+  SELECTION_COLOR, 
+  SELECTION_WIDTH, 
+  HANDLE_SIZE, 
+  HANDLE_FILL, 
+  HANDLE_STROKE, 
+  HANDLE_STROKE_WIDTH,
+  ROTATION_HANDLE_OFFSET,
+  SHAPE_TYPES,
+} from '../utils/constants';
+
+/**
+ * SelectionBox component - Renders selection outline, resize handles, and rotation handle
+ * for the currently selected shape
+ */
+const SelectionBox = memo(function SelectionBox({ 
+  shape,
+  zoom,
+  onResizeStart,
+  onRotateStart,
+}) {
+  if (!shape) return null;
+
+  const handleSize = HANDLE_SIZE / zoom;
+  const strokeWidth = SELECTION_WIDTH / zoom;
+  const handleStrokeWidth = HANDLE_STROKE_WIDTH / zoom;
+  const rotationOffset = ROTATION_HANDLE_OFFSET / zoom;
+
+  // Calculate bounding box based on shape type
+  let bounds = { x: 0, y: 0, width: 0, height: 0, centerX: 0, centerY: 0 };
+  
+  if (shape.type === SHAPE_TYPES.RECTANGLE) {
+    bounds = {
+      x: shape.x,
+      y: shape.y,
+      width: shape.width,
+      height: shape.height,
+      centerX: shape.x + shape.width / 2,
+      centerY: shape.y + shape.height / 2,
+    };
+  } else if (shape.type === SHAPE_TYPES.CIRCLE) {
+    bounds = {
+      x: shape.x - shape.radius,
+      y: shape.y - shape.radius,
+      width: shape.radius * 2,
+      height: shape.radius * 2,
+      centerX: shape.x,
+      centerY: shape.y,
+    };
+  } else if (shape.type === SHAPE_TYPES.POLYGON) {
+    bounds = {
+      x: shape.x - shape.radius,
+      y: shape.y - shape.radius,
+      width: shape.radius * 2,
+      height: shape.radius * 2,
+      centerX: shape.x,
+      centerY: shape.y,
+    };
+  }
+
+  // Resize handles for rectangles (8 handles: 4 corners + 4 edges)
+  const resizeHandles = [];
+  
+  if (shape.type === SHAPE_TYPES.RECTANGLE) {
+    // Corners
+    resizeHandles.push(
+      { type: 'nw', x: bounds.x, y: bounds.y, cursor: 'nw-resize' },
+      { type: 'ne', x: bounds.x + bounds.width, y: bounds.y, cursor: 'ne-resize' },
+      { type: 'sw', x: bounds.x, y: bounds.y + bounds.height, cursor: 'sw-resize' },
+      { type: 'se', x: bounds.x + bounds.width, y: bounds.y + bounds.height, cursor: 'se-resize' },
+    );
+    // Edges
+    resizeHandles.push(
+      { type: 'n', x: bounds.centerX, y: bounds.y, cursor: 'n-resize' },
+      { type: 's', x: bounds.centerX, y: bounds.y + bounds.height, cursor: 's-resize' },
+      { type: 'w', x: bounds.x, y: bounds.centerY, cursor: 'w-resize' },
+      { type: 'e', x: bounds.x + bounds.width, y: bounds.centerY, cursor: 'e-resize' },
+    );
+  } else {
+    // For circles and polygons, use 4 cardinal direction handles
+    resizeHandles.push(
+      { type: 'n', x: bounds.centerX, y: bounds.y, cursor: 'n-resize' },
+      { type: 's', x: bounds.centerX, y: bounds.y + bounds.height, cursor: 's-resize' },
+      { type: 'w', x: bounds.x, y: bounds.centerY, cursor: 'w-resize' },
+      { type: 'e', x: bounds.x + bounds.width, y: bounds.centerY, cursor: 'e-resize' },
+    );
+  }
+
+  // Rotation handle position (above the shape)
+  const rotationHandleX = bounds.centerX;
+  const rotationHandleY = bounds.y - rotationOffset;
+
+  return (
+    <g className="selection-box">
+      {/* Selection outline */}
+      <rect
+        x={bounds.x}
+        y={bounds.y}
+        width={bounds.width}
+        height={bounds.height}
+        fill="none"
+        stroke={SELECTION_COLOR}
+        strokeWidth={strokeWidth}
+        strokeDasharray={`${5 / zoom} ${3 / zoom}`}
+        style={{ pointerEvents: 'none' }}
+      />
+
+      {/* Resize handles */}
+      {resizeHandles.map((handle) => (
+        <rect
+          key={handle.type}
+          x={handle.x - handleSize / 2}
+          y={handle.y - handleSize / 2}
+          width={handleSize}
+          height={handleSize}
+          fill={HANDLE_FILL}
+          stroke={HANDLE_STROKE}
+          strokeWidth={handleStrokeWidth}
+          style={{ cursor: handle.cursor }}
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            if (onResizeStart) {
+              onResizeStart(handle.type, e);
+            }
+          }}
+        />
+      ))}
+
+      {/* Line connecting to rotation handle */}
+      <line
+        x1={bounds.centerX}
+        y1={bounds.y}
+        x2={rotationHandleX}
+        y2={rotationHandleY}
+        stroke={SELECTION_COLOR}
+        strokeWidth={strokeWidth}
+        style={{ pointerEvents: 'none' }}
+      />
+
+      {/* Rotation handle */}
+      <circle
+        cx={rotationHandleX}
+        cy={rotationHandleY}
+        r={handleSize / 1.5}
+        fill={HANDLE_FILL}
+        stroke={HANDLE_STROKE}
+        strokeWidth={handleStrokeWidth}
+        style={{ cursor: 'grab' }}
+        onMouseDown={(e) => {
+          e.stopPropagation();
+          if (onRotateStart) {
+            onRotateStart(e);
+          }
+        }}
+      />
+    </g>
+  );
+});
+
+export default SelectionBox;
+

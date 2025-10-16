@@ -13,7 +13,8 @@ const Rectangle = memo(function Rectangle({
   y, 
   width, 
   height, 
-  color, 
+  color,
+  rotation = 0,
   isSelected = false,
   isLocked = false,
   lockedBy = null,
@@ -43,8 +44,13 @@ const Rectangle = memo(function Rectangle({
     }
   };
 
+  // Calculate center for rotation
+  const centerX = x + width / 2;
+  const centerY = y + height / 2;
+  const transform = rotation ? `rotate(${rotation} ${centerX} ${centerY})` : undefined;
+
   return (
-    <g className="rectangle-group">
+    <g className="rectangle-group" transform={transform}>
       {/* Main rectangle */}
       <rect
         x={x}

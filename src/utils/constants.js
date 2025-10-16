@@ -63,6 +63,13 @@ export const BOUNDARY_WIDTH = 2;
 export const SELECTION_COLOR = '#646cff';
 export const SELECTION_WIDTH = 3;
 
+// Resize and rotation handles
+export const HANDLE_SIZE = 8; // Size of resize handles in pixels
+export const ROTATION_HANDLE_OFFSET = 40; // Distance of rotation handle from shape
+export const HANDLE_FILL = '#646cff';
+export const HANDLE_STROKE = '#fff';
+export const HANDLE_STROKE_WIDTH = 2;
+
 // Lock indicator styling
 export const LOCKED_OVERLAY_COLOR = 'rgba(255, 100, 100, 0.1)';
 
@@ -82,6 +89,7 @@ export const DEFAULT_CANVAS_ID = 'main-canvas';
  *   createdBy: string,       // User ID of creator
  *   lockedBy: string | null, // User ID of current lock holder, null if unlocked
  *   timestamp: number,       // Creation timestamp
+ *   rotation: number,        // Rotation angle in degrees (default: 0)
  *   
  *   // Rectangle-specific
  *   width: number,           // Rectangle width (only for rectangles)

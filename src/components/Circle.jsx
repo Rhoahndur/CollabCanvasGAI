@@ -12,7 +12,8 @@ const Circle = memo(function Circle({
   x, 
   y, 
   radius,
-  color, 
+  color,
+  rotation = 0,
   isSelected = false,
   isLocked = false,
   lockedBy = null,
@@ -42,8 +43,11 @@ const Circle = memo(function Circle({
     }
   };
 
+  // Rotation transform (circles don't visually rotate, but we keep it for consistency)
+  const transform = rotation ? `rotate(${rotation} ${x} ${y})` : undefined;
+
   return (
-    <g className="circle-group">
+    <g className="circle-group" transform={transform}>
       {/* Main circle */}
       <circle
         cx={x}
