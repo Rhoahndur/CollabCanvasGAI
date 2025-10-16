@@ -55,7 +55,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
     setIsDraggingLocal,
     notifyFirestoreActivity 
   } = useCanvas(user?.uid, user?.displayName);
-  const { cursors, shouldShowLabel } = useCursors(sessionId);
+  const { cursors } = useCursors(sessionId);
   
   // Viewport state (pan and zoom)
   const [viewport, setViewport] = useState({
@@ -641,7 +641,6 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
                 x={cursor.x}
                 y={cursor.y}
                 userName={cursor.userName}
-                showLabel={shouldShowLabel(cursor)}
               />
             ))}
           </g>

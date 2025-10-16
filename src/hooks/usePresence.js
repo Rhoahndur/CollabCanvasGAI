@@ -21,7 +21,7 @@ export function usePresence(sessionId, userId, userName, canvasId = DEFAULT_CANV
 
   // Helper function to filter active users and deduplicate by sessionId
   const filterActiveUsers = (presenceData) => {
-    const fortySecondsAgo = Date.now() - 40 * 1000; // 40 second timeout
+    const twentySecondsAgo = Date.now() - 20 * 1000; // More aggressive: 20 second timeout
     
     // Deduplicate by sessionId first (in case Firestore sends duplicates)
     const sessionMap = new Map();
@@ -35,7 +35,7 @@ export function usePresence(sessionId, userId, userName, canvasId = DEFAULT_CANV
     
     // Filter to only active sessions
     const activeUsers = Array.from(sessionMap.values()).filter(user => 
-      user.isOnline && user.lastSeen > fortySecondsAgo
+      user.isOnline && user.lastSeen > twentySecondsAgo
     );
     
     return activeUsers;
@@ -47,21 +47,15 @@ export function usePresence(sessionId, userId, userName, canvasId = DEFAULT_CANV
 
     console.log('Setting up presence for user:', userName, 'session:', sessionId);
 
-    // Clean up stale sessions on mount (especially helpful for Safari)
-    cleanupStalePresence(canvasId).catch(console.error);
-
-    // Set user as online
-    const userColor = getUserColor(userId);
-    
-    // Small delay to ensure any cleanup from previous session completes
-    const setupTimeout = setTimeout(() => {
+    // Clean up stale sessions on mount (especially helpful for Safari and duplicate sessions)
+    cleanupStalePresence(canvasId).then((cleanedCount) => {
+      console.log(`🧹 Initial cleanup removed ${cleanedCount} stale sessions`);
+      
+      // Set user as online after cleanup completes
+      const userColor = getUserColor(userId);
       setUserPresence(canvasId, sessionId, userId, userName, userColor, true)
         .catch(console.error);
-    }, 100);
-    
-    // If setup doesn't complete, clear the timeout
-    const clearSetupTimeout = () => clearTimeout(setupTimeout);
-
+    }).catch(console.error);
     // Subscribe to presence changes from Firestore
     const unsubscribe = subscribeToPresence(canvasId, (presenceData) => {
       setAllPresenceData(presenceData);
@@ -70,16 +64,16 @@ export function usePresence(sessionId, userId, userName, canvasId = DEFAULT_CANV
       setOnlineUsers(activeUsers);
     });
 
-    // Client-side polling to re-filter stale users every 3 seconds
+    // Client-side polling to re-filter stale users every 2 seconds
     // This ensures the UI updates even if Firestore doesn't send new data
-    // More frequent for faster cleanup of stale sessions
+    // More aggressive cleanup for better UX
     filterIntervalRef.current = setInterval(() => {
       setAllPresenceData(prevData => {
         const activeUsers = filterActiveUsers(prevData);
         setOnlineUsers(activeUsers);
         return prevData;
       });
-    }, 3000); // Re-filter every 3 seconds
+    }, 2000); // Re-filter every 2 seconds
 
     // Start heartbeat to keep presence alive
     heartbeatIntervalRef.current = setInterval(() => {
@@ -114,9 +108,6 @@ export function usePresence(sessionId, userId, userName, canvasId = DEFAULT_CANV
     // Cleanup
     return () => {
       console.log('Cleaning up presence for session:', sessionId);
-      
-      // Clear setup timeout
-      clearSetupTimeout();
       
       // Clear intervals
       if (heartbeatIntervalRef.current) {

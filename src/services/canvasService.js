@@ -364,7 +364,8 @@ export const removePresence = async (canvasId = DEFAULT_CANVAS_ID, sessionId) =>
 };
 
 /**
- * Clean up stale presence sessions (older than 60 seconds)
+ * Clean up stale presence sessions (older than 30 seconds)
+ * More aggressive cleanup to prevent duplicate entries
  * @param {string} canvasId - Canvas ID
  * @returns {Promise<number>} Number of sessions cleaned up
  */
@@ -373,12 +374,12 @@ export const cleanupStalePresence = async (canvasId = DEFAULT_CANVAS_ID) => {
     const q = query(getPresenceRef(canvasId));
     const snapshot = await getDocs(q);
     
-    const sixtySecondsAgo = Date.now() - 60 * 1000;
+    const thirtySecondsAgo = Date.now() - 30 * 1000; // More aggressive: 30 seconds
     const staleDocIds = [];
     
     snapshot.forEach((doc) => {
       const data = doc.data();
-      if (!data.isOnline || data.lastSeen < sixtySecondsAgo) {
+      if (!data.isOnline || data.lastSeen < thirtySecondsAgo) {
         staleDocIds.push(doc.id);
       }
     });
