@@ -17,10 +17,10 @@ export function useAuth() {
     // Listen for auth state changes
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
-        // Extract display name from OAuth profile, fallback to GitHub username or email
+        // Prioritize GitHub username over real name (displayName)
         const displayName = 
-          currentUser.displayName || 
           currentUser.reloadUserInfo?.screenName || 
+          currentUser.displayName || 
           currentUser.email?.split('@')[0] || 
           'Anonymous User';
 

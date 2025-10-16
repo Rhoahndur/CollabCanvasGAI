@@ -71,6 +71,7 @@ body {
   overflow: hidden;
   display: flex;
   flex-direction: row;
+  position: relative; /* For fixed sidebar positioning */
 }
 
 button {

@@ -1,14 +1,78 @@
 /* Presence Sidebar Styles */
 
 .presence-sidebar {
+  position: fixed;
+  right: 0;
+  top: 64px; /* Below header */
+  height: calc(100% - 64px);
   width: 280px;
-  height: 100%;
   background: rgba(26, 26, 26, 0.95);
   border-left: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   backdrop-filter: blur(10px);
+  transition: transform 0.3s ease-in-out;
+  z-index: 100;
+}
+
+/* Collapsed state - slide off-screen except for tab */
+.presence-sidebar.collapsed {
+  transform: translateX(calc(100% - 48px)); /* Show only 48px tab */
+}
+
+/* Expanded state - fully visible */
+.presence-sidebar.expanded {
+  transform: translateX(0);
+}
+
+/* Tab indicator (visible when collapsed) */
+.sidebar-tab {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 120px;
+  background: rgba(26, 26, 26, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-right: none;
+  border-radius: 8px 0 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.sidebar-tab:hover {
+  background: rgba(40, 40, 40, 0.95);
+}
+
+.tab-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+}
+
+.user-count-badge {
+  background: rgba(100, 108, 255, 0.8);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 24px;
+  text-align: center;
+}
+
+/* Hide tab when expanded */
+.presence-sidebar.expanded .sidebar-tab {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .presence-header {
