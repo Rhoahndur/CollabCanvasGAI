@@ -11,12 +11,13 @@ export function useCursors(currentSessionId, canvasId = DEFAULT_CANVAS_ID) {
   const [allCursorsData, setAllCursorsData] = useState([]);
   const filterIntervalRef = useRef(null);
 
-  // Helper function to filter active cursors (not stale)
+  // Helper function to filter active cursors (not stale and actively dragging)
   const filterActiveCursors = (cursorsData, currentSession) => {
     const fortyFiveSecondsAgo = Date.now() - 45 * 1000;
     return cursorsData.filter(c => 
       c.sessionId !== currentSession && // Don't show our own cursor
-      c.timestamp > fortyFiveSecondsAgo // Only show recent cursors
+      c.timestamp > fortyFiveSecondsAgo && // Only show recent cursors
+      c.isActive === true // Only show cursors of users actively dragging
     );
   };
 

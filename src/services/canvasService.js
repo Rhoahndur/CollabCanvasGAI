@@ -183,6 +183,7 @@ export const subscribeToObjects = (canvasId = DEFAULT_CANVAS_ID, callback, error
  * @param {number} y - Y position
  * @param {string} userName - User display name
  * @param {number} arrivalTime - When cursor first appeared
+ * @param {boolean} isActive - Whether user is actively dragging (shows cursor to others)
  * @returns {Promise<void>}
  */
 export const updateCursor = async (
@@ -192,7 +193,8 @@ export const updateCursor = async (
   x,
   y,
   userName,
-  arrivalTime
+  arrivalTime,
+  isActive = false
 ) => {
   try {
     const cursorRef = doc(getCursorsRef(canvasId), sessionId);
@@ -204,6 +206,7 @@ export const updateCursor = async (
       userName,
       timestamp: Date.now(),
       arrivalTime: arrivalTime || Date.now(),
+      isActive, // Only show cursor when actively dragging
     });
   } catch (error) {
     console.error('Error updating cursor:', error);

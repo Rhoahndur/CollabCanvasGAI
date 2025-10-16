@@ -24,7 +24,7 @@ import {
   calculateFPS,
   isPointInRect,
 } from '../utils/canvasUtils';
-import { testFirestoreConnection, createRectangle, updateRectangle, updateCursor } from '../services/canvasService';
+import { testFirestoreConnection, createRectangle, updateRectangle, updateCursor, removeCursor } from '../services/canvasService';
 import { useCanvas } from '../hooks/useCanvas';
 import { useCursors } from '../hooks/useCursors';
 import { useAuth } from '../hooks/useAuth';
@@ -260,13 +260,14 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
   // Handle mouse move for panning, drawing, dragging, and cursor tracking
   const handleMouseMove = useCallback((e) => {
     // Track cursor position for multiplayer (throttled)
-    if (svgRef.current && user) {
+    // Only show cursor to others when actively dragging
+    if (svgRef.current && user && isDragging) {
       const now = Date.now();
       if (now - lastCursorUpdate.current > CURSOR_UPDATE_THROTTLE) {
         const rect = svgRef.current.getBoundingClientRect();
         const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, rect);
         
-        // Update cursor position in Firestore
+        // Update cursor position in Firestore (only when dragging)
         updateCursor(
           undefined,
           sessionId,
@@ -274,7 +275,8 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
           canvasPos.x,
           canvasPos.y,
           user.displayName,
-          cursorArrivalTime.current
+          cursorArrivalTime.current,
+          true // isActive - show cursor when dragging
         ).then(() => {
           // Notify of successful Firestore operation (for connection detection)
           notifyFirestoreActivity();
@@ -380,6 +382,11 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       setIsDragging(false);
       setIsDraggingLocal(false); // Tell hook we stopped dragging
       
+      // Hide cursor for others (set isActive to false)
+      if (user && sessionId) {
+        removeCursor(undefined, sessionId).catch(console.error);
+      }
+      
       // Reset drag state to prevent stale offset on next drag
       setDragStart({ x: 0, y: 0 });
       setDragOffset({ x: 0, y: 0 });
@@ -400,7 +407,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
         }
       }
     }
-  }, [isPanning, isDrawing, isDragging, drawStart, drawCurrent, selectedRectId, rectangles, user, setIsDraggingLocal, notifyFirestoreActivity]);
+  }, [isPanning, isDrawing, isDragging, drawStart, drawCurrent, selectedRectId, rectangles, user, sessionId, setIsDraggingLocal, notifyFirestoreActivity]);
   
   // Handle mouse wheel for zooming
   const handleWheel = useCallback((e) => {

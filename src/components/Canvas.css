@@ -230,8 +230,8 @@
 /* Connection status indicator */
 .connection-status {
   position: absolute;
-  top: 1rem;
-  right: 1rem;
+  bottom: 1rem;
+  left: 1rem;
   background-color: rgba(0, 0, 0, 0.8);
   border: 1px solid #333;
   border-radius: 20px;
