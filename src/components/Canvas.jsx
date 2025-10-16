@@ -133,6 +133,9 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
   // Drag update tracking (for throttling real-time updates)
   const lastDragUpdate = useRef(0);
   
+  // Track if user actually interacted (dragged/resized/rotated) vs just clicked
+  const didInteractRef = useRef(false);
+  
   // Test Firestore connection on mount
   useEffect(() => {
     const testConnection = async () => {
@@ -232,7 +235,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
     
     // Prevent text selection while dragging
     e.preventDefault();
-  }, [viewport, deselectRectangle]);
+  }, [viewport, selectedTool, deselectRectangle]);
   
   // Handle click on rectangle (selection happens on mouse down, this is just for compatibility)
   const handleRectangleClick = useCallback((rectId, e) => {
