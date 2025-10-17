@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../services/firebase';
-import { signInWithGitHub, signOutUser } from '../services/firebase';
+import { signOutUser } from '../services/firebase';
 import { removeCursor, removePresence } from '../services/canvasService';
 import { DEFAULT_CANVAS_ID } from '../utils/constants';
 
@@ -42,6 +42,7 @@ export function useAuth() {
         }
         
         // Fallback chain: Stored GitHub username > reloadUserInfo.screenName > provider displayName > user displayName > email
+        // Works for both GitHub and Google OAuth
         const displayName = 
           storedGithubUsername ||
           currentUser.reloadUserInfo?.screenName || 
@@ -68,15 +69,12 @@ export function useAuth() {
     return () => unsubscribe();
   }, []);
 
+  // Note: signIn is now handled directly in LoginPage component
+  // to support multiple auth providers (GitHub, Google)
   const signIn = async () => {
-    try {
-      setLoading(true);
-      await signInWithGitHub();
-    } catch (error) {
-      console.error('Sign in error:', error);
-      setLoading(false);
-      throw error;
-    }
+    // This is kept for backward compatibility but not used
+    // Auth is now handled in LoginPage with signInWithGitHub/signInWithGoogle
+    console.warn('signIn called from useAuth - use provider-specific methods instead');
   };
 
   const signOut = async () => {

@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GithubAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { getAuth, GithubAuthProvider, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
 
 // Firebase configuration from environment variables
@@ -18,8 +18,9 @@ const app = initializeApp(firebaseConfig);
 // Initialize Firebase Authentication
 export const auth = getAuth(app);
 
-// Set up GitHub OAuth provider (primary for MVP)
+// Set up OAuth providers
 export const githubProvider = new GithubAuthProvider();
+export const googleProvider = new GoogleAuthProvider();
 
 // Initialize Firestore Database
 export const db = getFirestore(app);
@@ -47,8 +48,6 @@ enableIndexedDbPersistence(db, {
 
 /**
  * Sign in with GitHub OAuth using popup
- * This is the primary authentication method for MVP
- * Architecture supports adding Google OAuth and email/password later
  */
 export const signInWithGitHub = async () => {
   try {
@@ -71,6 +70,25 @@ export const signInWithGitHub = async () => {
     return result.user;
   } catch (error) {
     console.error('GitHub sign in error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Sign in with Google OAuth using popup
+ */
+export const signInWithGoogle = async () => {
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
+    
+    console.log('📦 Google sign in result:', {
+      user: result.user.displayName,
+      email: result.user.email,
+    });
+    
+    return result.user;
+  } catch (error) {
+    console.error('Google sign in error:', error);
     throw error;
   }
 };

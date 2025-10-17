@@ -51,12 +51,15 @@ canvases/
 11. Paste them back into Firebase Console
 12. Click **"Save"**
 
-### (Optional) Enable Google OAuth for Future
+### Enable Google OAuth Provider
 
-1. Click **"Google"** in sign-in methods
+1. In the same **"Sign-in method"** tab, click **"Google"**
 2. Toggle **"Enable"**
-3. Enter project support email
-4. Click **"Save"**
+3. Enter your project support email (e.g., your personal email)
+4. (Optional) Customize the public-facing name for your project
+5. Click **"Save"**
+
+**Note:** Google OAuth is easier to set up than GitHub since it doesn't require creating an external OAuth app.
 
 ### (Optional) Enable Email/Password for Future
 
