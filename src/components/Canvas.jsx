@@ -1094,22 +1094,32 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
   const handleClearAll = useCallback(async () => {
     if (!user) return;
     
+    console.log('🗑️ CLEAR ALL initiated');
+    console.log(`  Total shapes on canvas: ${rectangles.length}`);
+    
     const confirmed = window.confirm(
       `Are you sure you want to delete ALL ${rectangles.length} shapes?\n\n` +
       `This action cannot be undone!`
     );
     
-    if (!confirmed) return;
+    if (!confirmed) {
+      console.log('❌ Clear All cancelled by user');
+      return;
+    }
     
     try {
-      console.log(`🗑️ Clearing ${rectangles.length} shapes...`);
+      console.log('🔍 Checking which shapes can be deleted...');
       
       // Delete all shapes that aren't locked by other users
       const deletableShapes = rectangles.filter(shape => 
         !shape.lockedBy || shape.lockedBy === user.uid
       );
       
+      console.log(`  ✅ Deletable shapes: ${deletableShapes.length}`);
+      console.log(`  🔒 Locked by others: ${rectangles.length - deletableShapes.length}`);
+      
       if (deletableShapes.length === 0) {
+        console.log('❌ All shapes are locked by other users');
         alert('All shapes are locked by other users.');
         return;
       }
@@ -1121,38 +1131,75 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
           `Delete the remaining ${deletableShapes.length} shape(s)?`
         );
         
-        if (!proceed) return;
+        if (!proceed) {
+          console.log('❌ Clear All cancelled - user chose not to delete remaining shapes');
+          return;
+        }
       }
       
       // Clear selection first
+      console.log('🔓 Clearing selections...');
       deselectRectangle();
       setSelectedShapeIds([]);
       
-      // Delete shapes in batches
+      // Delete shapes in batches from Firestore
+      console.log('🗑️ Starting batch deletion from Firestore...');
       const batchSize = 25;
+      let successCount = 0;
+      let failCount = 0;
+      
       for (let i = 0; i < deletableShapes.length; i += batchSize) {
         const batch = deletableShapes.slice(i, i + batchSize);
-        await Promise.all(batch.map(shape => deleteShape(undefined, shape.id)));
-        console.log(`  ✓ Deleted ${Math.min(i + batchSize, deletableShapes.length)}/${deletableShapes.length} shapes`);
+        console.log(`  Deleting batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(deletableShapes.length / batchSize)} (${batch.length} shapes)...`);
+        
+        const results = await Promise.allSettled(
+          batch.map(shape => {
+            console.log(`    Deleting shape ${shape.id} from Firestore...`);
+            return deleteShape(undefined, shape.id);
+          })
+        );
+        
+        // Count successes and failures
+        results.forEach((result, idx) => {
+          if (result.status === 'fulfilled') {
+            successCount++;
+            console.log(`    ✅ Shape ${batch[idx].id} deleted from database`);
+          } else {
+            failCount++;
+            console.error(`    ❌ Failed to delete shape ${batch[idx].id}:`, result.reason);
+          }
+        });
+        
+        console.log(`  ✓ Batch ${Math.floor(i / batchSize) + 1} complete: ${successCount}/${deletableShapes.length} deleted`);
       }
       
-      console.log(`✅ Successfully cleared ${deletableShapes.length} shapes`);
+      console.log(`✅ Clear All complete!`);
+      console.log(`  Successfully deleted from database: ${successCount} shapes`);
+      if (failCount > 0) {
+        console.warn(`  Failed to delete: ${failCount} shapes`);
+      }
+      
       notifyFirestoreActivity();
+      
+      // Show success message
+      if (successCount > 0) {
+        alert(`Successfully deleted ${successCount} shape(s) from the database!${failCount > 0 ? `\n\n${failCount} shape(s) failed to delete.` : ''}`);
+      }
     } catch (error) {
-      console.error('Failed to clear shapes:', error);
-      alert('Failed to clear shapes. Please try again.');
+      console.error('❌ CRITICAL ERROR during Clear All:', error);
+      alert('Failed to clear shapes. Please check the console and try again.');
     }
   }, [rectangles, user, deselectRectangle, setSelectedShapeIds, notifyFirestoreActivity]);
 
-  // Handle generating 500 random shapes
+  // Handle generating 10 random shapes
   const handleGenerate500 = useCallback(async () => {
     if (!user) return;
     
     try {
-      console.log('🎨 Generating 500 random shapes...');
-      await generateTestShapes(500, user.uid);
+      console.log('🎨 Generating 10 random shapes...');
+      await generateTestShapes(10, user.uid);
       notifyFirestoreActivity();
-      console.log('✅ 500 shapes generated successfully!');
+      console.log('✅ 10 shapes generated successfully!');
     } catch (error) {
       console.error('Failed to generate shapes:', error);
       alert('Failed to generate shapes. Please try again.');
