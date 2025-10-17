@@ -140,11 +140,20 @@ export async function generateTestShapes(count, userId, canvasId = DEFAULT_CANVA
         
         for (let j = 0; j < currentBatchSize; j++) {
           const shapeData = generateRandomShape(userId);
-          batchPromises.push(createShape(canvasId, shapeData));
+          batchPromises.push(
+            createShape(canvasId, shapeData)
+              .catch(err => {
+                console.error(`Failed to create shape ${j + 1} in batch ${i + 1}:`, err);
+                return null; // Return null on failure so Promise.all doesn't fail
+              })
+          );
         }
         
-        await Promise.all(batchPromises);
-        console.log(`  ✓ Created batch ${i + 1}/${batches} (${(i + 1) * batchSize} shapes)`);
+        const results = await Promise.all(batchPromises);
+        const successCount = results.filter(r => r !== null).length;
+        const failCount = currentBatchSize - successCount;
+        
+        console.log(`  ✓ Created batch ${i + 1}/${batches}: ${successCount} succeeded${failCount > 0 ? `, ${failCount} failed` : ''}`);
         
         // Small delay between batches to avoid rate limiting
         if (i < batches - 1) {
