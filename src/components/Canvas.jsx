@@ -66,7 +66,8 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
     error: canvasError,
     connectionStatus,
     setIsDraggingLocal,
-    notifyFirestoreActivity 
+    notifyFirestoreActivity,
+    setBatchDeleting 
   } = useCanvas(user?.uid, user?.displayName);
   const { cursors } = useCursors(sessionId);
   
@@ -479,8 +480,8 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       shapesToDrag = selectedShapeIds;
     } else {
       // Single shape drag
-      if (selectedRectId !== rectId) {
-        selectRectangle(rectId);
+    if (selectedRectId !== rectId) {
+      selectRectangle(rectId);
       }
       shapesToDrag = [rectId];
     }
@@ -667,7 +668,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
             updateShape(undefined, id, {
               x: initial.x + dx,
               y: initial.y + dy,
-            }).catch(console.error);
+        }).catch(console.error);
           }
         });
         lastDragUpdate.current = now;
@@ -851,7 +852,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
               const constrained = constrainRectangle(x, y, width, height, CANVAS_WIDTH, CANVAS_HEIGHT);
               shapeData = { ...shapeData, ...constrained, rotation: 0 };
               await createShape(undefined, shapeData);
-              console.log('Rectangle created successfully');
+          console.log('Rectangle created successfully');
               notifyFirestoreActivity();
             }
           } else if (selectedTool === SHAPE_TYPES.CIRCLE) {
@@ -933,8 +934,8 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
               })
             );
             console.log(`${draggedShapeIds.length} shape(s) position updated in Firestore`);
-            notifyFirestoreActivity(); // Notify of successful operation
-          } catch (error) {
+          notifyFirestoreActivity(); // Notify of successful operation
+        } catch (error) {
             console.error('Failed to update shape positions:', error);
           }
         }
@@ -1054,7 +1055,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       zoom: newZoom,
     });
   }, [viewport, containerSize]);
-
+  
   // Programmatic zoom functions (for zoom controls)
   const handleZoomIn = useCallback(() => {
     if (!svgRef.current) return;
@@ -1236,6 +1237,10 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       deselectRectangle();
       setSelectedShapeIds([]);
       
+      // CRITICAL: Enable batch delete mode to prevent race condition
+      console.log('🚨 Enabling batch delete mode (prevents merge logic)');
+      setBatchDeleting(true);
+      
       // Delete shapes in batches from Firestore
       console.log('🗑️ Starting batch deletion from Firestore...');
       const batchSize = 25;
@@ -1273,6 +1278,12 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
         console.warn(`  Failed to delete: ${failCount} shapes`);
       }
       
+      // CRITICAL: Disable batch delete mode after a delay to allow Firestore to sync
+      setTimeout(() => {
+        console.log('🔓 Disabling batch delete mode');
+        setBatchDeleting(false);
+      }, 1000);
+      
       notifyFirestoreActivity();
       
       // Show success message
@@ -1281,9 +1292,14 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       }
     } catch (error) {
       console.error('❌ CRITICAL ERROR during Clear All:', error);
+      
+      // Make sure to disable batch delete mode even on error
+      console.log('🔓 Disabling batch delete mode (error cleanup)');
+      setBatchDeleting(false);
+      
       alert('Failed to clear shapes. Please check the console and try again.');
     }
-  }, [rectangles, user, deselectRectangle, setSelectedShapeIds, notifyFirestoreActivity]);
+  }, [rectangles, user, deselectRectangle, setSelectedShapeIds, notifyFirestoreActivity, setBatchDeleting]);
 
   // Handle generating 10 random shapes
   const handleGenerate500 = useCallback(async () => {
@@ -1602,19 +1618,19 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
                 previewRect.width >= MIN_RECTANGLE_SIZE && 
                 previewRect.height >= MIN_RECTANGLE_SIZE) {
               return (
-                <rect
-                  x={previewRect.x}
-                  y={previewRect.y}
-                  width={previewRect.width}
-                  height={previewRect.height}
-                  fill={getRandomColor()}
-                  opacity={0.5}
-                  stroke="#fff"
-                  strokeWidth={2 / viewport.zoom}
-                  strokeDasharray={`${10 / viewport.zoom} ${5 / viewport.zoom}`}
+            <rect
+              x={previewRect.x}
+              y={previewRect.y}
+              width={previewRect.width}
+              height={previewRect.height}
+              fill={getRandomColor()}
+              opacity={0.5}
+              stroke="#fff"
+              strokeWidth={2 / viewport.zoom}
+              strokeDasharray={`${10 / viewport.zoom} ${5 / viewport.zoom}`}
                   className="preview-shape"
-                  style={{ pointerEvents: 'none' }}
-                />
+              style={{ pointerEvents: 'none' }}
+            />
               );
             } else if (selectedTool === SHAPE_TYPES.CIRCLE) {
               const radius = Math.sqrt(dx * dx + dy * dy) / 2;

@@ -18,6 +18,7 @@ export function useCanvas(userId, userName = '', canvasId = DEFAULT_CANVAS_ID) {
   const selectedRectIdRef = useRef(null);
   const lastUpdateTimeRef = useRef(Date.now());
   const connectionCheckIntervalRef = useRef(null);
+  const isBatchDeletingRef = useRef(false); // Track when we're doing batch deletions
   
   // Keep refs in sync with state
   useEffect(() => {
@@ -45,6 +46,12 @@ export function useCanvas(userId, userName = '', canvasId = DEFAULT_CANVAS_ID) {
         
         // Update rectangles, but preserve local optimistic updates while dragging
         setRectangles(prevRectangles => {
+          // If batch deleting, ALWAYS use Firestore data (don't merge)
+          if (isBatchDeletingRef.current) {
+            console.log('Batch delete mode: using fresh Firestore data', objects.length);
+            return objects;
+          }
+          
           // If not dragging, just use Firestore data
           if (!isDraggingRef.current) {
             return objects;
@@ -178,6 +185,12 @@ export function useCanvas(userId, userName = '', canvasId = DEFAULT_CANVAS_ID) {
       setError(null);
     }
   }, [connectionStatus]);
+  
+  // Function to set batch deleting mode (prevents merge logic during mass deletions)
+  const setBatchDeleting = useCallback((isDeleting) => {
+    console.log('Batch delete mode:', isDeleting);
+    isBatchDeletingRef.current = isDeleting;
+  }, []);
 
   return {
     rectangles,
@@ -191,6 +204,7 @@ export function useCanvas(userId, userName = '', canvasId = DEFAULT_CANVAS_ID) {
     connectionStatus,
     setIsDraggingLocal,
     notifyFirestoreActivity,
+    setBatchDeleting,
   };
 }
 
