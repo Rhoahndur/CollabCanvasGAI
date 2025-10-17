@@ -942,7 +942,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
     const newOffsetX = viewport.offsetX + (mouseBeforeZoom.x - mouseAfterZoom.x - viewport.offsetX);
     const newOffsetY = viewport.offsetY + (mouseBeforeZoom.y - mouseAfterZoom.y - viewport.offsetY);
     
-    // Clamp to canvas boundaries
+    // Clamp to canvas boundaries (with 20% padding)
     const clamped = clampPanOffset(
       newOffsetX,
       newOffsetY,
@@ -951,7 +951,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       containerSize.height,
       CANVAS_WIDTH,
       CANVAS_HEIGHT,
-      PAN_PADDING
+      PAN_PADDING_PERCENT
     );
     
     setViewport({
@@ -982,6 +982,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
     const newOffsetX = viewport.offsetX + (centerBeforeZoom.x - centerAfterZoom.x - viewport.offsetX);
     const newOffsetY = viewport.offsetY + (centerBeforeZoom.y - centerAfterZoom.y - viewport.offsetY);
     
+    // Clamp to canvas boundaries (with 20% padding)
     const clamped = clampPanOffset(
       newOffsetX,
       newOffsetY,
@@ -990,7 +991,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       containerSize.height,
       CANVAS_WIDTH,
       CANVAS_HEIGHT,
-      PAN_PADDING
+      PAN_PADDING_PERCENT
     );
     
     setViewport({
@@ -1020,6 +1021,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
     const newOffsetX = viewport.offsetX + (centerBeforeZoom.x - centerAfterZoom.x - viewport.offsetX);
     const newOffsetY = viewport.offsetY + (centerBeforeZoom.y - centerAfterZoom.y - viewport.offsetY);
     
+    // Clamp to canvas boundaries (with 20% padding)
     const clamped = clampPanOffset(
       newOffsetX,
       newOffsetY,
@@ -1028,7 +1030,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       containerSize.height,
       CANVAS_WIDTH,
       CANVAS_HEIGHT,
-      PAN_PADDING
+      PAN_PADDING_PERCENT
     );
     
     setViewport({
