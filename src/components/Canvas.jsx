@@ -30,7 +30,7 @@ import {
   calculateFPS,
   isPointInRect,
 } from '../utils/canvasUtils';
-import { testFirestoreConnection, createShape, updateShape, deleteShape, updateCursor, removeCursor } from '../services/canvasService';
+import { testFirestoreConnection, createShape, updateShape, deleteShape, updateCursor, removeCursor, updatePresenceHeartbeat } from '../services/canvasService';
 import { useCanvas } from '../hooks/useCanvas';
 import { useCursors } from '../hooks/useCursors';
 import { useAuth } from '../hooks/useAuth';
@@ -137,6 +137,10 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
   // Track if user actually interacted (dragged/resized/rotated) vs just clicked
   const didInteractRef = useRef(false);
   
+  // Activity tracking for presence updates
+  const lastActivityRef = useRef(Date.now());
+  const activityThrottleRef = useRef(null);
+  
   // Test Firestore connection on mount
   useEffect(() => {
     const testConnection = async () => {
@@ -209,6 +213,9 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
     
     if (!svgRef.current) return;
     
+    // Track activity for presence
+    trackActivity();
+    
     const rect = svgRef.current.getBoundingClientRect();
     const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, rect);
     
@@ -249,6 +256,9 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
     e.stopPropagation();
     
     if (!svgRef.current) return;
+    
+    // Track activity for presence
+    trackActivity();
     
     const rect = rectangles.find(r => r.id === rectId);
     if (!rect) return;
@@ -892,6 +902,24 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       offsetY: 0,
     });
   }, []);
+
+  // Track user activity for presence updates
+  const trackActivity = useCallback(() => {
+    const now = Date.now();
+    lastActivityRef.current = now;
+    
+    // Throttle presence updates to max once per 5 seconds during active interaction
+    if (activityThrottleRef.current) return;
+    
+    activityThrottleRef.current = setTimeout(() => {
+      activityThrottleRef.current = null;
+    }, 5000);
+    
+    // Update presence to show user is active
+    if (sessionId) {
+      updatePresenceHeartbeat(undefined, sessionId, true).catch(console.error);
+    }
+  }, [sessionId]);
   
   // Add global mouse event listeners for panning, selecting, drawing, dragging, resizing, and rotating
   useEffect(() => {

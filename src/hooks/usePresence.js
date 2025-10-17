@@ -6,7 +6,7 @@ import {
   removePresence,
   cleanupStalePresence
 } from '../services/canvasService';
-import { DEFAULT_CANVAS_ID, PRESENCE_HEARTBEAT_INTERVAL } from '../utils/constants';
+import { DEFAULT_CANVAS_ID, PRESENCE_HEARTBEAT_INTERVAL, PRESENCE_TIMEOUT } from '../utils/constants';
 import { getUserColor } from '../utils/colorUtils';
 
 /**
@@ -21,7 +21,7 @@ export function usePresence(sessionId, userId, userName, canvasId = DEFAULT_CANV
 
   // Helper function to filter active users and deduplicate by sessionId
   const filterActiveUsers = (presenceData) => {
-    const twentySecondsAgo = Date.now() - 20 * 1000; // More aggressive: 20 second timeout
+    const timeoutThreshold = Date.now() - PRESENCE_TIMEOUT; // 30 second timeout
     
     // Deduplicate by sessionId first (in case Firestore sends duplicates)
     const sessionMap = new Map();
@@ -33,9 +33,9 @@ export function usePresence(sessionId, userId, userName, canvasId = DEFAULT_CANV
       }
     });
     
-    // Filter to only active sessions
+    // Filter to only active sessions (within timeout threshold)
     const activeUsers = Array.from(sessionMap.values()).filter(user => 
-      user.isOnline && user.lastSeen > twentySecondsAgo
+      user.isOnline && user.lastSeen > timeoutThreshold
     );
     
     return activeUsers;
@@ -64,16 +64,15 @@ export function usePresence(sessionId, userId, userName, canvasId = DEFAULT_CANV
       setOnlineUsers(activeUsers);
     });
 
-    // Client-side polling to re-filter stale users every 2 seconds
+    // Client-side polling to re-filter stale users every 3 seconds
     // This ensures the UI updates even if Firestore doesn't send new data
-    // More aggressive cleanup for better UX
     filterIntervalRef.current = setInterval(() => {
       setAllPresenceData(prevData => {
         const activeUsers = filterActiveUsers(prevData);
         setOnlineUsers(activeUsers);
         return prevData;
       });
-    }, 2000); // Re-filter every 2 seconds
+    }, 3000); // Re-filter every 3 seconds
 
     // Start heartbeat to keep presence alive
     heartbeatIntervalRef.current = setInterval(() => {
@@ -84,11 +83,12 @@ export function usePresence(sessionId, userId, userName, canvasId = DEFAULT_CANV
     // Handle visibility changes (tab switching)
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        // Tab hidden - update lastSeen but keep online
-        updatePresenceHeartbeat(canvasId, sessionId).catch(console.error);
+        // Tab hidden - mark as away (online but not active)
+        updatePresenceHeartbeat(canvasId, sessionId, false).catch(console.error);
       } else {
-        // Tab visible again - refresh presence
-        setUserPresence(canvasId, sessionId, userId, userName, userColor, true)
+        // Tab visible again - mark as active
+        const userColor = getUserColor(userId);
+        setUserPresence(canvasId, sessionId, userId, userName, userColor, true, true)
           .catch(console.error);
       }
     };

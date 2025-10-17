@@ -312,7 +312,8 @@ export const setUserPresence = async (
   userId,
   userName,
   color,
-  isOnline = true
+  isOnline = true,
+  isActive = true
 ) => {
   try {
     const presenceRef = doc(getPresenceRef(canvasId), sessionId);
@@ -322,9 +323,10 @@ export const setUserPresence = async (
       userName,
       color,
       isOnline,
+      isActive, // Track active vs away status
       lastSeen: Date.now(),
     });
-    console.log('Presence updated:', userName, isOnline ? 'online' : 'offline');
+    console.log('Presence updated:', userName, isOnline ? 'online' : 'offline', isActive ? '(active)' : '(away)');
   } catch (error) {
     console.error('Error setting presence:', error);
     throw error;
@@ -361,14 +363,16 @@ export const subscribeToPresence = (canvasId = DEFAULT_CANVAS_ID, callback) => {
  * Update user's lastSeen timestamp (heartbeat)
  * @param {string} canvasId - Canvas ID
  * @param {string} sessionId - Session ID
+ * @param {boolean} isActive - Whether the user is actively interacting (default: true)
  * @returns {Promise<void>}
  */
-export const updatePresenceHeartbeat = async (canvasId = DEFAULT_CANVAS_ID, sessionId) => {
+export const updatePresenceHeartbeat = async (canvasId = DEFAULT_CANVAS_ID, sessionId, isActive = true) => {
   try {
     const presenceRef = doc(getPresenceRef(canvasId), sessionId);
     await updateDoc(presenceRef, {
       lastSeen: Date.now(),
       isOnline: true,
+      isActive, // Track if user is actively interacting vs just having tab open
     });
   } catch (error) {
     console.error('Error updating presence heartbeat:', error);

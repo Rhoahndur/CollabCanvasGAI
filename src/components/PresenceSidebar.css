@@ -189,10 +189,16 @@
   flex-shrink: 0;
 }
 
-.status-indicator.online {
+.status-indicator.online,
+.status-indicator.active {
   background: #10b981;
   box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
   animation: pulse 2s ease-in-out infinite;
+}
+
+.status-indicator.away {
+  background: #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
 }
 
 @keyframes pulse {

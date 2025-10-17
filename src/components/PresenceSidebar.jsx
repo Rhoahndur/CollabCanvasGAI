@@ -76,8 +76,8 @@ function PresenceSidebar({ onlineUsers, currentSessionId }) {
                     {isCurrentUser && <span className="you-label">(you)</span>}
                   </div>
                   <div className="user-status">
-                    <span className="status-indicator online"></span>
-                    <span className="status-text">Online</span>
+                    <span className={`status-indicator ${user.isActive ? 'active' : 'away'}`}></span>
+                    <span className="status-text">{user.isActive ? 'Active' : 'Away'}</span>
                   </div>
                 </div>
               </div>
