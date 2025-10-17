@@ -89,7 +89,7 @@ export function clamp(value, min, max) {
  * @param {number} viewportHeight - Height of viewport
  * @param {number} canvasWidth - Width of canvas
  * @param {number} canvasHeight - Height of canvas
- * @param {number} padding - Padding beyond boundaries
+ * @param {number} paddingPercent - Padding beyond boundaries as percentage (e.g., 0.2 for 20%)
  * @returns {Object} Clamped offsets {offsetX, offsetY}
  */
 export function clampPanOffset(
@@ -100,17 +100,21 @@ export function clampPanOffset(
   viewportHeight,
   canvasWidth,
   canvasHeight,
-  padding = 200
+  paddingPercent = 0.2
 ) {
   // Calculate visible area in canvas coordinates
   const visibleWidth = viewportWidth / zoom;
   const visibleHeight = viewportHeight / zoom;
   
+  // Calculate padding as percentage of canvas size
+  const paddingX = canvasWidth * paddingPercent;
+  const paddingY = canvasHeight * paddingPercent;
+  
   // Calculate min/max offsets with padding
-  const minOffsetX = -padding;
-  const maxOffsetX = canvasWidth - visibleWidth + padding;
-  const minOffsetY = -padding;
-  const maxOffsetY = canvasHeight - visibleHeight + padding;
+  const minOffsetX = -paddingX;
+  const maxOffsetX = canvasWidth - visibleWidth + paddingX;
+  const minOffsetY = -paddingY;
+  const maxOffsetY = canvasHeight - visibleHeight + paddingY;
   
   // Clamp offsets
   const clampedOffsetX = clamp(offsetX, minOffsetX, maxOffsetX);
@@ -135,5 +139,51 @@ export function calculateFPS(frameTimes) {
   const fps = (frameTimes.length - 1) / (timeSpan / 1000);
   
   return Math.round(fps);
+}
+
+/**
+ * Constrain a rectangle to stay within canvas boundaries
+ * 
+ * @param {number} x - Rectangle x position
+ * @param {number} y - Rectangle y position
+ * @param {number} width - Rectangle width
+ * @param {number} height - Rectangle height
+ * @param {number} canvasWidth - Canvas width
+ * @param {number} canvasHeight - Canvas height
+ * @returns {Object} Constrained rectangle {x, y, width, height}
+ */
+export function constrainRectangle(x, y, width, height, canvasWidth, canvasHeight) {
+  // Clamp position to keep rectangle on canvas
+  const constrainedX = clamp(x, 0, canvasWidth - width);
+  const constrainedY = clamp(y, 0, canvasHeight - height);
+  
+  return {
+    x: constrainedX,
+    y: constrainedY,
+    width,
+    height,
+  };
+}
+
+/**
+ * Constrain a circle/polygon to stay within canvas boundaries
+ * 
+ * @param {number} x - Center x position
+ * @param {number} y - Center y position
+ * @param {number} radius - Circle/polygon radius
+ * @param {number} canvasWidth - Canvas width
+ * @param {number} canvasHeight - Canvas height
+ * @returns {Object} Constrained position {x, y, radius}
+ */
+export function constrainCircle(x, y, radius, canvasWidth, canvasHeight) {
+  // Clamp position to keep circle/polygon on canvas
+  const constrainedX = clamp(x, radius, canvasWidth - radius);
+  const constrainedY = clamp(y, radius, canvasHeight - radius);
+  
+  return {
+    x: constrainedX,
+    y: constrainedY,
+    radius,
+  };
 }
 

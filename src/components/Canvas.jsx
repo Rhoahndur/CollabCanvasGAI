@@ -6,7 +6,7 @@ import {
   MAX_ZOOM,
   ZOOM_SENSITIVITY,
   DEFAULT_ZOOM,
-  PAN_PADDING,
+  PAN_PADDING_PERCENT,
   GRID_SIZE,
   GRID_COLOR,
   BOUNDARY_COLOR,
@@ -29,6 +29,8 @@ import {
   clamp,
   calculateFPS,
   isPointInRect,
+  constrainRectangle,
+  constrainCircle,
 } from '../utils/canvasUtils';
 import { testFirestoreConnection, createShape, updateShape, deleteShape, updateCursor, removeCursor, updatePresenceHeartbeat } from '../services/canvasService';
 import { useCanvas } from '../hooks/useCanvas';
@@ -497,7 +499,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       const newOffsetX = panOffset.x - dx / viewport.zoom;
       const newOffsetY = panOffset.y - dy / viewport.zoom;
       
-      // Clamp to canvas boundaries
+      // Clamp to canvas boundaries (with 20% padding)
       const clamped = clampPanOffset(
         newOffsetX,
         newOffsetY,
@@ -506,7 +508,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
         containerSize.height,
         CANVAS_WIDTH,
         CANVAS_HEIGHT,
-        PAN_PADDING
+        PAN_PADDING_PERCENT
       );
       
       setViewport(prev => ({
@@ -541,7 +543,21 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
           // Move this shape by the same delta
           const initial = dragInitialPositions[r.id];
           if (initial) {
-            return { ...r, x: initial.x + dx, y: initial.y + dy };
+            let newX = initial.x + dx;
+            let newY = initial.y + dy;
+            
+            // Constrain to canvas boundaries
+            if (r.type === SHAPE_TYPES.RECTANGLE) {
+              const constrained = constrainRectangle(newX, newY, r.width, r.height, CANVAS_WIDTH, CANVAS_HEIGHT);
+              newX = constrained.x;
+              newY = constrained.y;
+            } else if (r.type === SHAPE_TYPES.CIRCLE || r.type === SHAPE_TYPES.POLYGON) {
+              const constrained = constrainCircle(newX, newY, r.radius, CANVAS_WIDTH, CANVAS_HEIGHT);
+              newX = constrained.x;
+              newY = constrained.y;
+            }
+            
+            return { ...r, x: newX, y: newY };
           }
         }
         return r;
@@ -602,12 +618,20 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
           newY = y + height - MIN_RECTANGLE_SIZE;
         }
         
-        updates = { x: newX, y: newY, width: newWidth, height: newHeight };
+        // Constrain to canvas boundaries
+        const constrained = constrainRectangle(newX, newY, newWidth, newHeight, CANVAS_WIDTH, CANVAS_HEIGHT);
+        updates = constrained;
       } else if (resizeInitial.type === SHAPE_TYPES.CIRCLE || resizeInitial.type === SHAPE_TYPES.POLYGON) {
         // For circles and polygons, resize by adjusting radius
         const distance = Math.sqrt(dx * dx + dy * dy);
         const direction = resizeHandle === 'e' || resizeHandle === 's' ? 1 : -1;
-        let newRadius = resizeInitial.radius + (distance * direction);
+        let newRadius = Math.max(MIN_CIRCLE_RADIUS, resizeInitial.radius + distance * direction * 0.5);
+        
+        // Constrain to canvas boundaries (keep center, adjust radius if needed)
+        const maxRadiusX = Math.min(resizeInitial.x, CANVAS_WIDTH - resizeInitial.x);
+        const maxRadiusY = Math.min(resizeInitial.y, CANVAS_HEIGHT - resizeInitial.y);
+        const maxRadius = Math.min(maxRadiusX, maxRadiusY);
+        newRadius = Math.min(newRadius, maxRadius);
         
         // Enforce minimum radius
         const minRadius = resizeInitial.type === SHAPE_TYPES.CIRCLE ? MIN_CIRCLE_RADIUS : MIN_POLYGON_RADIUS;
@@ -722,44 +746,50 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
           
           if (selectedTool === SHAPE_TYPES.RECTANGLE) {
             // Calculate rectangle dimensions
-            const x = Math.min(drawStart.x, drawCurrent.x);
-            const y = Math.min(drawStart.y, drawCurrent.y);
-            const width = dx;
-            const height = dy;
+            let x = Math.min(drawStart.x, drawCurrent.x);
+            let y = Math.min(drawStart.y, drawCurrent.y);
+            let width = dx;
+            let height = dy;
             
             // Only create if rectangle meets minimum size
             if (width >= MIN_RECTANGLE_SIZE && height >= MIN_RECTANGLE_SIZE) {
-              shapeData = { ...shapeData, x, y, width, height, rotation: 0 };
+              // Constrain to canvas boundaries
+              const constrained = constrainRectangle(x, y, width, height, CANVAS_WIDTH, CANVAS_HEIGHT);
+              shapeData = { ...shapeData, ...constrained, rotation: 0 };
               await createShape(undefined, shapeData);
               console.log('Rectangle created successfully');
               notifyFirestoreActivity();
             }
           } else if (selectedTool === SHAPE_TYPES.CIRCLE) {
             // Calculate circle radius from bounding box
-            const radius = Math.sqrt(dx * dx + dy * dy) / 2;
-            const centerX = (drawStart.x + drawCurrent.x) / 2;
-            const centerY = (drawStart.y + drawCurrent.y) / 2;
+            let radius = Math.sqrt(dx * dx + dy * dy) / 2;
+            let centerX = (drawStart.x + drawCurrent.x) / 2;
+            let centerY = (drawStart.y + drawCurrent.y) / 2;
             
             // Only create if circle meets minimum size
             if (radius >= MIN_CIRCLE_RADIUS) {
-              shapeData = { ...shapeData, x: centerX, y: centerY, radius, rotation: 0 };
+              // Constrain to canvas boundaries
+              const constrained = constrainCircle(centerX, centerY, radius, CANVAS_WIDTH, CANVAS_HEIGHT);
+              shapeData = { ...shapeData, ...constrained, rotation: 0 };
               await createShape(undefined, shapeData);
               console.log('Circle created successfully');
               notifyFirestoreActivity();
             }
           } else if (selectedTool === SHAPE_TYPES.POLYGON) {
             // Calculate polygon radius from bounding box
-            const radius = Math.sqrt(dx * dx + dy * dy) / 2;
-            const centerX = (drawStart.x + drawCurrent.x) / 2;
-            const centerY = (drawStart.y + drawCurrent.y) / 2;
+            let radius = Math.sqrt(dx * dx + dy * dy) / 2;
+            let centerX = (drawStart.x + drawCurrent.x) / 2;
+            let centerY = (drawStart.y + drawCurrent.y) / 2;
             
             // Only create if polygon meets minimum size
             if (radius >= MIN_POLYGON_RADIUS) {
+              // Constrain to canvas boundaries
+              const constrained = constrainCircle(centerX, centerY, radius, CANVAS_WIDTH, CANVAS_HEIGHT);
               shapeData = { 
                 ...shapeData, 
-                x: centerX, 
-                y: centerY, 
-                radius, 
+                x: constrained.x,
+                y: constrained.y,
+                radius: constrained.radius,
                 sides: DEFAULT_POLYGON_SIDES,
                 rotation: 0
               };

@@ -14,7 +14,7 @@ export const ZOOM_SENSITIVITY = 0.001;
 export const DEFAULT_ZOOM = 1;
 
 // Pan configuration
-export const PAN_PADDING = 200; // Allow panning slightly beyond canvas edges
+export const PAN_PADDING_PERCENT = 0.2; // Allow panning 20% beyond canvas edges
 
 // Shape types
 export const SHAPE_TYPES = {
