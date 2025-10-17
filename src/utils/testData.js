@@ -3,8 +3,8 @@
  * Utility functions for generating test data for performance testing
  */
 
-import { createShape } from '../services/canvasService';
-import { DEFAULT_CANVAS_ID, CANVAS_WIDTH, CANVAS_HEIGHT, SHAPE_TYPES, DEFAULT_POLYGON_SIDES } from './constants';
+import { createShape, createRectangle } from '../services/canvasService';
+import { DEFAULT_CANVAS_ID, CANVAS_WIDTH, CANVAS_HEIGHT, SHAPE_TYPES } from './constants';
 
 /**
  * Color palette for test rectangles
