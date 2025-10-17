@@ -338,14 +338,14 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
   // Handle mouse move for panning, drawing, dragging, and cursor tracking
   const handleMouseMove = useCallback((e) => {
     // Track cursor position for multiplayer (throttled)
-    // Only show cursor to others when actively dragging
-    if (svgRef.current && user && isDragging) {
+    // Show cursor to others when actively manipulating objects (dragging, resizing, or rotating)
+    if (svgRef.current && user && (isDragging || isResizing || isRotating)) {
       const now = Date.now();
       if (now - lastCursorUpdate.current > CURSOR_UPDATE_THROTTLE) {
         const rect = svgRef.current.getBoundingClientRect();
         const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, rect);
         
-        // Update cursor position in Firestore (only when dragging)
+        // Update cursor position in Firestore
         updateCursor(
           undefined,
           sessionId,
@@ -354,7 +354,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
           canvasPos.y,
           user.displayName,
           cursorArrivalTime.current,
-          true // isActive - show cursor when dragging
+          true // isActive - show cursor when manipulating
         ).then(() => {
           // Notify of successful Firestore operation (for connection detection)
           notifyFirestoreActivity();
@@ -503,19 +503,23 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
           ? { ...r, ...updates }
           : r
       ));
-    } else if (isRotating && svgRef.current && selectedRectId && resizeInitial) {
+    } else if (isRotating && svgRef.current && selectedRectId) {
       // Handle rotation
       const rect = svgRef.current.getBoundingClientRect();
       const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, rect);
       
+      // Get the current shape to find its center
+      const shape = rectangles.find(r => r.id === selectedRectId);
+      if (!shape) return;
+      
       // Calculate center of shape
       let centerX, centerY;
-      if (resizeInitial.type === SHAPE_TYPES.RECTANGLE) {
-        centerX = resizeInitial.x + resizeInitial.width / 2;
-        centerY = resizeInitial.y + resizeInitial.height / 2;
+      if (shape.type === SHAPE_TYPES.RECTANGLE) {
+        centerX = shape.x + shape.width / 2;
+        centerY = shape.y + shape.height / 2;
       } else {
-        centerX = resizeInitial.x;
-        centerY = resizeInitial.y;
+        centerX = shape.x;
+        centerY = shape.y;
       }
       
       // Calculate angle from center to current mouse position
@@ -695,6 +699,11 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       setIsResizing(false);
       setIsDraggingLocal(false);
       
+      // Hide cursor for others
+      if (user && sessionId) {
+        removeCursor(undefined, sessionId).catch(console.error);
+      }
+      
       // Reset resize state
       setResizeHandle(null);
       setResizeStart({ x: 0, y: 0 });
@@ -722,6 +731,11 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
     } else if (isRotating && selectedRectId) {
       setIsRotating(false);
       setIsDraggingLocal(false);
+      
+      // Hide cursor for others
+      if (user && sessionId) {
+        removeCursor(undefined, sessionId).catch(console.error);
+      }
       
       // Reset rotation state
       setRotateStart({ x: 0, y: 0 });

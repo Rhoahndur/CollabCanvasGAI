@@ -31,3 +31,6 @@ dist-ssr
 # Vercel
 .vercel
 
+# Running log (conversation history)
+running_log.txt
+
