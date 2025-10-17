@@ -241,13 +241,107 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
         }
       };
       
+      // Clean up broken shapes
+      window.debugShapes.cleanupBroken = async () => {
+        if (!user) {
+          console.error('❌ You must be logged in to cleanup shapes');
+          return;
+        }
+        
+        console.log('🔧 Starting cleanup of broken shapes...');
+        const issues = window.debugShapes.findBroken();
+        
+        if (issues.length === 0) {
+          console.log('✅ No broken shapes found!');
+          return { deleted: 0, fixed: 0 };
+        }
+        
+        const shouldDelete = window.confirm(
+          `Found ${issues.length} shape(s) with issues.\n\n` +
+          `Do you want to DELETE them from the database?\n\n` +
+          `Click OK to DELETE or Cancel to keep them.`
+        );
+        
+        let deletedCount = 0;
+        let failedCount = 0;
+        
+        if (shouldDelete) {
+          console.log(`🗑️ Deleting ${issues.length} broken shapes...`);
+          
+          for (const { id, issues: shapeIssues, shape } of issues) {
+            try {
+              console.log(`  Deleting broken shape ${id}...`);
+              console.log(`    Issues: ${shapeIssues.join(', ')}`);
+              await deleteShape(undefined, id);
+              deletedCount++;
+              console.log(`  ✅ Deleted shape ${id}`);
+            } catch (error) {
+              failedCount++;
+              console.error(`  ❌ Failed to delete shape ${id}:`, error);
+            }
+          }
+          
+          console.log(`\n✅ Cleanup complete!`);
+          console.log(`  Deleted: ${deletedCount}`);
+          console.log(`  Failed: ${failedCount}`);
+          
+          notifyFirestoreActivity();
+          
+          return { deleted: deletedCount, failed: failedCount };
+        } else {
+          console.log('❌ Cleanup cancelled by user');
+          return { deleted: 0, failed: 0 };
+        }
+      };
+      
+      // Force delete a specific shape (bypasses all checks)
+      window.debugShapes.forceDelete = async (shapeId) => {
+        if (!user) {
+          console.error('❌ You must be logged in to delete shapes');
+          return false;
+        }
+        
+        const shape = rectangles.find(r => r.id === shapeId);
+        if (!shape) {
+          console.error(`❌ Shape ${shapeId} not found in local state`);
+          return false;
+        }
+        
+        const confirmed = window.confirm(
+          `Force delete shape ${shapeId}?\n\n` +
+          `This will attempt to delete it directly from Firestore,\n` +
+          `even if it's locked or has issues.`
+        );
+        
+        if (!confirmed) {
+          console.log('❌ Force delete cancelled');
+          return false;
+        }
+        
+        try {
+          console.log(`🗑️ Force deleting shape ${shapeId}...`);
+          console.log('  Shape data:', JSON.stringify(shape, null, 2));
+          
+          await deleteShape(undefined, shapeId);
+          console.log(`✅ Shape ${shapeId} force deleted from database`);
+          
+          notifyFirestoreActivity();
+          return true;
+        } catch (error) {
+          console.error(`❌ Failed to force delete shape ${shapeId}:`, error);
+          return false;
+        }
+      };
+      
       console.log('🛠️ Debug helpers available:');
       console.log('  - window.debugShapes.listAll() - List all shapes');
       console.log('  - window.debugShapes.inspect(id) - Inspect a specific shape');
       console.log('  - window.debugShapes.findBroken() - Find shapes with missing properties');
+      console.log('  - window.debugShapes.cleanupBroken() - Delete all broken shapes');
+      console.log('  - window.debugShapes.forceDelete(id) - Force delete a specific shape');
       console.log('  - window.debugShapes.currentUser() - Show current user info');
     }
-  }, [user?.uid, rectangles]);
+  }, [user?.uid, rectangles, notifyFirestoreActivity]);
   
   // Update container size on mount and resize
   useEffect(() => {
