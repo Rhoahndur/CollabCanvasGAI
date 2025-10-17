@@ -112,45 +112,47 @@ const ZoomControls = memo(function ZoomControls({
 
   return (
     <div className="zoom-controls">
-      <button
-        className="zoom-btn zoom-out"
-        onClick={onZoomOut}
-        disabled={!canZoomOut}
-        title="Zoom Out (Ctrl + -)"
-        aria-label="Zoom out"
-      >
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-        </svg>
-      </button>
-      
-      <div className="zoom-input-container">
-        <input
-          ref={inputRef}
-          type="text"
-          className="zoom-input"
-          value={inputValue}
-          onChange={handleInputChange}
-          onFocus={handleInputFocus}
-          onBlur={handleInputBlur}
-          onKeyDown={handleKeyDown}
-          title="Click to edit zoom percentage"
-          aria-label="Zoom percentage"
-        />
-        <span className="zoom-percent-sign">%</span>
+      <div className="zoom-controls-main">
+        <button
+          className="zoom-btn zoom-out"
+          onClick={onZoomOut}
+          disabled={!canZoomOut}
+          title="Zoom Out (Ctrl + -)"
+          aria-label="Zoom out"
+        >
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+        </button>
+        
+        <div className="zoom-input-container">
+          <input
+            ref={inputRef}
+            type="text"
+            className="zoom-input"
+            value={inputValue}
+            onChange={handleInputChange}
+            onFocus={handleInputFocus}
+            onBlur={handleInputBlur}
+            onKeyDown={handleKeyDown}
+            title="Click to edit zoom percentage"
+            aria-label="Zoom percentage"
+          />
+          <span className="zoom-percent-sign">%</span>
+        </div>
+        
+        <button
+          className="zoom-btn zoom-in"
+          onClick={onZoomIn}
+          disabled={!canZoomIn}
+          title="Zoom In (Ctrl + +)"
+          aria-label="Zoom in"
+        >
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+        </button>
       </div>
-      
-      <button
-        className="zoom-btn zoom-in"
-        onClick={onZoomIn}
-        disabled={!canZoomIn}
-        title="Zoom In (Ctrl + +)"
-        aria-label="Zoom in"
-      >
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-        </svg>
-      </button>
       
       {/* Preset zoom levels */}
       <div className="zoom-presets">
