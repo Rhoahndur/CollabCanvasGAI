@@ -125,6 +125,7 @@ function generateRandomRectangle(userId, padding = 100) {
  * @returns {Promise<void>}
  */
 export async function generateTestShapes(count, userId, canvasId = DEFAULT_CANVAS_ID, batch = true) {
+  console.log(`🔧 generateTestShapes ENTRY: count=${count}, userId=${userId}, canvasId=${canvasId}`);
   console.log(`🔧 Generating ${count} test shapes...`);
   const startTime = performance.now();
   
@@ -177,6 +178,7 @@ export async function generateTestShapes(count, userId, canvasId = DEFAULT_CANVA
     
     console.log(`✅ Successfully created ${count} shapes in ${duration}ms`);
     console.log(`   Average: ${(duration / count).toFixed(2)}ms per shape`);
+    console.log(`   Note: Shapes will appear on the canvas as Firestore syncs (may take a moment)`);
   } catch (error) {
     console.error('❌ Error generating test shapes:', error);
     throw error;

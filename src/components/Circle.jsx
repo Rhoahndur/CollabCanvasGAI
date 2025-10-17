@@ -14,12 +14,14 @@ const Circle = memo(function Circle({
   radius,
   color,
   rotation = 0,
+  text = null,
   isSelected = false,
   isLocked = false,
   lockedBy = null,
   lockedByUserName = null,
   onClick,
   onMouseDown,
+  onDoubleClick,
 }) {
   const handleClick = (e) => {
     e.stopPropagation();
@@ -32,6 +34,13 @@ const Circle = memo(function Circle({
     e.stopPropagation();
     if (onMouseDown) {
       onMouseDown(id, e);
+    }
+  };
+  
+  const handleDoubleClick = (e) => {
+    e.stopPropagation();
+    if (onDoubleClick) {
+      onDoubleClick(e);
     }
   };
 
@@ -52,7 +61,35 @@ const Circle = memo(function Circle({
         }}
         onClick={handleClick}
         onMouseDown={handleMouseDown}
+        onDoubleClick={handleDoubleClick}
       />
+      
+      {/* Text content (centered) */}
+      {text && (
+        <text
+          x={x}
+          y={y}
+          fill={getContrastColor(color)}
+          fontSize={14}
+          fontFamily="Arial, sans-serif"
+          textAnchor="middle"
+          dominantBaseline="middle"
+          style={{
+            userSelect: 'none',
+            pointerEvents: 'none',
+          }}
+        >
+          {text.split('\n').map((line, i, arr) => (
+            <tspan
+              key={i}
+              x={x}
+              dy={i === 0 ? -((arr.length - 1) * 14) / 2 : 14}
+            >
+              {line}
+            </tspan>
+          ))}
+        </text>
+      )}
       
       {/* Selection highlight */}
       {isSelected && (

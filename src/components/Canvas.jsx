@@ -47,6 +47,7 @@ import Cursor from './Cursor';
 import ShapePalette from './ShapePalette';
 import SelectionBox from './SelectionBox';
 import ZoomControls from './ZoomControls';
+import ChatPanel from './ChatPanel';
 import './Canvas.css';
 
 /**
@@ -1353,18 +1354,35 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
 
   // Handle generating 10 random shapes
   const handleGenerate500 = useCallback(async () => {
-    if (!user) return;
+    console.log('🔥 handleGenerate500 called!');
+    console.log('User:', user);
+    
+    if (!user) {
+      console.warn('⚠️ No user found, cannot generate shapes');
+      return;
+    }
     
     try {
-      console.log('🎨 Generating 10 random shapes...');
+      console.log('🎨 Starting to generate 10 random shapes...');
+      console.log('User ID:', user.uid);
+      console.log('Current shapes in state:', rectangles.length);
+      
       await generateTestShapes(10, user.uid);
+      
+      console.log('✅ generateTestShapes completed');
       notifyFirestoreActivity();
-      console.log('✅ 10 shapes generated successfully!');
+      
+      // Wait a bit for Firestore to sync
+      setTimeout(() => {
+        console.log('Shapes after generation:', rectangles.length);
+        console.log('✅ 10 shapes generated successfully!');
+        alert(`Generated 10 shapes! Total shapes now: ${rectangles.length}`);
+      }, 500);
     } catch (error) {
-      console.error('Failed to generate shapes:', error);
+      console.error('❌ Failed to generate shapes:', error);
       alert('Failed to generate shapes. Please try again.');
     }
-  }, [user, notifyFirestoreActivity]);
+  }, [user, notifyFirestoreActivity, rectangles]);
   
   // Add global mouse event listeners for panning, selecting, drawing, dragging, resizing, and rotating
   useEffect(() => {
@@ -1639,6 +1657,21 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
         <g className="canvas-content">
           {/* Render only visible shapes (viewport culling for performance) */}
           {visibleRectangles.map((shape) => {
+            const handleShapeDoubleClick = (e) => {
+              e.stopPropagation();
+              if (!shape.lockedBy || shape.lockedBy === user?.uid) {
+                selectRectangle(shape.id);
+                // Show prompt for text editing
+                setTimeout(() => {
+                  const newText = prompt('Edit text:', shape.text || '');
+                  if (newText !== null && newText !== shape.text) {
+                    updateShape(undefined, shape.id, { text: newText });
+                  }
+                  deselectRectangle();
+                }, 0);
+              }
+            };
+            
             const shapeProps = {
               key: shape.id,
               ...shape,
@@ -1647,6 +1680,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
               lockedByUserName: shape.lockedByUserName,
               onClick: handleRectangleClick,
               onMouseDown: handleRectangleMouseDown,
+              onDoubleClick: handleShapeDoubleClick,
             };
             
             // Render appropriate component based on shape type
@@ -1660,23 +1694,6 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
                   {...shapeProps}
                   text={shape.text || 'Double-click to edit'}
                   fontSize={shape.fontSize || 16}
-                  onDoubleClick={(e) => {
-                    e.stopPropagation();
-                    if (!shape.lockedBy || shape.lockedBy === user?.uid) {
-                      setEditingTextId(shape.id);
-                      setEditingText(shape.text || '');
-                      selectRectangle(shape.id);
-                      // Show prompt for text editing
-                      setTimeout(() => {
-                        const newText = prompt('Edit text:', shape.text || '');
-                        if (newText !== null && newText !== shape.text) {
-                          updateShape(undefined, shape.id, { text: newText });
-                        }
-                        setEditingTextId(null);
-                        deselectRectangle();
-                      }, 0);
-                    }
-                  }}
                 />
               );
             } else {
@@ -1911,6 +1928,9 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
         minZoom={MIN_ZOOM}
         maxZoom={MAX_ZOOM}
       />
+      
+      {/* AI Chat Panel */}
+      <ChatPanel />
     </div>
   );
 }

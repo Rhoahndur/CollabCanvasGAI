@@ -15,12 +15,14 @@ const Rectangle = memo(function Rectangle({
   height, 
   color,
   rotation = 0,
+  text = null,
   isSelected = false,
   isLocked = false,
   lockedBy = null,
   lockedByUserName = null,
   onClick,
   onMouseDown,
+  onDoubleClick,
 }) {
   const handleClick = (e) => {
     e.stopPropagation();
@@ -33,6 +35,13 @@ const Rectangle = memo(function Rectangle({
     e.stopPropagation();
     if (onMouseDown) {
       onMouseDown(id, e);
+    }
+  };
+  
+  const handleDoubleClick = (e) => {
+    e.stopPropagation();
+    if (onDoubleClick) {
+      onDoubleClick(e);
     }
   };
 
@@ -56,7 +65,35 @@ const Rectangle = memo(function Rectangle({
         }}
         onClick={handleClick}
         onMouseDown={handleMouseDown}
+        onDoubleClick={handleDoubleClick}
       />
+      
+      {/* Text content (centered) */}
+      {text && (
+        <text
+          x={centerX}
+          y={centerY}
+          fill={getContrastColor(color)}
+          fontSize={14}
+          fontFamily="Arial, sans-serif"
+          textAnchor="middle"
+          dominantBaseline="middle"
+          style={{
+            userSelect: 'none',
+            pointerEvents: 'none',
+          }}
+        >
+          {text.split('\n').map((line, i, arr) => (
+            <tspan
+              key={i}
+              x={centerX}
+              dy={i === 0 ? -((arr.length - 1) * 14) / 2 : 14}
+            >
+              {line}
+            </tspan>
+          ))}
+        </text>
+      )}
       
       {/* Selection highlight */}
       {isSelected && (

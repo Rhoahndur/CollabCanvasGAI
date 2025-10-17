@@ -15,12 +15,14 @@ const Polygon = memo(function Polygon({
   sides = 5,
   color,
   rotation = 0,
+  text = null,
   isSelected = false,
   isLocked = false,
   lockedBy = null,
   lockedByUserName = null,
   onClick,
   onMouseDown,
+  onDoubleClick,
 }) {
   // Calculate polygon points
   const calculatePoints = (cx, cy, r, numSides) => {
@@ -53,6 +55,13 @@ const Polygon = memo(function Polygon({
       onMouseDown(id, e);
     }
   };
+  
+  const handleDoubleClick = (e) => {
+    e.stopPropagation();
+    if (onDoubleClick) {
+      onDoubleClick(e);
+    }
+  };
 
   // Rotation transform around center
   const transform = rotation ? `rotate(${rotation} ${x} ${y})` : undefined;
@@ -69,7 +78,35 @@ const Polygon = memo(function Polygon({
         }}
         onClick={handleClick}
         onMouseDown={handleMouseDown}
+        onDoubleClick={handleDoubleClick}
       />
+      
+      {/* Text content (centered) */}
+      {text && (
+        <text
+          x={x}
+          y={y}
+          fill={getContrastColor(color)}
+          fontSize={14}
+          fontFamily="Arial, sans-serif"
+          textAnchor="middle"
+          dominantBaseline="middle"
+          style={{
+            userSelect: 'none',
+            pointerEvents: 'none',
+          }}
+        >
+          {text.split('\n').map((line, i, arr) => (
+            <tspan
+              key={i}
+              x={x}
+              dy={i === 0 ? -((arr.length - 1) * 14) / 2 : 14}
+            >
+              {line}
+            </tspan>
+          ))}
+        </text>
+      )}
       
       {/* Selection highlight */}
       {isSelected && (
