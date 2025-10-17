@@ -64,15 +64,16 @@ export function usePresence(sessionId, userId, userName, canvasId = DEFAULT_CANV
       setOnlineUsers(activeUsers);
     });
 
-    // Client-side polling to re-filter stale users every 3 seconds
+    // Client-side polling to re-filter stale users every 5 seconds
     // This ensures the UI updates even if Firestore doesn't send new data
+    // Using 5 seconds to avoid premature filtering while heartbeat is in flight
     filterIntervalRef.current = setInterval(() => {
       setAllPresenceData(prevData => {
         const activeUsers = filterActiveUsers(prevData);
         setOnlineUsers(activeUsers);
         return prevData;
       });
-    }, 3000); // Re-filter every 3 seconds
+    }, 5000); // Re-filter every 5 seconds
 
     // Start heartbeat to keep presence alive
     heartbeatIntervalRef.current = setInterval(() => {

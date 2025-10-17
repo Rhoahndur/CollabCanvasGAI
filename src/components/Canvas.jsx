@@ -35,7 +35,7 @@ import { useCanvas } from '../hooks/useCanvas';
 import { useCursors } from '../hooks/useCursors';
 import { useAuth } from '../hooks/useAuth';
 import { getRandomColor } from '../utils/colorUtils';
-import { setup500Test } from '../utils/testData';
+import { setup500Test, generateTestShapes } from '../utils/testData';
 import Rectangle from './Rectangle';
 import Circle from './Circle';
 import Polygon from './Polygon';
@@ -348,6 +348,11 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
   
   // Handle mouse move for panning, drawing, dragging, and cursor tracking
   const handleMouseMove = useCallback((e) => {
+    // Track activity when moving during active operations
+    if (isDragging || isResizing || isRotating || isPanning || isDrawing || isSelecting) {
+      trackActivity();
+    }
+    
     // Track cursor position for multiplayer (throttled)
     // Show cursor to others when actively manipulating objects (dragging, resizing, or rotating)
     if (svgRef.current && user && (isDragging || isResizing || isRotating)) {
@@ -548,7 +553,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
           : r
       ));
     }
-  }, [isPanning, isSelecting, isDrawing, isDragging, isResizing, isRotating, panStart, panOffset, viewport, containerSize, dragStart, dragOffset, draggedShapeIds, dragInitialPositions, resizeStart, resizeHandle, resizeInitial, rotateStart, rotateInitial, selectedRectId, rectangles, user, sessionId, notifyFirestoreActivity]);
+  }, [isPanning, isSelecting, isDrawing, isDragging, isResizing, isRotating, panStart, panOffset, viewport, containerSize, dragStart, dragOffset, draggedShapeIds, dragInitialPositions, resizeStart, resizeHandle, resizeInitial, rotateStart, rotateInitial, selectedRectId, rectangles, user, sessionId, notifyFirestoreActivity, trackActivity]);
   
   // Handle mouse up to stop panning, finish drawing, or finish dragging
   const handleMouseUp = useCallback(async () => {
@@ -767,7 +772,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
         }
       }
     }
-  }, [isPanning, isSelecting, isDrawing, isDragging, isResizing, isRotating, selectStart, selectCurrent, drawStart, drawCurrent, selectedRectId, draggedShapeIds, rectangles, user, sessionId, selectedTool, setIsDraggingLocal, notifyFirestoreActivity, deselectRectangle]);
+  }, [isPanning, isSelecting, isDrawing, isDragging, isResizing, isRotating, selectStart, selectCurrent, drawStart, drawCurrent, selectedRectId, draggedShapeIds, rectangles, user, sessionId, selectedTool, setIsDraggingLocal, notifyFirestoreActivity, deselectRectangle, trackActivity]);
   
   // Handle mouse wheel for zooming
   const handleWheel = useCallback((e) => {
@@ -908,18 +913,88 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
     const now = Date.now();
     lastActivityRef.current = now;
     
-    // Throttle presence updates to max once per 5 seconds during active interaction
+    // Throttle presence updates to max once per 3 seconds during active interaction
+    // More frequent updates ensure user never appears offline while actively using
     if (activityThrottleRef.current) return;
     
     activityThrottleRef.current = setTimeout(() => {
       activityThrottleRef.current = null;
-    }, 5000);
+    }, 3000);
     
     // Update presence to show user is active
     if (sessionId) {
       updatePresenceHeartbeat(undefined, sessionId, true).catch(console.error);
     }
   }, [sessionId]);
+
+  // Handle clearing all shapes
+  const handleClearAll = useCallback(async () => {
+    if (!user) return;
+    
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ALL ${rectangles.length} shapes?\n\n` +
+      `This action cannot be undone!`
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+      console.log(`🗑️ Clearing ${rectangles.length} shapes...`);
+      
+      // Delete all shapes that aren't locked by other users
+      const deletableShapes = rectangles.filter(shape => 
+        !shape.lockedBy || shape.lockedBy === user.uid
+      );
+      
+      if (deletableShapes.length === 0) {
+        alert('All shapes are locked by other users.');
+        return;
+      }
+      
+      if (deletableShapes.length < rectangles.length) {
+        const lockedCount = rectangles.length - deletableShapes.length;
+        const proceed = window.confirm(
+          `${lockedCount} shape(s) are locked by other users and cannot be deleted.\n\n` +
+          `Delete the remaining ${deletableShapes.length} shape(s)?`
+        );
+        
+        if (!proceed) return;
+      }
+      
+      // Clear selection first
+      deselectRectangle();
+      setSelectedShapeIds([]);
+      
+      // Delete shapes in batches
+      const batchSize = 25;
+      for (let i = 0; i < deletableShapes.length; i += batchSize) {
+        const batch = deletableShapes.slice(i, i + batchSize);
+        await Promise.all(batch.map(shape => deleteShape(undefined, shape.id)));
+        console.log(`  ✓ Deleted ${Math.min(i + batchSize, deletableShapes.length)}/${deletableShapes.length} shapes`);
+      }
+      
+      console.log(`✅ Successfully cleared ${deletableShapes.length} shapes`);
+      notifyFirestoreActivity();
+    } catch (error) {
+      console.error('Failed to clear shapes:', error);
+      alert('Failed to clear shapes. Please try again.');
+    }
+  }, [rectangles, user, deselectRectangle, notifyFirestoreActivity]);
+
+  // Handle generating 500 random shapes
+  const handleGenerate500 = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      console.log('🎨 Generating 500 random shapes...');
+      await generateTestShapes(500, user.uid);
+      notifyFirestoreActivity();
+      console.log('✅ 500 shapes generated successfully!');
+    } catch (error) {
+      console.error('Failed to generate shapes:', error);
+      alert('Failed to generate shapes. Please try again.');
+    }
+  }, [user, notifyFirestoreActivity]);
   
   // Add global mouse event listeners for panning, selecting, drawing, dragging, resizing, and rotating
   useEffect(() => {
@@ -937,6 +1012,9 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
   // Add keyboard event listener for Delete key
   useEffect(() => {
     const handleKeyDown = async (e) => {
+      // Track activity on any keypress
+      trackActivity();
+      
       // Zoom keyboard shortcuts (Ctrl/Cmd + +/- and Ctrl/Cmd + 0)
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
         if (e.key === '=' || e.key === '+') {
@@ -996,7 +1074,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [selectedRectId, selectedShapeIds, rectangles, user, isDrawing, isDragging, isResizing, isRotating, isSelecting, deselectRectangle, notifyFirestoreActivity, handleZoomIn, handleZoomOut, handleZoomReset]);
+  }, [selectedRectId, selectedShapeIds, rectangles, user, isDrawing, isDragging, isResizing, isRotating, isSelecting, deselectRectangle, notifyFirestoreActivity, handleZoomIn, handleZoomOut, handleZoomReset, trackActivity]);
   
   // Calculate viewBox for SVG (memoized)
   const viewBox = useMemo(() => 
@@ -1080,8 +1158,10 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
     <div className="canvas-container" ref={containerRef}>
       {/* Shape Palette */}
       <ShapePalette 
-        selectedTool={selectedTool} 
-        onSelectTool={setSelectedTool} 
+        selectedTool={selectedTool}
+        onSelectTool={setSelectedTool}
+        onClearAll={handleClearAll}
+        onGenerate500={handleGenerate500}
       />
       
       {/* Loading overlay */}

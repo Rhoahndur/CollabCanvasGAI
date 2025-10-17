@@ -3,8 +3,8 @@
  * Utility functions for generating test data for performance testing
  */
 
-import { createRectangle } from '../services/canvasService';
-import { DEFAULT_CANVAS_ID, CANVAS_WIDTH, CANVAS_HEIGHT } from './constants';
+import { createShape } from '../services/canvasService';
+import { DEFAULT_CANVAS_ID, CANVAS_WIDTH, CANVAS_HEIGHT, SHAPE_TYPES, DEFAULT_POLYGON_SIDES } from './constants';
 
 /**
  * Color palette for test rectangles
@@ -35,7 +35,64 @@ function randomColor() {
 }
 
 /**
- * Generate random rectangle properties
+ * Generate random shape properties (rectangle, circle, or polygon)
+ */
+function generateRandomShape(userId, padding = 100) {
+  const shapeTypes = [SHAPE_TYPES.RECTANGLE, SHAPE_TYPES.CIRCLE, SHAPE_TYPES.POLYGON];
+  const shapeType = shapeTypes[randomInt(0, shapeTypes.length - 1)];
+  
+  const minSize = 30;
+  const maxSize = 150;
+  
+  const baseShape = {
+    type: shapeType,
+    color: randomColor(),
+    createdBy: userId,
+    rotation: randomInt(0, 359),
+  };
+  
+  if (shapeType === SHAPE_TYPES.RECTANGLE) {
+    const width = randomInt(minSize, maxSize);
+    const height = randomInt(minSize, maxSize);
+    const x = randomInt(padding, CANVAS_WIDTH - width - padding);
+    const y = randomInt(padding, CANVAS_HEIGHT - height - padding);
+    
+    return {
+      ...baseShape,
+      x,
+      y,
+      width,
+      height,
+    };
+  } else if (shapeType === SHAPE_TYPES.CIRCLE) {
+    const radius = randomInt(minSize / 2, maxSize / 2);
+    const x = randomInt(padding + radius, CANVAS_WIDTH - radius - padding);
+    const y = randomInt(padding + radius, CANVAS_HEIGHT - radius - padding);
+    
+    return {
+      ...baseShape,
+      x,
+      y,
+      radius,
+    };
+  } else if (shapeType === SHAPE_TYPES.POLYGON) {
+    const radius = randomInt(minSize / 2, maxSize / 2);
+    const sides = [3, 4, 5, 6, 8][randomInt(0, 4)]; // Triangle, square, pentagon, hexagon, or octagon
+    const x = randomInt(padding + radius, CANVAS_WIDTH - radius - padding);
+    const y = randomInt(padding + radius, CANVAS_HEIGHT - radius - padding);
+    
+    return {
+      ...baseShape,
+      x,
+      y,
+      radius,
+      sides,
+    };
+  }
+}
+
+/**
+ * Generate random rectangle properties (legacy function for backward compatibility)
  */
 function generateRandomRectangle(userId, padding = 100) {
   const minSize = 30;
@@ -48,30 +105,32 @@ function generateRandomRectangle(userId, padding = 100) {
   const y = randomInt(padding, CANVAS_HEIGHT - height - padding);
   
   return {
+    type: SHAPE_TYPES.RECTANGLE,
     x,
     y,
     width,
     height,
     color: randomColor(),
     createdBy: userId,
+    rotation: 0,
   };
 }
 
 /**
- * Generate and create N rectangles on the canvas
- * @param {number} count - Number of rectangles to create
- * @param {string} userId - User ID for created rectangles
+ * Generate and create N random shapes on the canvas
+ * @param {number} count - Number of shapes to create
+ * @param {string} userId - User ID for created shapes
  * @param {string} canvasId - Canvas ID (optional)
  * @param {boolean} batch - Whether to batch the operations (default: true)
  * @returns {Promise<void>}
  */
-export async function generateTestRectangles(count, userId, canvasId = DEFAULT_CANVAS_ID, batch = true) {
-  console.log(`🔧 Generating ${count} test rectangles...`);
+export async function generateTestShapes(count, userId, canvasId = DEFAULT_CANVAS_ID, batch = true) {
+  console.log(`🔧 Generating ${count} test shapes...`);
   const startTime = performance.now();
   
   try {
     if (batch) {
-      // Create rectangles in batches of 10 to avoid overwhelming Firestore
+      // Create shapes in batches of 10 to avoid overwhelming Firestore
       const batchSize = 10;
       const batches = Math.ceil(count / batchSize);
       
@@ -80,12 +139,12 @@ export async function generateTestRectangles(count, userId, canvasId = DEFAULT_C
         const currentBatchSize = Math.min(batchSize, count - (i * batchSize));
         
         for (let j = 0; j < currentBatchSize; j++) {
-          const rectData = generateRandomRectangle(userId);
-          batchPromises.push(createRectangle(canvasId, rectData));
+          const shapeData = generateRandomShape(userId);
+          batchPromises.push(createShape(canvasId, shapeData));
         }
         
         await Promise.all(batchPromises);
-        console.log(`  ✓ Created batch ${i + 1}/${batches} (${(i + 1) * batchSize} rectangles)`);
+        console.log(`  ✓ Created batch ${i + 1}/${batches} (${(i + 1) * batchSize} shapes)`);
         
         // Small delay between batches to avoid rate limiting
         if (i < batches - 1) {
@@ -93,13 +152,13 @@ export async function generateTestRectangles(count, userId, canvasId = DEFAULT_C
         }
       }
     } else {
-      // Create rectangles sequentially
+      // Create shapes sequentially
       for (let i = 0; i < count; i++) {
-        const rectData = generateRandomRectangle(userId);
-        await createRectangle(canvasId, rectData);
+        const shapeData = generateRandomShape(userId);
+        await createShape(canvasId, shapeData);
         
         if ((i + 1) % 50 === 0) {
-          console.log(`  ✓ Created ${i + 1}/${count} rectangles`);
+          console.log(`  ✓ Created ${i + 1}/${count} shapes`);
         }
       }
     }
@@ -107,13 +166,18 @@ export async function generateTestRectangles(count, userId, canvasId = DEFAULT_C
     const endTime = performance.now();
     const duration = Math.round(endTime - startTime);
     
-    console.log(`✅ Successfully created ${count} rectangles in ${duration}ms`);
-    console.log(`   Average: ${(duration / count).toFixed(2)}ms per rectangle`);
+    console.log(`✅ Successfully created ${count} shapes in ${duration}ms`);
+    console.log(`   Average: ${(duration / count).toFixed(2)}ms per shape`);
   } catch (error) {
-    console.error('❌ Error generating test rectangles:', error);
+    console.error('❌ Error generating test shapes:', error);
     throw error;
   }
 }
+
+/**
+ * Legacy function name for backward compatibility
+ */
+export const generateTestRectangles = generateTestShapes;
 
 /**
  * Generate test rectangles in a grid pattern
@@ -171,19 +235,19 @@ export async function generateGridRectangles(rows, cols, userId, canvasId = DEFA
 }
 
 /**
- * Quick test function to generate 500 rectangles
+ * Quick test function to generate shapes
  * Can be called from browser console: window.testCanvas.generate500()
  */
 export function setup500Test(userId) {
   window.testCanvas = {
-    generate500: () => generateTestRectangles(500, userId),
-    generate1000: () => generateTestRectangles(1000, userId),
+    generate500: () => generateTestShapes(500, userId),
+    generate1000: () => generateTestShapes(1000, userId),
     generateGrid: (rows, cols) => generateGridRectangles(rows, cols, userId),
   };
   
   console.log('🧪 Test functions available:');
-  console.log('  - window.testCanvas.generate500() - Generate 500 random rectangles');
-  console.log('  - window.testCanvas.generate1000() - Generate 1000 random rectangles');
+  console.log('  - window.testCanvas.generate500() - Generate 500 random shapes');
+  console.log('  - window.testCanvas.generate1000() - Generate 1000 random shapes');
   console.log('  - window.testCanvas.generateGrid(rows, cols) - Generate grid of rectangles');
 }
 

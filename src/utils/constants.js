@@ -59,9 +59,9 @@ export const FPS_UPDATE_INTERVAL = 500; // Update FPS every 500ms
 // Firestore configuration
 export const CURSOR_UPDATE_THROTTLE = 75; // Max cursor updates per second (ms) - reduced for performance
 export const DRAG_UPDATE_THROTTLE = 50; // Throttle rectangle drag updates (ms)
-export const PRESENCE_HEARTBEAT_INTERVAL = 10000; // Update presence every 10 seconds
-export const PRESENCE_TIMEOUT = 30000; // Consider user offline after 30 seconds of inactivity
-export const PRESENCE_AWAY_TIMEOUT = 60000; // Consider user away after 60 seconds of inactivity
+export const PRESENCE_HEARTBEAT_INTERVAL = 5000; // Update presence every 5 seconds (frequent for reliability)
+export const PRESENCE_TIMEOUT = 60000; // Consider user offline after 60 seconds of inactivity (generous buffer)
+export const PRESENCE_AWAY_TIMEOUT = 120000; // Consider user away after 2 minutes of inactivity
 
 // Canvas boundary styling
 export const BOUNDARY_COLOR = '#444';

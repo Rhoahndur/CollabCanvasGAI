@@ -79,6 +79,65 @@
   flex: 1;
 }
 
+.shape-palette-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #444;
+}
+
+.action-button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 13px;
+  font-weight: 600;
+  width: 100%;
+  text-align: left;
+}
+
+.action-button svg {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+}
+
+.action-button span {
+  flex: 1;
+}
+
+.action-generate {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #10b981;
+}
+
+.action-generate:hover {
+  background: rgba(16, 185, 129, 0.25);
+  border-color: #10b981;
+  transform: translateX(2px);
+}
+
+.action-clear {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+.action-clear:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: #ef4444;
+  transform: translateX(2px);
+}
+
 .shape-palette-hint {
   margin-top: 12px;
   padding-top: 12px;
@@ -112,6 +171,20 @@
 
   .tool-button svg {
     margin: 0;
+  }
+
+  .shape-palette-actions {
+    margin-top: 12px;
+    padding-top: 12px;
+  }
+
+  .action-button {
+    padding: 12px;
+    justify-content: center;
+  }
+
+  .action-button span {
+    display: none;
   }
 }
 
