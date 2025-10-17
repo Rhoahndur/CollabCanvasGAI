@@ -72,32 +72,34 @@ const ShapePalette = memo(function ShapePalette({
       </div>
       
       {/* Action buttons */}
-      <div className="shape-palette-actions">
-        <button
-          className="action-button action-generate"
-          onClick={onGenerate500}
-          title="Generate 500 random shapes"
-          aria-label="Generate 500 random shapes"
-        >
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-          </svg>
-          <span>Generate 500</span>
-        </button>
-        
-        <button
-          className="action-button action-clear"
-          onClick={onClearAll}
-          title="Clear all shapes"
-          aria-label="Clear all shapes"
-        >
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-            <path d="M10 11v6M14 11v6" />
-          </svg>
-          <span>Clear All</span>
-        </button>
-      </div>
+      {onGenerate500 && onClearAll && (
+        <div className="shape-palette-actions">
+          <button
+            className="action-button action-generate"
+            onClick={onGenerate500}
+            title="Generate 500 random shapes"
+            aria-label="Generate 500 random shapes"
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+            </svg>
+            <span>Generate 500</span>
+          </button>
+          
+          <button
+            className="action-button action-clear"
+            onClick={onClearAll}
+            title="Clear all shapes"
+            aria-label="Clear all shapes"
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+              <path d="M10 11v6M14 11v6" />
+            </svg>
+            <span>Clear All</span>
+          </button>
+        </div>
+      )}
       
       <div className="shape-palette-hint">
         Click and drag to create

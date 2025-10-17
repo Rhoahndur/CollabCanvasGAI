@@ -206,6 +206,25 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
     return () => cancelAnimationFrame(animationFrameId);
   }, []);
   
+  // Track user activity for presence updates (defined early so other callbacks can use it)
+  const trackActivity = useCallback(() => {
+    const now = Date.now();
+    lastActivityRef.current = now;
+    
+    // Throttle presence updates to max once per 3 seconds during active interaction
+    // More frequent updates ensure user never appears offline while actively using
+    if (activityThrottleRef.current) return;
+    
+    activityThrottleRef.current = setTimeout(() => {
+      activityThrottleRef.current = null;
+    }, 3000);
+    
+    // Update presence to show user is active
+    if (sessionId) {
+      updatePresenceHeartbeat(undefined, sessionId, true).catch(console.error);
+    }
+  }, [sessionId]);
+  
   // Handle click on background (canvas)
   const handleCanvasMouseDown = useCallback((e) => {
     // Only handle left mouse button
@@ -908,25 +927,6 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
     });
   }, []);
 
-  // Track user activity for presence updates
-  const trackActivity = useCallback(() => {
-    const now = Date.now();
-    lastActivityRef.current = now;
-    
-    // Throttle presence updates to max once per 3 seconds during active interaction
-    // More frequent updates ensure user never appears offline while actively using
-    if (activityThrottleRef.current) return;
-    
-    activityThrottleRef.current = setTimeout(() => {
-      activityThrottleRef.current = null;
-    }, 3000);
-    
-    // Update presence to show user is active
-    if (sessionId) {
-      updatePresenceHeartbeat(undefined, sessionId, true).catch(console.error);
-    }
-  }, [sessionId]);
-
   // Handle clearing all shapes
   const handleClearAll = useCallback(async () => {
     if (!user) return;
@@ -979,7 +979,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       console.error('Failed to clear shapes:', error);
       alert('Failed to clear shapes. Please try again.');
     }
-  }, [rectangles, user, deselectRectangle, notifyFirestoreActivity]);
+  }, [rectangles, user, deselectRectangle, setSelectedShapeIds, notifyFirestoreActivity]);
 
   // Handle generating 500 random shapes
   const handleGenerate500 = useCallback(async () => {
