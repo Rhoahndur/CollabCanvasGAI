@@ -22,6 +22,7 @@ import {
   SHAPE_TYPES,
   TOOL_TYPES,
   DEFAULT_POLYGON_SIDES,
+  AUTO_LOGOUT_TIMEOUT,
 } from '../utils/constants';
 import {
   screenToCanvas,
@@ -56,7 +57,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
   const containerRef = useRef(null);
   
   // Auth and canvas state
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const { 
     rectangles, 
     setRectangles, 
@@ -148,6 +149,26 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
   // Activity tracking for presence updates
   const lastActivityRef = useRef(Date.now());
   const activityThrottleRef = useRef(null);
+  
+  // Auto-logout after 30 minutes of inactivity
+  useEffect(() => {
+    if (!user) return;
+    
+    const checkInactivity = () => {
+      const now = Date.now();
+      const timeSinceLastActivity = now - lastActivityRef.current;
+      
+      if (timeSinceLastActivity >= AUTO_LOGOUT_TIMEOUT) {
+        console.log('Auto-logout: 30 minutes of inactivity detected');
+        signOut().catch(err => console.error('Auto-logout failed:', err));
+      }
+    };
+    
+    // Check every minute for inactivity
+    const intervalId = setInterval(checkInactivity, 60000);
+    
+    return () => clearInterval(intervalId);
+  }, [user, signOut]);
   
   // Test Firestore connection on mount
   useEffect(() => {

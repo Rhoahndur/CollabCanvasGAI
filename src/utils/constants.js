@@ -63,6 +63,7 @@ export const DRAG_UPDATE_THROTTLE = 50; // Throttle rectangle drag updates (ms)
 export const PRESENCE_HEARTBEAT_INTERVAL = 5000; // Update presence every 5 seconds (frequent for reliability)
 export const PRESENCE_TIMEOUT = 60000; // Consider user offline after 60 seconds of inactivity (generous buffer)
 export const PRESENCE_AWAY_TIMEOUT = 120000; // Consider user away after 2 minutes of inactivity
+export const AUTO_LOGOUT_TIMEOUT = 1800000; // Auto-logout after 30 minutes of inactivity (30 * 60 * 1000)
 
 // Canvas boundary styling
 export const BOUNDARY_COLOR = '#444';
