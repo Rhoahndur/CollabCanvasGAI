@@ -21,6 +21,7 @@ export const SHAPE_TYPES = {
   RECTANGLE: 'rectangle',
   CIRCLE: 'circle',
   POLYGON: 'polygon',
+  TEXT: 'text',
 };
 
 // Tool types

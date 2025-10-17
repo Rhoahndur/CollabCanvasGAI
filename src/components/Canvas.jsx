@@ -41,6 +41,7 @@ import { setup500Test, generateTestShapes } from '../utils/testData';
 import Rectangle from './Rectangle';
 import Circle from './Circle';
 import Polygon from './Polygon';
+import TextBox from './TextBox';
 import Cursor from './Cursor';
 import ShapePalette from './ShapePalette';
 import SelectionBox from './SelectionBox';
@@ -104,7 +105,11 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
   // Rotation state
   const [isRotating, setIsRotating] = useState(false);
   const [rotateStart, setRotateStart] = useState({ x: 0, y: 0 });
-  const [rotateInitial, setRotateInitial] = useState(0); // Initial rotation angle
+  const [rotateInitial, setRotateInitial] = useState(0);
+  
+  // Text editing state
+  const [editingTextId, setEditingTextId] = useState(null);
+  const [editingText, setEditingText] = useState(''); // Initial rotation angle
   
   // Selected drawing tool
   const [selectedTool, setSelectedTool] = useState(TOOL_TYPES.SELECT);
@@ -892,6 +897,30 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
               console.log('Polygon created successfully');
               notifyFirestoreActivity();
             }
+          } else if (selectedTool === SHAPE_TYPES.TEXT) {
+            // Calculate text box dimensions
+            let x = Math.min(drawStart.x, drawCurrent.x);
+            let y = Math.min(drawStart.y, drawCurrent.y);
+            let width = dx;
+            let height = dy;
+            
+            // Set minimum size for text boxes
+            if (width < 100) width = 200;
+            if (height < 40) height = 60;
+            
+            // Constrain to canvas boundaries
+            const constrained = constrainRectangle(x, y, width, height, CANVAS_WIDTH, CANVAS_HEIGHT);
+            
+            shapeData = { 
+              ...shapeData, 
+              ...constrained,
+              text: 'Double-click to edit',
+              fontSize: 16,
+              rotation: 0
+            };
+            await createShape(undefined, shapeData);
+            console.log('Text box created successfully');
+            notifyFirestoreActivity();
           }
         } catch (error) {
           console.error('Failed to create shape:', error);
@@ -1511,6 +1540,17 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
   
   return (
     <div className="canvas-container" ref={containerRef}>
+      {/* Header */}
+      <div className="canvas-header">
+        <span className="canvas-header-stats">
+          {rectangles.length} objects • {onlineUsersCount} {onlineUsersCount === 1 ? 'user' : 'users'} online
+        </span>
+        <span className="canvas-header-hint">Hold Shift/Cmd to pan • Scroll to zoom</span>
+        {SHOW_FPS_COUNTER && (
+          <span className="canvas-header-fps">{fps} FPS • {connectionStatus}</span>
+        )}
+      </div>
+      
       {/* Shape Palette */}
       <ShapePalette 
         selectedTool={selectedTool}
@@ -1593,6 +1633,31 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
               return <Circle {...shapeProps} />;
             } else if (shape.type === SHAPE_TYPES.POLYGON) {
               return <Polygon {...shapeProps} />;
+            } else if (shape.type === SHAPE_TYPES.TEXT) {
+              return (
+                <TextBox 
+                  {...shapeProps}
+                  text={shape.text || 'Double-click to edit'}
+                  fontSize={shape.fontSize || 16}
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    if (!shape.lockedBy || shape.lockedBy === user?.uid) {
+                      setEditingTextId(shape.id);
+                      setEditingText(shape.text || '');
+                      selectRectangle(shape.id);
+                      // Show prompt for text editing
+                      setTimeout(() => {
+                        const newText = prompt('Edit text:', shape.text || '');
+                        if (newText !== null && newText !== shape.text) {
+                          updateShape(undefined, shape.id, { text: newText });
+                        }
+                        setEditingTextId(null);
+                        deselectRectangle();
+                      }, 0);
+                    }
+                  }}
+                />
+              );
             } else {
               // Default to rectangle (including legacy shapes without type field)
               return <Rectangle {...shapeProps} />;
@@ -1684,6 +1749,42 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
                   />
                 );
               }
+            } else if (selectedTool === SHAPE_TYPES.TEXT && previewRect) {
+              const dx = Math.abs(drawCurrent.x - drawStart.x);
+              const dy = Math.abs(drawCurrent.y - drawStart.y);
+              let width = Math.max(dx, 200);
+              let height = Math.max(dy, 60);
+              
+              return (
+                <g>
+                  <rect
+                    x={previewRect.x}
+                    y={previewRect.y}
+                    width={width}
+                    height={height}
+                    fill="rgba(30, 30, 30, 0.7)"
+                    stroke={getRandomColor()}
+                    strokeWidth={2 / viewport.zoom}
+                    strokeDasharray={`${10 / viewport.zoom} ${5 / viewport.zoom}`}
+                    rx={4}
+                    className="preview-shape"
+                    style={{ pointerEvents: 'none' }}
+                  />
+                  <text
+                    x={previewRect.x + width / 2}
+                    y={previewRect.y + height / 2}
+                    fill="#888"
+                    fontSize={16}
+                    fontFamily="Arial, sans-serif"
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    opacity={0.7}
+                    style={{ pointerEvents: 'none' }}
+                  >
+                    Text Box
+                  </text>
+                </g>
+              );
             }
             return null;
           })()}
@@ -1779,13 +1880,6 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
         </div>
       )}
       
-      {/* Canvas info overlay */}
-      <div className="canvas-info">
-        <p>🎨 {selectedRectId ? 'Drag to move selected rectangle!' : 'Click rectangles to select • Drag to create'}</p>
-        <p className="canvas-hint">Hold Shift/Cmd to pan • Scroll to zoom • Click empty space to deselect</p>
-        <p className="canvas-size">{rectangles.length} objects • {onlineUsersCount} {onlineUsersCount === 1 ? 'user' : 'users'} online • {CANVAS_WIDTH} × {CANVAS_HEIGHT}px</p>
-      </div>
-
       {/* Zoom Controls */}
       <ZoomControls
         zoom={viewport.zoom}

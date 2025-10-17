@@ -8,6 +8,52 @@
   background-color: #0a0a0a;
 }
 
+/* Canvas Header */
+.canvas-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  background-color: rgba(0, 0, 0, 0.85);
+  border-bottom: 1px solid #333;
+  padding: 0.5rem 1rem;
+  backdrop-filter: blur(10px);
+  z-index: 150;
+  font-size: 0.85rem;
+}
+
+.canvas-header-stats {
+  color: #aaa;
+  font-weight: 500;
+}
+
+.canvas-header-hint {
+  color: #666;
+  font-size: 0.8rem;
+}
+
+.canvas-header-fps {
+  color: #0f0;
+  font-family: 'Monaco', 'Menlo', monospace;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 768px) {
+  .canvas-header {
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.4rem 0.5rem;
+  }
+  
+  .canvas-header-hint {
+    font-size: 0.7rem;
+  }
+}
+
 /* Canvas SVG */
 .canvas-svg {
   width: 100%;
