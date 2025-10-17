@@ -42,6 +42,7 @@ import Polygon from './Polygon';
 import Cursor from './Cursor';
 import ShapePalette from './ShapePalette';
 import SelectionBox from './SelectionBox';
+import ZoomControls from './ZoomControls';
 import './Canvas.css';
 
 /**
@@ -806,6 +807,91 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       zoom: newZoom,
     });
   }, [viewport, containerSize]);
+
+  // Programmatic zoom functions (for zoom controls)
+  const handleZoomIn = useCallback(() => {
+    if (!svgRef.current) return;
+    
+    const rect = svgRef.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    
+    // Zoom towards center of viewport
+    const centerBeforeZoom = screenToCanvas(centerX, centerY, viewport, rect);
+    
+    const newZoom = clamp(viewport.zoom * 1.2, MIN_ZOOM, MAX_ZOOM);
+    
+    const centerAfterZoom = {
+      x: (centerX - rect.left) / newZoom,
+      y: (centerY - rect.top) / newZoom,
+    };
+    
+    const newOffsetX = viewport.offsetX + (centerBeforeZoom.x - centerAfterZoom.x - viewport.offsetX);
+    const newOffsetY = viewport.offsetY + (centerBeforeZoom.y - centerAfterZoom.y - viewport.offsetY);
+    
+    const clamped = clampPanOffset(
+      newOffsetX,
+      newOffsetY,
+      newZoom,
+      containerSize.width,
+      containerSize.height,
+      CANVAS_WIDTH,
+      CANVAS_HEIGHT,
+      PAN_PADDING
+    );
+    
+    setViewport({
+      offsetX: clamped.offsetX,
+      offsetY: clamped.offsetY,
+      zoom: newZoom,
+    });
+  }, [viewport, containerSize]);
+
+  const handleZoomOut = useCallback(() => {
+    if (!svgRef.current) return;
+    
+    const rect = svgRef.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    
+    // Zoom out from center of viewport
+    const centerBeforeZoom = screenToCanvas(centerX, centerY, viewport, rect);
+    
+    const newZoom = clamp(viewport.zoom / 1.2, MIN_ZOOM, MAX_ZOOM);
+    
+    const centerAfterZoom = {
+      x: (centerX - rect.left) / newZoom,
+      y: (centerY - rect.top) / newZoom,
+    };
+    
+    const newOffsetX = viewport.offsetX + (centerBeforeZoom.x - centerAfterZoom.x - viewport.offsetX);
+    const newOffsetY = viewport.offsetY + (centerBeforeZoom.y - centerAfterZoom.y - viewport.offsetY);
+    
+    const clamped = clampPanOffset(
+      newOffsetX,
+      newOffsetY,
+      newZoom,
+      containerSize.width,
+      containerSize.height,
+      CANVAS_WIDTH,
+      CANVAS_HEIGHT,
+      PAN_PADDING
+    );
+    
+    setViewport({
+      offsetX: clamped.offsetX,
+      offsetY: clamped.offsetY,
+      zoom: newZoom,
+    });
+  }, [viewport, containerSize]);
+
+  const handleZoomReset = useCallback(() => {
+    setViewport({
+      zoom: DEFAULT_ZOOM,
+      offsetX: 0,
+      offsetY: 0,
+    });
+  }, []);
   
   // Add global mouse event listeners for panning, selecting, drawing, dragging, resizing, and rotating
   useEffect(() => {
@@ -823,6 +909,23 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
   // Add keyboard event listener for Delete key
   useEffect(() => {
     const handleKeyDown = async (e) => {
+      // Zoom keyboard shortcuts (Ctrl/Cmd + +/- and Ctrl/Cmd + 0)
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
+        if (e.key === '=' || e.key === '+') {
+          e.preventDefault();
+          handleZoomIn();
+          return;
+        } else if (e.key === '-' || e.key === '_') {
+          e.preventDefault();
+          handleZoomOut();
+          return;
+        } else if (e.key === '0') {
+          e.preventDefault();
+          handleZoomReset();
+          return;
+        }
+      }
+
       // Delete selected shapes when Delete or Backspace is pressed
       if ((e.key === 'Delete' || e.key === 'Backspace') && (selectedRectId || selectedShapeIds.length > 0) && !isDrawing && !isDragging && !isResizing && !isRotating && !isSelecting) {
         e.preventDefault(); // Prevent browser back navigation on Backspace
@@ -865,7 +968,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [selectedRectId, selectedShapeIds, rectangles, user, isDrawing, isDragging, isResizing, isRotating, isSelecting, deselectRectangle, notifyFirestoreActivity]);
+  }, [selectedRectId, selectedShapeIds, rectangles, user, isDrawing, isDragging, isResizing, isRotating, isSelecting, deselectRectangle, notifyFirestoreActivity, handleZoomIn, handleZoomOut, handleZoomReset]);
   
   // Calculate viewBox for SVG (memoized)
   const viewBox = useMemo(() => 
@@ -1219,6 +1322,16 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
         <p className="canvas-hint">Hold Shift/Cmd to pan • Scroll to zoom • Click empty space to deselect</p>
         <p className="canvas-size">{rectangles.length} objects • {onlineUsersCount} {onlineUsersCount === 1 ? 'user' : 'users'} online • {CANVAS_WIDTH} × {CANVAS_HEIGHT}px</p>
       </div>
+
+      {/* Zoom Controls */}
+      <ZoomControls
+        zoom={viewport.zoom}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onZoomReset={handleZoomReset}
+        minZoom={MIN_ZOOM}
+        maxZoom={MAX_ZOOM}
+      />
     </div>
   );
 }
