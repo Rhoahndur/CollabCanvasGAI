@@ -1045,6 +1045,48 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       offsetY: 0,
     });
   }, []);
+  
+  // Set specific zoom level
+  const handleZoomSet = useCallback((newZoom) => {
+    if (!svgRef.current) return;
+    
+    const rect = svgRef.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    
+    // Get current center point in canvas coordinates
+    const centerBeforeZoom = screenToCanvas(centerX, centerY, viewport, rect);
+    
+    // Clamp zoom to valid range
+    const clampedZoom = clamp(newZoom, MIN_ZOOM, MAX_ZOOM);
+    
+    // Calculate new offset to keep center point in same position
+    const centerAfterZoom = {
+      x: (centerX - rect.left) / clampedZoom,
+      y: (centerY - rect.top) / clampedZoom,
+    };
+    
+    const newOffsetX = viewport.offsetX + (centerBeforeZoom.x - centerAfterZoom.x);
+    const newOffsetY = viewport.offsetY + (centerBeforeZoom.y - centerAfterZoom.y);
+    
+    // Clamp to canvas boundaries (with 20% padding)
+    const clamped = clampPanOffset(
+      newOffsetX,
+      newOffsetY,
+      clampedZoom,
+      containerSize.width,
+      containerSize.height,
+      CANVAS_WIDTH,
+      CANVAS_HEIGHT,
+      PAN_PADDING_PERCENT
+    );
+    
+    setViewport({
+      zoom: clampedZoom,
+      offsetX: clamped.offsetX,
+      offsetY: clamped.offsetY,
+    });
+  }, [viewport, containerSize]);
 
   // Handle clearing all shapes
   const handleClearAll = useCallback(async () => {
@@ -1591,6 +1633,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
         onZoomReset={handleZoomReset}
+        onZoomSet={handleZoomSet}
         minZoom={MIN_ZOOM}
         maxZoom={MAX_ZOOM}
       />
