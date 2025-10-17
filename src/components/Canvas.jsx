@@ -156,7 +156,96 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       setup500Test(user.uid);
       console.log('🧪 Performance test utilities loaded. Check window.testCanvas');
     }
-  }, [user?.uid]);
+    
+    // Add debug helper to inspect shapes
+    if (user) {
+      window.debugShapes = {
+        // List all shapes with full details
+        listAll: () => {
+          console.log(`📊 Total shapes: ${rectangles.length}`);
+          rectangles.forEach((shape, index) => {
+            console.log(`\n[${index}] Shape ID: ${shape.id}`);
+            console.log('  Type:', shape.type);
+            console.log('  Position:', { x: shape.x, y: shape.y });
+            console.log('  Size:', shape.width ? { width: shape.width, height: shape.height } : { radius: shape.radius });
+            console.log('  Color:', shape.color);
+            console.log('  Created by:', shape.createdBy);
+            console.log('  Locked by:', shape.lockedBy || 'unlocked');
+            console.log('  Rotation:', shape.rotation || 0);
+            console.log('  Full data:', JSON.stringify(shape, null, 2));
+          });
+          return rectangles;
+        },
+        
+        // Inspect a specific shape by ID
+        inspect: (id) => {
+          const shape = rectangles.find(r => r.id === id);
+          if (!shape) {
+            console.error(`❌ Shape with ID "${id}" not found`);
+            return null;
+          }
+          console.log('🔍 Shape details:');
+          console.log(JSON.stringify(shape, null, 2));
+          return shape;
+        },
+        
+        // Find shapes with missing or unusual properties
+        findBroken: () => {
+          console.log('🔍 Checking for shapes with issues...');
+          const issues = [];
+          
+          rectangles.forEach(shape => {
+            const shapeIssues = [];
+            
+            if (!shape.id) shapeIssues.push('Missing ID');
+            if (!shape.type) shapeIssues.push('Missing type');
+            if (shape.x === undefined || shape.x === null) shapeIssues.push('Missing x');
+            if (shape.y === undefined || shape.y === null) shapeIssues.push('Missing y');
+            if (!shape.color) shapeIssues.push('Missing color');
+            if (!shape.createdBy) shapeIssues.push('Missing createdBy');
+            
+            if (shape.type === 'rectangle' && (shape.width === undefined || shape.height === undefined)) {
+              shapeIssues.push('Rectangle missing width/height');
+            }
+            if ((shape.type === 'circle' || shape.type === 'polygon') && shape.radius === undefined) {
+              shapeIssues.push('Circle/Polygon missing radius');
+            }
+            
+            if (shapeIssues.length > 0) {
+              issues.push({ id: shape.id, issues: shapeIssues, shape });
+            }
+          });
+          
+          if (issues.length === 0) {
+            console.log('✅ All shapes look good!');
+          } else {
+            console.log(`⚠️ Found ${issues.length} shape(s) with issues:`);
+            issues.forEach(({ id, issues: shapeIssues, shape }) => {
+              console.log(`\n  Shape ${id}:`);
+              console.log('    Issues:', shapeIssues);
+              console.log('    Data:', JSON.stringify(shape, null, 2));
+            });
+          }
+          
+          return issues;
+        },
+        
+        // Get current user info
+        currentUser: () => {
+          console.log('👤 Current user:');
+          console.log('  UID:', user?.uid);
+          console.log('  Display name:', user?.displayName);
+          return user;
+        }
+      };
+      
+      console.log('🛠️ Debug helpers available:');
+      console.log('  - window.debugShapes.listAll() - List all shapes');
+      console.log('  - window.debugShapes.inspect(id) - Inspect a specific shape');
+      console.log('  - window.debugShapes.findBroken() - Find shapes with missing properties');
+      console.log('  - window.debugShapes.currentUser() - Show current user info');
+    }
+  }, [user?.uid, rectangles]);
   
   // Update container size on mount and resize
   useEffect(() => {
@@ -1036,35 +1125,70 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       if ((e.key === 'Delete' || e.key === 'Backspace') && (selectedRectId || selectedShapeIds.length > 0) && !isDrawing && !isDragging && !isResizing && !isRotating && !isSelecting) {
         e.preventDefault(); // Prevent browser back navigation on Backspace
         
+        console.log('🗑️ DELETE KEY PRESSED');
+        console.log('  selectedRectId:', selectedRectId);
+        console.log('  selectedShapeIds:', selectedShapeIds);
+        
         // Determine which shapes to delete
         const shapesToDelete = selectedShapeIds.length > 0 ? selectedShapeIds : [selectedRectId];
+        console.log('  shapesToDelete:', shapesToDelete);
+        
+        // Get full shape details
+        const shapeDetails = shapesToDelete.map(id => {
+          const shape = rectangles.find(r => r.id === id);
+          return { id, shape: shape || 'NOT_FOUND' };
+        });
+        console.log('  Shape details:', JSON.stringify(shapeDetails, null, 2));
         
         // Filter out locked shapes
         const deletableShapes = shapesToDelete.filter(id => {
           const shape = rectangles.find(r => r.id === id);
-          return shape && (!shape.lockedBy || shape.lockedBy === user?.uid);
+          const canDelete = shape && (!shape.lockedBy || shape.lockedBy === user?.uid);
+          
+          if (!shape) {
+            console.warn(`  ❌ Shape ${id} not found in rectangles array`);
+          } else if (shape.lockedBy && shape.lockedBy !== user?.uid) {
+            console.warn(`  🔒 Shape ${id} locked by another user:`, shape.lockedBy, 'Current user:', user?.uid);
+          } else {
+            console.log(`  ✅ Shape ${id} can be deleted`);
+          }
+          
+          return canDelete;
         });
         
+        console.log('  deletableShapes:', deletableShapes);
+        
         if (deletableShapes.length === 0) {
-          console.log('Cannot delete - all shapes are locked by other users');
+          console.log('❌ Cannot delete - all shapes are locked by other users or not found');
           return;
         }
         
         try {
+          console.log('🔓 Deselecting shapes...');
           // Deselect first (will unlock)
           if (selectedRectId) {
             await deselectRectangle();
           }
           setSelectedShapeIds([]);
           
+          console.log('🗑️ Deleting shapes from Firestore...');
           // Delete all deletable shapes from Firestore
-          await Promise.all(
-            deletableShapes.map(id => deleteShape(undefined, id))
-          );
-          console.log(`${deletableShapes.length} shape(s) deleted successfully`);
+          const deletePromises = deletableShapes.map(async id => {
+            try {
+              console.log(`  Deleting shape ${id}...`);
+              await deleteShape(undefined, id);
+              console.log(`  ✅ Shape ${id} deleted successfully`);
+            } catch (err) {
+              console.error(`  ❌ Failed to delete shape ${id}:`, err);
+              throw err;
+            }
+          });
+          
+          await Promise.all(deletePromises);
+          console.log(`✅ ${deletableShapes.length} shape(s) deleted successfully`);
           notifyFirestoreActivity();
         } catch (error) {
-          console.error('Failed to delete shapes:', error);
+          console.error('❌ Failed to delete shapes:', error);
         }
       }
     };
