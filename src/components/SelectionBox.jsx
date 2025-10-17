@@ -91,8 +91,12 @@ const SelectionBox = memo(function SelectionBox({
   const rotationHandleX = bounds.centerX;
   const rotationHandleY = bounds.y - rotationOffset;
 
+  // Apply rotation transform around the shape's center
+  const rotation = shape.rotation || 0;
+  const transform = `rotate(${rotation} ${bounds.centerX} ${bounds.centerY})`;
+
   return (
-    <g className="selection-box">
+    <g className="selection-box" transform={transform}>
       {/* Selection outline */}
       <rect
         x={bounds.x}
