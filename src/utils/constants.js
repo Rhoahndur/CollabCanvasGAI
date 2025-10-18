@@ -22,6 +22,7 @@ export const SHAPE_TYPES = {
   CIRCLE: 'circle',
   POLYGON: 'polygon',
   TEXT: 'text',
+  IMAGE: 'image',
 };
 
 // Tool types

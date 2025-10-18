@@ -23,6 +23,7 @@ import {
   TOOL_TYPES,
   DEFAULT_POLYGON_SIDES,
   AUTO_LOGOUT_TIMEOUT,
+  DEFAULT_CANVAS_ID,
 } from '../utils/constants';
 import {
   screenToCanvas,
@@ -43,6 +44,7 @@ import Rectangle from './Rectangle';
 import Circle from './Circle';
 import Polygon from './Polygon';
 import TextBox from './TextBox';
+import Image from './Image';
 import Cursor from './Cursor';
 import ShapePalette from './ShapePalette';
 import SelectionBox from './SelectionBox';
@@ -670,7 +672,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
             let newY = initial.y + dy;
             
             // Constrain to canvas boundaries
-            if (r.type === SHAPE_TYPES.RECTANGLE || r.type === SHAPE_TYPES.TEXT) {
+            if (r.type === SHAPE_TYPES.RECTANGLE || r.type === SHAPE_TYPES.TEXT || r.type === SHAPE_TYPES.IMAGE) {
               const constrained = constrainRectangle(newX, newY, r.width, r.height, CANVAS_WIDTH, CANVAS_HEIGHT);
               newX = constrained.x;
               newY = constrained.y;
@@ -709,7 +711,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       // Calculate new dimensions based on handle and shape type
       let updates = {};
       
-      if (resizeInitial.type === SHAPE_TYPES.RECTANGLE || resizeInitial.type === SHAPE_TYPES.TEXT) {
+      if (resizeInitial.type === SHAPE_TYPES.RECTANGLE || resizeInitial.type === SHAPE_TYPES.TEXT || resizeInitial.type === SHAPE_TYPES.IMAGE) {
         const { x, y, width, height } = resizeInitial;
         
         // Calculate center of the shape
@@ -1048,7 +1050,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
         try {
           // Sync to Firestore (different fields for different shape types)
           let updates = {};
-          if (shape.type === SHAPE_TYPES.RECTANGLE || shape.type === SHAPE_TYPES.TEXT) {
+          if (shape.type === SHAPE_TYPES.RECTANGLE || shape.type === SHAPE_TYPES.TEXT || shape.type === SHAPE_TYPES.IMAGE) {
             updates = { x: shape.x, y: shape.y, width: shape.width, height: shape.height };
           } else if (shape.type === SHAPE_TYPES.CIRCLE || shape.type === SHAPE_TYPES.POLYGON) {
             updates = { radius: shape.radius };
@@ -1421,6 +1423,153 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       alert(`Failed to generate shapes: ${error.message}`);
     }
   }, [user, notifyFirestoreActivity, rectangles]);
+
+  // Handle image upload from file input
+  const handleImageUpload = useCallback(async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      alert('Image is too large. Please select an image under 5MB.');
+      return;
+    }
+
+    try {
+      // Convert image to data URL
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const imageData = event.target.result;
+        
+        // Create image element to get dimensions
+        const img = new window.Image();
+        img.onload = async () => {
+          const maxDim = 400;
+          let width = img.width;
+          let height = img.height;
+          
+          // Scale down if too large
+          if (width > maxDim || height > maxDim) {
+            const ratio = Math.min(maxDim / width, maxDim / height);
+            width = width * ratio;
+            height = height * ratio;
+          }
+          
+          // Place image in center of viewport
+          const centerX = offsetX + (window.innerWidth / (2 * zoom));
+          const centerY = offsetY + (window.innerHeight / (2 * zoom));
+          
+          const imageShape = {
+            type: SHAPE_TYPES.IMAGE,
+            x: centerX - width / 2,
+            y: centerY - height / 2,
+            width,
+            height,
+            imageData,
+            color: getRandomColor(),
+            createdBy: user.uid,
+            rotation: 0,
+          };
+          
+          await createShape(DEFAULT_CANVAS_ID, imageShape);
+          console.log('✅ Image uploaded successfully');
+        };
+        img.src = imageData;
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Failed to upload image:', error);
+      alert('Failed to upload image. Please try again.');
+    }
+  }, [user, offsetX, offsetY, zoom]);
+
+  // Handle paste from clipboard (Ctrl+V)
+  const handlePaste = useCallback(async (e) => {
+    if (!user) return;
+
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    // Look for image in clipboard
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        e.preventDefault();
+        const blob = items[i].getAsFile();
+        
+        if (!blob) continue;
+
+        // Validate size
+        const maxSize = 5 * 1024 * 1024;
+        if (blob.size > maxSize) {
+          alert('Image is too large. Please use an image under 5MB.');
+          return;
+        }
+
+        try {
+          const reader = new FileReader();
+          reader.onload = async (event) => {
+            const imageData = event.target.result;
+            
+            // Create image element to get dimensions
+            const img = new window.Image();
+            img.onload = async () => {
+              const maxDim = 400;
+              let width = img.width;
+              let height = img.height;
+              
+              // Scale down if too large
+              if (width > maxDim || height > maxDim) {
+                const ratio = Math.min(maxDim / width, maxDim / height);
+                width = width * ratio;
+                height = height * ratio;
+              }
+              
+              // Place image in center of viewport
+              const centerX = offsetX + (window.innerWidth / (2 * zoom));
+              const centerY = offsetY + (window.innerHeight / (2 * zoom));
+              
+              const imageShape = {
+                type: SHAPE_TYPES.IMAGE,
+                x: centerX - width / 2,
+                y: centerY - height / 2,
+                width,
+                height,
+                imageData,
+                color: getRandomColor(),
+                createdBy: user.uid,
+                rotation: 0,
+              };
+              
+              await createShape(DEFAULT_CANVAS_ID, imageShape);
+              console.log('✅ Image pasted successfully');
+            };
+            img.src = imageData;
+          };
+          reader.readAsDataURL(blob);
+        } catch (error) {
+          console.error('Failed to paste image:', error);
+          alert('Failed to paste image. Please try again.');
+        }
+        
+        break;
+      }
+    }
+  }, [user, offsetX, offsetY, zoom]);
+
+  // Add clipboard paste listener
+  useEffect(() => {
+    window.addEventListener('paste', handlePaste);
+    return () => {
+      window.removeEventListener('paste', handlePaste);
+    };
+  }, [handlePaste]);
   
   // Add global mouse event listeners for panning, selecting, drawing, dragging, resizing, and rotating
   useEffect(() => {
@@ -1634,6 +1783,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
         onSelectTool={setSelectedTool}
         onClearAll={handleClearAll}
         onGenerate500={handleGenerate500}
+        onImageUpload={handleImageUpload}
       />
       
       {/* Loading overlay */}
@@ -1732,6 +1882,15 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
                   textColor={shape.textColor}
                   width={shape.width || 200}
                   height={shape.height || 60}
+                />
+              );
+            } else if (shape.type === SHAPE_TYPES.IMAGE) {
+              return (
+                <Image
+                  {...shapeProps}
+                  imageData={shape.imageData}
+                  width={shape.width || 200}
+                  height={shape.height || 200}
                 />
               );
             } else {
