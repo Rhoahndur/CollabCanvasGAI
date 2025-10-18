@@ -1,8 +1,57 @@
 /* Presence Sidebar Styles */
 
+/* Minimized tab - always visible when collapsed */
+.presence-minimized-tab {
+  position: fixed;
+  right: 16px;
+  top: 80px;
+  width: 56px;
+  height: 72px;
+  background: rgba(26, 26, 26, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  z-index: 101;
+}
+
+.presence-minimized-tab:hover {
+  background: rgba(40, 40, 40, 0.95);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  border-color: rgba(100, 108, 255, 0.5);
+}
+
+.minimized-icon {
+  color: rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.minimized-count {
+  background: linear-gradient(135deg, #646cff 0%, #9333ea 100%);
+  color: white;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  min-width: 28px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(100, 108, 255, 0.4);
+}
+
+/* Expanded sidebar */
 .presence-sidebar {
   position: fixed;
-  right: -232px; /* Hidden by default, show only 48px tab */
+  right: -280px; /* Hidden by default */
   top: 64px; /* Below header */
   height: calc(100% - 64px);
   width: 280px;
@@ -16,65 +65,16 @@
   z-index: 100;
 }
 
-/* Collapsed state - slide off-screen except for tab */
+/* Collapsed state - hidden */
 .presence-sidebar.collapsed {
-  right: -232px; /* Show only 48px tab (280px - 48px = 232px) */
+  right: -280px;
+  pointer-events: none;
 }
 
 /* Expanded state - fully visible */
 .presence-sidebar.expanded {
   right: 0;
-}
-
-/* Tab indicator (visible when collapsed) */
-.sidebar-tab {
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 48px;
-  height: 120px;
-  background: rgba(26, 26, 26, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-right: none;
-  border-radius: 8px 0 0 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.3);
-}
-
-.sidebar-tab:hover {
-  background: rgba(40, 40, 40, 0.95);
-  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.5);
-}
-
-.tab-icon {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 12px;
-}
-
-.user-count-badge {
-  background: rgba(100, 108, 255, 0.8);
-  color: white;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 12px;
-  font-weight: 600;
-  min-width: 24px;
-  text-align: center;
-}
-
-/* Hide tab when expanded */
-.presence-sidebar.expanded .sidebar-tab {
-  opacity: 0;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .presence-header {
