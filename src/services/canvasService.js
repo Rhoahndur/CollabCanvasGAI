@@ -1,28 +1,30 @@
 /**
- * Canvas Service - Firestore operations for collaborative canvas
- * Handles rectangles, cursors, presence, and object locking
+ * Canvas Service - Realtime Database operations for collaborative canvas
+ * Handles shapes, cursors, presence, and object locking
  */
 
 import {
-  collection,
-  doc,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-  onSnapshot,
-  serverTimestamp,
+  ref,
+  set,
+  update,
+  remove,
+  onValue,
+  off,
+  get,
   query,
-  writeBatch,
-  getDocs,
-} from 'firebase/firestore';
-import { db } from './firebase';
+  orderByChild,
+} from 'firebase/database';
+import { realtimeDb } from './firebase';
 import { DEFAULT_CANVAS_ID } from '../utils/constants';
 
-// Collection references
-const getCanvasRef = (canvasId = DEFAULT_CANVAS_ID) => doc(db, 'canvases', canvasId);
-const getObjectsRef = (canvasId = DEFAULT_CANVAS_ID) => collection(db, 'canvases', canvasId, 'objects');
-const getCursorsRef = (canvasId = DEFAULT_CANVAS_ID) => collection(db, 'canvases', canvasId, 'cursors');
-const getPresenceRef = (canvasId = DEFAULT_CANVAS_ID) => collection(db, 'canvases', canvasId, 'presence');
+// Reference paths for Realtime Database
+const getCanvasRef = (canvasId = DEFAULT_CANVAS_ID) => ref(realtimeDb, `canvases/${canvasId}`);
+const getObjectsRef = (canvasId = DEFAULT_CANVAS_ID) => ref(realtimeDb, `canvases/${canvasId}/objects`);
+const getObjectRef = (canvasId = DEFAULT_CANVAS_ID, objectId) => ref(realtimeDb, `canvases/${canvasId}/objects/${objectId}`);
+const getCursorsRef = (canvasId = DEFAULT_CANVAS_ID) => ref(realtimeDb, `canvases/${canvasId}/cursors`);
+const getCursorRef = (canvasId = DEFAULT_CANVAS_ID, sessionId) => ref(realtimeDb, `canvases/${canvasId}/cursors/${sessionId}`);
+const getPresenceRef = (canvasId = DEFAULT_CANVAS_ID) => ref(realtimeDb, `canvases/${canvasId}/presence`);
+const getPresenceSessionRef = (canvasId = DEFAULT_CANVAS_ID, sessionId) => ref(realtimeDb, `canvases/${canvasId}/presence/${sessionId}`);
 
 /**
  * Generate a composite object ID to prevent conflicts
@@ -33,7 +35,7 @@ export const generateObjectId = (userId) => {
 };
 
 // ============================================================================
-// SHAPE OPERATIONS (supports rectangles, circles, polygons)
+// SHAPE OPERATIONS (supports rectangles, circles, polygons, text)
 // ============================================================================
 
 /**
@@ -45,9 +47,9 @@ export const generateObjectId = (userId) => {
 export const createShape = async (canvasId = DEFAULT_CANVAS_ID, shapeData) => {
   try {
     const objectId = generateObjectId(shapeData.createdBy);
-    const objectRef = doc(getObjectsRef(canvasId), objectId);
+    const objectRef = getObjectRef(canvasId, objectId);
     
-    await setDoc(objectRef, {
+    await set(objectRef, {
       ...shapeData,
       id: objectId,
       lockedBy: null,
@@ -82,8 +84,8 @@ export const createRectangle = async (canvasId = DEFAULT_CANVAS_ID, rectData) =>
  */
 export const updateShape = async (canvasId = DEFAULT_CANVAS_ID, shapeId, updates) => {
   try {
-    const objectRef = doc(getObjectsRef(canvasId), shapeId);
-    await updateDoc(objectRef, updates);
+    const objectRef = getObjectRef(canvasId, shapeId);
+    await update(objectRef, updates);
     console.log('Shape updated:', shapeId);
   } catch (error) {
     console.error('Error updating shape:', error);
@@ -110,8 +112,8 @@ export const updateRectangle = async (canvasId = DEFAULT_CANVAS_ID, rectId, upda
  */
 export const deleteShape = async (canvasId = DEFAULT_CANVAS_ID, shapeId) => {
   try {
-    const objectRef = doc(getObjectsRef(canvasId), shapeId);
-    await deleteDoc(objectRef);
+    const objectRef = getObjectRef(canvasId, shapeId);
+    await remove(objectRef);
     console.log('Shape deleted:', shapeId);
   } catch (error) {
     console.error('Error deleting shape:', error);
@@ -139,8 +141,8 @@ export const deleteRectangle = async (canvasId = DEFAULT_CANVAS_ID, rectId) => {
  */
 export const lockObject = async (canvasId = DEFAULT_CANVAS_ID, rectId, userId, userName = '') => {
   try {
-    const objectRef = doc(getObjectsRef(canvasId), rectId);
-    await updateDoc(objectRef, {
+    const objectRef = getObjectRef(canvasId, rectId);
+    await update(objectRef, {
       lockedBy: userId,
       lockedByUserName: userName,
     });
@@ -159,8 +161,8 @@ export const lockObject = async (canvasId = DEFAULT_CANVAS_ID, rectId, userId, u
  */
 export const unlockObject = async (canvasId = DEFAULT_CANVAS_ID, rectId) => {
   try {
-    const objectRef = doc(getObjectsRef(canvasId), rectId);
-    await updateDoc(objectRef, {
+    const objectRef = getObjectRef(canvasId, rectId);
+    await update(objectRef, {
       lockedBy: null,
       lockedByUserName: null,
     });
@@ -179,15 +181,20 @@ export const unlockObject = async (canvasId = DEFAULT_CANVAS_ID, rectId) => {
  * @returns {Function} Unsubscribe function
  */
 export const subscribeToObjects = (canvasId = DEFAULT_CANVAS_ID, callback, errorCallback) => {
-  const q = query(getObjectsRef(canvasId));
+  const objectsRef = getObjectsRef(canvasId);
   
-  const unsubscribe = onSnapshot(
-    q,
+  const listener = onValue(
+    objectsRef,
     (snapshot) => {
       const objects = [];
-      snapshot.forEach((doc) => {
-        objects.push({ id: doc.id, ...doc.data() });
-      });
+      const data = snapshot.val();
+      
+      if (data) {
+        Object.keys(data).forEach((key) => {
+          objects.push({ id: key, ...data[key] });
+        });
+      }
+      
       callback(objects);
     },
     (error) => {
@@ -198,7 +205,10 @@ export const subscribeToObjects = (canvasId = DEFAULT_CANVAS_ID, callback, error
     }
   );
   
-  return unsubscribe;
+  // Return unsubscribe function
+  return () => {
+    off(objectsRef, 'value', listener);
+  };
 };
 
 // ============================================================================
@@ -228,8 +238,8 @@ export const updateCursor = async (
   isActive = false
 ) => {
   try {
-    const cursorRef = doc(getCursorsRef(canvasId), sessionId);
-    await setDoc(cursorRef, {
+    const cursorRef = getCursorRef(canvasId, sessionId);
+    await set(cursorRef, {
       sessionId,
       userId,
       x,
@@ -237,7 +247,7 @@ export const updateCursor = async (
       userName,
       timestamp: Date.now(),
       arrivalTime: arrivalTime || Date.now(),
-      isActive, // Only show cursor when actively dragging
+      isActive,
     });
   } catch (error) {
     console.error('Error updating cursor:', error);
@@ -252,15 +262,20 @@ export const updateCursor = async (
  * @returns {Function} Unsubscribe function
  */
 export const subscribeToCursors = (canvasId = DEFAULT_CANVAS_ID, callback) => {
-  const q = query(getCursorsRef(canvasId));
+  const cursorsRef = getCursorsRef(canvasId);
   
-  const unsubscribe = onSnapshot(
-    q,
+  const listener = onValue(
+    cursorsRef,
     (snapshot) => {
       const cursors = [];
-      snapshot.forEach((doc) => {
-        cursors.push({ id: doc.id, ...doc.data() });
-      });
+      const data = snapshot.val();
+      
+      if (data) {
+        Object.keys(data).forEach((key) => {
+          cursors.push({ id: key, ...data[key] });
+        });
+      }
+      
       callback(cursors);
     },
     (error) => {
@@ -268,7 +283,10 @@ export const subscribeToCursors = (canvasId = DEFAULT_CANVAS_ID, callback) => {
     }
   );
   
-  return unsubscribe;
+  // Return unsubscribe function
+  return () => {
+    off(cursorsRef, 'value', listener);
+  };
 };
 
 /**
@@ -279,12 +297,12 @@ export const subscribeToCursors = (canvasId = DEFAULT_CANVAS_ID, callback) => {
  */
 export const removeCursor = async (canvasId = DEFAULT_CANVAS_ID, sessionId) => {
   try {
-    const cursorRef = doc(getCursorsRef(canvasId), sessionId);
-    await deleteDoc(cursorRef);
+    const cursorRef = getCursorRef(canvasId, sessionId);
+    await remove(cursorRef);
     console.log('Cursor removed:', sessionId);
   } catch (error) {
     // Silently ignore if cursor doesn't exist or permission denied (already cleaned up)
-    if (error.code === 'permission-denied' || error.code === 'not-found') {
+    if (error.code === 'PERMISSION_DENIED' || error.code === 'permission-denied') {
       console.log('Cursor already removed or not found:', sessionId);
     } else {
       console.error('Error removing cursor:', error);
@@ -316,14 +334,14 @@ export const setUserPresence = async (
   isActive = true
 ) => {
   try {
-    const presenceRef = doc(getPresenceRef(canvasId), sessionId);
-    await setDoc(presenceRef, {
+    const presenceRef = getPresenceSessionRef(canvasId, sessionId);
+    await set(presenceRef, {
       sessionId,
       userId,
       userName,
       color,
       isOnline,
-      isActive, // Track active vs away status
+      isActive,
       lastSeen: Date.now(),
     });
     console.log('Presence updated:', userName, isOnline ? 'online' : 'offline', isActive ? '(active)' : '(away)');
@@ -340,15 +358,20 @@ export const setUserPresence = async (
  * @returns {Function} Unsubscribe function
  */
 export const subscribeToPresence = (canvasId = DEFAULT_CANVAS_ID, callback) => {
-  const q = query(getPresenceRef(canvasId));
+  const presenceRef = getPresenceRef(canvasId);
   
-  const unsubscribe = onSnapshot(
-    q,
+  const listener = onValue(
+    presenceRef,
     (snapshot) => {
       const presenceData = [];
-      snapshot.forEach((doc) => {
-        presenceData.push({ id: doc.id, ...doc.data() });
-      });
+      const data = snapshot.val();
+      
+      if (data) {
+        Object.keys(data).forEach((key) => {
+          presenceData.push({ id: key, ...data[key] });
+        });
+      }
+      
       callback(presenceData);
     },
     (error) => {
@@ -356,7 +379,10 @@ export const subscribeToPresence = (canvasId = DEFAULT_CANVAS_ID, callback) => {
     }
   );
   
-  return unsubscribe;
+  // Return unsubscribe function
+  return () => {
+    off(presenceRef, 'value', listener);
+  };
 };
 
 /**
@@ -368,11 +394,11 @@ export const subscribeToPresence = (canvasId = DEFAULT_CANVAS_ID, callback) => {
  */
 export const updatePresenceHeartbeat = async (canvasId = DEFAULT_CANVAS_ID, sessionId, isActive = true) => {
   try {
-    const presenceRef = doc(getPresenceRef(canvasId), sessionId);
-    await updateDoc(presenceRef, {
+    const presenceRef = getPresenceSessionRef(canvasId, sessionId);
+    await update(presenceRef, {
       lastSeen: Date.now(),
       isOnline: true,
-      isActive, // Track if user is actively interacting vs just having tab open
+      isActive,
     });
   } catch (error) {
     console.error('Error updating presence heartbeat:', error);
@@ -388,12 +414,12 @@ export const updatePresenceHeartbeat = async (canvasId = DEFAULT_CANVAS_ID, sess
  */
 export const removePresence = async (canvasId = DEFAULT_CANVAS_ID, sessionId) => {
   try {
-    const presenceRef = doc(getPresenceRef(canvasId), sessionId);
-    await deleteDoc(presenceRef);
+    const presenceRef = getPresenceSessionRef(canvasId, sessionId);
+    await remove(presenceRef);
     console.log('Presence removed:', sessionId);
   } catch (error) {
     // Silently ignore if presence doesn't exist or permission denied
-    if (error.code === 'permission-denied' || error.code === 'not-found') {
+    if (error.code === 'PERMISSION_DENIED' || error.code === 'permission-denied') {
       console.log('Presence already removed or not found:', sessionId);
     } else {
       console.error('Error removing presence:', error);
@@ -409,30 +435,33 @@ export const removePresence = async (canvasId = DEFAULT_CANVAS_ID, sessionId) =>
  */
 export const cleanupStalePresence = async (canvasId = DEFAULT_CANVAS_ID) => {
   try {
-    const q = query(getPresenceRef(canvasId));
-    const snapshot = await getDocs(q);
+    const presenceRef = getPresenceRef(canvasId);
+    const snapshot = await get(presenceRef);
     
-    const thirtySecondsAgo = Date.now() - 30 * 1000; // More aggressive: 30 seconds
-    const staleDocIds = [];
+    const thirtySecondsAgo = Date.now() - 30 * 1000;
+    const staleSessionIds = [];
     
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      if (!data.isOnline || data.lastSeen < thirtySecondsAgo) {
-        staleDocIds.push(doc.id);
-      }
-    });
-    
-    // Delete stale sessions
-    if (staleDocIds.length > 0) {
-      const batch = writeBatch(db);
-      staleDocIds.forEach(docId => {
-        batch.delete(doc(getPresenceRef(canvasId), docId));
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+      Object.keys(data).forEach((sessionId) => {
+        const session = data[sessionId];
+        if (!session.isOnline || session.lastSeen < thirtySecondsAgo) {
+          staleSessionIds.push(sessionId);
+        }
       });
-      await batch.commit();
-      console.log(`🧹 Cleaned up ${staleDocIds.length} stale presence sessions`);
     }
     
-    return staleDocIds.length;
+    // Delete stale sessions
+    if (staleSessionIds.length > 0) {
+      const updates = {};
+      staleSessionIds.forEach(sessionId => {
+        updates[sessionId] = null; // Setting to null deletes in Realtime Database
+      });
+      await update(presenceRef, updates);
+      console.log(`🧹 Cleaned up ${staleSessionIds.length} stale presence sessions`);
+    }
+    
+    return staleSessionIds.length;
   } catch (error) {
     console.error('Error cleaning up stale presence:', error);
     return 0;
@@ -444,28 +473,26 @@ export const cleanupStalePresence = async (canvasId = DEFAULT_CANVAS_ID) => {
 // ============================================================================
 
 /**
- * Test Firestore connection by checking if db is accessible
- * Note: This doesn't write anything, just verifies the connection exists
+ * Test Realtime Database connection
  * @returns {Promise<boolean>} True if connection successful
  */
 export const testFirestoreConnection = async () => {
   try {
     // Just check if the database reference exists
-    if (!db) {
-      throw new Error('Firestore database not initialized');
+    if (!realtimeDb) {
+      throw new Error('Realtime Database not initialized');
     }
     
     // Try to get a reference to verify the connection
     const testRef = getObjectsRef(DEFAULT_CANVAS_ID);
     if (testRef) {
-      console.log('✅ Firestore connection test successful!');
+      console.log('✅ Realtime Database connection test successful!');
       return true;
     }
     
-    throw new Error('Could not get Firestore reference');
+    throw new Error('Could not get Realtime Database reference');
   } catch (error) {
-    console.error('❌ Firestore connection test failed:', error);
+    console.error('❌ Realtime Database connection test failed:', error);
     return false;
   }
 };
-

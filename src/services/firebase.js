@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GithubAuthProvider, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
+import { getDatabase } from 'firebase/database';
 
 // Firebase configuration from environment variables
 const firebaseConfig = {
@@ -10,6 +11,7 @@ const firebaseConfig = {
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
 };
 
 // Initialize Firebase
@@ -22,8 +24,13 @@ export const auth = getAuth(app);
 export const githubProvider = new GithubAuthProvider();
 export const googleProvider = new GoogleAuthProvider();
 
-// Initialize Firestore Database
+// Initialize Firestore Database (keeping for backwards compatibility)
 export const db = getFirestore(app);
+
+// Initialize Realtime Database
+export const realtimeDb = getDatabase(app);
+
+console.log('✅ Firebase Realtime Database initialized');
 
 // Enable offline persistence (async for better Safari compatibility)
 enableIndexedDbPersistence(db, {

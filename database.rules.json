@@ -1,0 +1,29 @@
+{
+  "rules": {
+    "canvases": {
+      "$canvasId": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        "objects": {
+          "$objectId": {
+            ".read": "auth != null",
+            ".write": "auth != null"
+          }
+        },
+        "cursors": {
+          "$sessionId": {
+            ".read": "auth != null",
+            ".write": "auth != null"
+          }
+        },
+        "presence": {
+          "$sessionId": {
+            ".read": "auth != null",
+            ".write": "auth != null"
+          }
+        }
+      }
+    }
+  }
+}
+
