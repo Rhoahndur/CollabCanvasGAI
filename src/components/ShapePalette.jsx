@@ -10,7 +10,8 @@ const ShapePalette = memo(function ShapePalette({
   selectedTool, 
   onSelectTool, 
   onClearAll, 
-  onGenerate500 
+  onGenerate500,
+  onImageUpload
 }) {
   const tools = [
     {
@@ -58,6 +59,18 @@ const ShapePalette = memo(function ShapePalette({
       ),
       label: 'Text Box',
     },
+    {
+      type: TOOL_TYPES.IMAGE,
+      icon: (
+        <svg viewBox="0 0 24 24" width="24" height="24">
+          <rect x="3" y="3" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" rx="2" />
+          <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" />
+          <path d="M21 15l-5-5L5 21" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      ),
+      label: 'Image',
+      isUpload: true,
+    },
   ];
 
   return (
@@ -70,7 +83,13 @@ const ShapePalette = memo(function ShapePalette({
           <button
             key={tool.type}
             className={`tool-button ${selectedTool === tool.type ? 'active' : ''}`}
-            onClick={() => onSelectTool(tool.type)}
+            onClick={() => {
+              if (tool.isUpload && onImageUpload) {
+                onImageUpload();
+              } else {
+                onSelectTool(tool.type);
+              }
+            }}
             title={tool.label}
             aria-label={tool.label}
           >
@@ -111,7 +130,8 @@ const ShapePalette = memo(function ShapePalette({
       )}
       
       <div className="shape-palette-hint">
-        Click and drag to create
+        Click and drag to create<br />
+        <small>Or paste images (Ctrl+V)</small>
       </div>
     </div>
   );

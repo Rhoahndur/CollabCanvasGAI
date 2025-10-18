@@ -34,6 +34,7 @@ import {
   constrainCircle,
 } from '../utils/canvasUtils';
 import { testFirestoreConnection, createShape, updateShape, deleteShape, updateCursor, removeCursor, updatePresenceHeartbeat } from '../services/canvasService';
+import { uploadImage, handlePasteEvent } from '../services/imageService';
 import { useCanvas } from '../hooks/useCanvas';
 import { useCursors } from '../hooks/useCursors';
 import { useAuth } from '../hooks/useAuth';
@@ -43,6 +44,7 @@ import Rectangle from './Rectangle';
 import Circle from './Circle';
 import Polygon from './Polygon';
 import TextBox from './TextBox';
+import Image from './Image';
 import Cursor from './Cursor';
 import ShapePalette from './ShapePalette';
 import SelectionBox from './SelectionBox';
@@ -151,6 +153,9 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
   // Activity tracking for presence updates
   const lastActivityRef = useRef(Date.now());
   const activityThrottleRef = useRef(null);
+  
+  // File input ref for image uploads
+  const fileInputRef = useRef(null);
   
   // Auto-logout after 30 minutes of inactivity
   useEffect(() => {
@@ -1414,13 +1419,125 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
         const created = shapesAfter - shapesBefore;
         console.log('Shapes after generation:', shapesAfter);
         console.log(`✅ Created ${created} new shapes!`);
-        alert(`Generated ${created} shapes! Total shapes now: ${shapesAfter}`);
       }, 1000); // Longer wait for Realtime DB sync
     } catch (error) {
       console.error('❌ Failed to generate shapes:', error);
       alert(`Failed to generate shapes: ${error.message}`);
     }
   }, [user, notifyFirestoreActivity, rectangles]);
+  
+  // Handle image upload button click
+  const handleImageUpload = useCallback(() => {
+    if (!user) {
+      alert('Please sign in to upload images');
+      return;
+    }
+    
+    // Trigger file input click
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  }, [user]);
+  
+  // Handle file selection
+  const handleFileChange = useCallback(async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    
+    try {
+      console.log('📤 Converting image:', file.name);
+      
+      // Convert image to base64 data URL
+      const { url, width, height } = await uploadImage(file, user.uid);
+      
+      console.log('✅ Image converted:', url.substring(0, 50) + '...');
+      
+      // Create image shape in center of visible viewport
+      const viewportCenterX = -viewport.offsetX + (containerSize.width / 2) / viewport.zoom;
+      const viewportCenterY = -viewport.offsetY + (containerSize.height / 2) / viewport.zoom;
+      
+      // Use actual image dimensions
+      const imageData = {
+        type: SHAPE_TYPES.IMAGE,
+        x: viewportCenterX,
+        y: viewportCenterY,
+        width,
+        height,
+        imageUrl: url, // Base64 data URL
+        color: getRandomColor(user.uid),
+        createdBy: user.uid,
+        rotation: 0,
+      };
+      
+      await createShape(DEFAULT_CANVAS_ID, imageData);
+      console.log('✅ Image shape created');
+      notifyFirestoreActivity();
+    } catch (error) {
+      console.error('❌ Failed to upload image:', error);
+      alert(`Failed to upload image: ${error.message}`);
+    } finally {
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  }, [user, viewport, containerSize, notifyFirestoreActivity]);
+  
+  // Handle paste event (Ctrl+V) for images
+  const handlePaste = useCallback(async (e) => {
+    if (!user) return;
+    
+    // Check if we're in a text input (don't intercept normal paste)
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
+      return;
+    }
+    
+    try {
+      const imageFile = await handlePasteEvent(e);
+      
+      if (imageFile) {
+        e.preventDefault();
+        console.log('📋 Image pasted from clipboard:', imageFile.name);
+        
+        // Convert image to base64 data URL
+        const { url, width, height } = await uploadImage(imageFile, user.uid);
+        
+        console.log('✅ Pasted image converted:', url.substring(0, 50) + '...');
+        
+        // Create image shape at mouse position or center of viewport
+        const viewportCenterX = -viewport.offsetX + (containerSize.width / 2) / viewport.zoom;
+        const viewportCenterY = -viewport.offsetY + (containerSize.height / 2) / viewport.zoom;
+        
+        // Use actual image dimensions
+        const imageData = {
+          type: SHAPE_TYPES.IMAGE,
+          x: viewportCenterX,
+          y: viewportCenterY,
+          width,
+          height,
+          imageUrl: url, // Base64 data URL
+          color: getRandomColor(user.uid),
+          createdBy: user.uid,
+          rotation: 0,
+        };
+        
+        await createShape(DEFAULT_CANVAS_ID, imageData);
+        console.log('✅ Pasted image shape created');
+        notifyFirestoreActivity();
+      }
+    } catch (error) {
+      console.error('❌ Failed to paste image:', error);
+      alert(`Failed to paste image: ${error.message}`);
+    }
+  }, [user, viewport, containerSize, notifyFirestoreActivity]);
+  
+  // Add paste event listener
+  useEffect(() => {
+    window.addEventListener('paste', handlePaste);
+    return () => {
+      window.removeEventListener('paste', handlePaste);
+    };
+  }, [handlePaste]);
   
   // Add global mouse event listeners for panning, selecting, drawing, dragging, resizing, and rotating
   useEffect(() => {
@@ -1509,10 +1626,14 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
           setSelectedShapeIds([]);
           
           console.log('🗑️ Deleting shapes from Firestore...');
-          // Delete all deletable shapes from Firestore
+          // Delete all deletable shapes from Firestore (and Storage for images)
           const deletePromises = deletableShapes.map(async id => {
             try {
               console.log(`  Deleting shape ${id}...`);
+              const shape = rectangles.find(r => r.id === id);
+              
+              // Images are stored as base64 data URLs in the DB, no separate cleanup needed
+              
               await deleteShape(undefined, id);
               console.log(`  ✅ Shape ${id} deleted successfully`);
             } catch (err) {
@@ -1634,6 +1755,16 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
         onSelectTool={setSelectedTool}
         onClearAll={handleClearAll}
         onGenerate500={handleGenerate500}
+        onImageUpload={handleImageUpload}
+      />
+      
+      {/* Hidden file input for image uploads */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={handleFileChange}
       />
       
       {/* Loading overlay */}
@@ -1734,14 +1865,23 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
                   height={shape.height || 60}
                 />
               );
+            } else if (shape.type === SHAPE_TYPES.IMAGE) {
+              return (
+                <Image 
+                  {...shapeProps}
+                  imageUrl={shape.imageUrl}
+                  width={shape.width || 200}
+                  height={shape.height || 200}
+                />
+              );
             } else {
               // Default to rectangle (including legacy shapes without type field)
               return <Rectangle {...shapeProps} />;
             }
           })}
           
-          {/* Selection box with resize and rotation handles */}
-          {selectedRectId && !isDrawing && (
+          {/* Selection box with resize and rotation handles (single selection) */}
+          {selectedRectId && !isDrawing && selectedShapeIds.length === 0 && (
             <SelectionBox
               shape={rectangles.find(r => r.id === selectedRectId)}
               zoom={viewport.zoom}
@@ -1749,6 +1889,110 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
               onRotateStart={handleRotateStart}
             />
           )}
+          
+          {/* Multi-selection bounding box */}
+          {selectedShapeIds.length > 1 && !isDrawing && (() => {
+            // Calculate bounding box that encompasses all selected shapes
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            
+            selectedShapeIds.forEach(id => {
+              const shape = rectangles.find(r => r.id === id);
+              if (!shape) return;
+              
+              let left, right, top, bottom;
+              
+              if (shape.type === SHAPE_TYPES.RECTANGLE || shape.type === SHAPE_TYPES.TEXT || shape.type === SHAPE_TYPES.IMAGE) {
+                left = shape.x;
+                right = shape.x + shape.width;
+                top = shape.y;
+                bottom = shape.y + shape.height;
+              } else if (shape.type === SHAPE_TYPES.CIRCLE || shape.type === SHAPE_TYPES.POLYGON) {
+                left = shape.x - shape.radius;
+                right = shape.x + shape.radius;
+                top = shape.y - shape.radius;
+                bottom = shape.y + shape.radius;
+              } else {
+                // Legacy shape (assume rectangle)
+                left = shape.x;
+                right = shape.x + (shape.width || 0);
+                top = shape.y;
+                bottom = shape.y + (shape.height || 0);
+              }
+              
+              minX = Math.min(minX, left);
+              maxX = Math.max(maxX, right);
+              minY = Math.min(minY, top);
+              maxY = Math.max(maxY, bottom);
+            });
+            
+            const boundingBoxWidth = maxX - minX;
+            const boundingBoxHeight = maxY - minY;
+            
+            // Add padding around the bounding box
+            const padding = 10 / viewport.zoom;
+            
+            return (
+              <g className="multi-selection-box">
+                {/* Outer bounding box with distinct style */}
+                <rect
+                  x={minX - padding}
+                  y={minY - padding}
+                  width={boundingBoxWidth + padding * 2}
+                  height={boundingBoxHeight + padding * 2}
+                  fill="none"
+                  stroke="#ffa500"
+                  strokeWidth={2.5 / viewport.zoom}
+                  strokeDasharray={`${8 / viewport.zoom} ${4 / viewport.zoom}`}
+                  style={{ pointerEvents: 'none' }}
+                />
+                
+                {/* Corner indicators for multi-selection */}
+                {[
+                  { x: minX - padding, y: minY - padding },
+                  { x: maxX + padding, y: minY - padding },
+                  { x: minX - padding, y: maxY + padding },
+                  { x: maxX + padding, y: maxY + padding },
+                ].map((corner, i) => (
+                  <rect
+                    key={i}
+                    x={corner.x - (6 / viewport.zoom) / 2}
+                    y={corner.y - (6 / viewport.zoom) / 2}
+                    width={6 / viewport.zoom}
+                    height={6 / viewport.zoom}
+                    fill="#ffa500"
+                    stroke="#fff"
+                    strokeWidth={1 / viewport.zoom}
+                    style={{ pointerEvents: 'none' }}
+                  />
+                ))}
+                
+                {/* Selection count label */}
+                <g transform={`translate(${minX - padding}, ${minY - padding - 20 / viewport.zoom})`}>
+                  <rect
+                    x="0"
+                    y="0"
+                    width={`${selectedShapeIds.length}`.length * 7 + 50}
+                    height={16 / viewport.zoom}
+                    fill="rgba(255, 165, 0, 0.9)"
+                    rx={3 / viewport.zoom}
+                    style={{ pointerEvents: 'none' }}
+                  />
+                  <text
+                    x={((`${selectedShapeIds.length}`.length * 7 + 50) / 2)}
+                    y={12 / viewport.zoom}
+                    fill="#fff"
+                    fontSize={12 / viewport.zoom}
+                    fontWeight="600"
+                    fontFamily="system-ui, -apple-system, sans-serif"
+                    textAnchor="middle"
+                    style={{ pointerEvents: 'none', userSelect: 'none' }}
+                  >
+                    {selectedShapeIds.length} selected
+                  </text>
+                </g>
+              </g>
+            );
+          })()}
           
           {/* Preview shape while drawing */}
           {isDrawing && previewRect && (() => {
