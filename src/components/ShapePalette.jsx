@@ -51,6 +51,18 @@ const ShapePalette = memo(function ShapePalette({
       label: 'Pentagon',
     },
     {
+      type: TOOL_TYPES.CUSTOM_POLYGON,
+      icon: (
+        <svg viewBox="0 0 24 24" width="24" height="24">
+          <path d="M12,4 L20,9 L18,18 L6,18 L4,9 Z" fill="none" stroke="currentColor" strokeWidth="2" />
+          <circle cx="12" cy="4" r="2" fill="currentColor" />
+          <circle cx="20" cy="9" r="2" fill="currentColor" />
+          <circle cx="18" cy="18" r="2" fill="currentColor" />
+        </svg>
+      ),
+      label: 'Custom Polygon',
+    },
+    {
       type: TOOL_TYPES.TEXT,
       icon: (
         <svg viewBox="0 0 24 24" width="24" height="24">
@@ -132,7 +144,9 @@ const ShapePalette = memo(function ShapePalette({
       )}
       
       <div className="shape-palette-hint">
-        Click and drag to create
+        {selectedTool === TOOL_TYPES.CUSTOM_POLYGON 
+          ? 'Click to add vertices, Enter to finish' 
+          : 'Click and drag to create'}
       </div>
     </div>
   );

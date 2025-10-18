@@ -66,6 +66,22 @@ const SelectionBox = memo(function SelectionBox({
       centerX: shape.x,
       centerY: shape.y,
     };
+  } else if (shape.type === SHAPE_TYPES.CUSTOM_POLYGON && shape.vertices) {
+    // Calculate bounding box from vertices
+    const vertices = shape.vertices;
+    const minX = Math.min(...vertices.map(v => v.x));
+    const maxX = Math.max(...vertices.map(v => v.x));
+    const minY = Math.min(...vertices.map(v => v.y));
+    const maxY = Math.max(...vertices.map(v => v.y));
+    
+    bounds = {
+      x: minX,
+      y: minY,
+      width: maxX - minX,
+      height: maxY - minY,
+      centerX: (minX + maxX) / 2,
+      centerY: (minY + maxY) / 2,
+    };
   }
 
   // Resize handles for rectangles, text boxes, and images (8 handles: 4 corners + 4 edges)

@@ -11,6 +11,7 @@ const ZoomControls = memo(function ZoomControls({
   onZoomOut,
   onZoomReset,
   onZoomSet,
+  onFitCanvas,
   minZoom,
   maxZoom,
 }) {
@@ -91,19 +92,14 @@ const ZoomControls = memo(function ZoomControls({
     }
   };
   
-  // Preset zoom levels
-  const presets = [50, 75, 100, 150, 200];
-  
-  // Handle preset button click
-  const handlePresetClick = (percentage) => {
+  // Handle fit canvas button click
+  const handleFitCanvas = () => {
     if (updateTimerRef.current) {
       clearTimeout(updateTimerRef.current);
     }
-    const newZoom = percentage / 100;
-    if (onZoomSet) {
-      onZoomSet(newZoom);
+    if (onFitCanvas) {
+      onFitCanvas();
     }
-    setInputValue(String(percentage));
     setIsEditing(false);
   };
   
@@ -154,18 +150,18 @@ const ZoomControls = memo(function ZoomControls({
         </button>
       </div>
       
-      {/* Preset zoom levels */}
+      {/* Fit Canvas button */}
       <div className="zoom-presets">
-        {presets.map(preset => (
-          <button
-            key={preset}
-            className={`zoom-preset ${Math.round(zoom * 100) === preset ? 'active' : ''}`}
-            onClick={() => handlePresetClick(preset)}
-            title={`Set zoom to ${preset}%`}
-          >
-            {preset}%
-          </button>
-        ))}
+        <button
+          className="zoom-preset fit-canvas-btn"
+          onClick={handleFitCanvas}
+          title="Fit entire canvas in view"
+        >
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16">
+            <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          Fit Canvas
+        </button>
       </div>
     </div>
   );

@@ -138,6 +138,19 @@
   transform: scale(0.95);
 }
 
+.fit-canvas-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: auto;
+  flex: none;
+  padding: 0 0.6rem;
+}
+
+.fit-canvas-btn svg {
+  flex-shrink: 0;
+}
+
 /* Responsive adjustments for smaller screens */
 @media (max-width: 768px) {
   .zoom-controls {
