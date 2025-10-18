@@ -1,14 +1,18 @@
-import { Configuration, OpenAIApi } from 'openai-edge';
-import { OpenAIStream, StreamingTextResponse } from 'ai';
+// Node.js runtime (default for Vercel serverless functions)
+const OpenAI = require('openai').default;
 
-// OpenAI configuration
-const config = new Configuration({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-const openai = new OpenAIApi(config);
+// Vercel serverless function handler (Node.js runtime)
+module.exports = async function handler(req, res) {
+  // Enable CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-// Vercel serverless function handler
-export default async function handler(req, res) {
+  // Handle preflight
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   // Only allow POST requests
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -22,14 +26,15 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'OpenAI API key not configured' });
     }
 
-    // Call OpenAI API
-    const response = await openai.createChatCompletion({
-      model: 'gpt-4-turbo-preview',
-      stream: true,
-      messages: [
-        {
-          role: 'system',
-          content: `You are Canny, a helpful AI assistant for CollabCanvas - a real-time collaborative whiteboard. 
+    // Initialize OpenAI client
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+
+    // System prompt for Canny
+    const systemMessage = {
+      role: 'system',
+      content: `You are Canny, a helpful AI assistant for CollabCanvas - a real-time collaborative whiteboard. 
       
 Your role:
 - Help users with questions about using the canvas
@@ -45,26 +50,35 @@ Canvas features you can help with:
 - Rotating and resizing shapes
 - Real-time collaboration with other users
 - Keyboard shortcuts (Ctrl+D to duplicate, Delete to remove)`,
-        },
-        ...messages,
-      ],
+    };
+
+    // Call OpenAI API with streaming
+    const stream = await openai.chat.completions.create({
+      model: 'gpt-4-turbo-preview',
+      messages: [systemMessage, ...messages],
+      stream: true,
     });
 
-    // Convert the response to a stream
-    const stream = OpenAIStream(response);
-    
-    // Return streaming response
-    return new StreamingTextResponse(stream);
+    // Set headers for SSE (Server-Sent Events)
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    // Stream the response
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content || '';
+      if (content) {
+        // AI SDK expects this specific format
+        res.write(`0:${JSON.stringify(content)}\n`);
+      }
+    }
+
+    res.end();
   } catch (error) {
     console.error('❌ Chat API error:', error);
     return res.status(500).json({ 
       error: error.message || 'Internal server error' 
     });
   }
-}
-
-// Vercel Edge Config (optional, for better performance)
-export const config = {
-  runtime: 'edge',
 };
 

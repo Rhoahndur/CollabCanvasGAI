@@ -17,7 +17,7 @@ The application now uses **Vercel Serverless Functions** for the Canny AI backen
 ✅ **Simple**: No separate backend server to manage  
 ✅ **Scalable**: Serverless functions auto-scale  
 ✅ **Cost-effective**: Pay only for what you use  
-✅ **Fast**: Edge functions run close to users  
+✅ **Reliable**: Node.js runtime with full npm module support  
 
 ## How It Works
 
@@ -28,7 +28,7 @@ The application now uses **Vercel Serverless Functions** for the Canny AI backen
 
 ### Production Mode (Vercel)
 - Frontend is served as static files
-- Backend becomes `/api/chat` serverless function
+- Backend becomes `/api/chat` serverless function (Node.js runtime)
 - ChatPanel uses `/api/chat` (same domain, no CORS issues!)
 
 ## Deployment Steps
