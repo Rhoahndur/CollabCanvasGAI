@@ -68,9 +68,8 @@ const ShapePalette = memo(function ShapePalette({
           <path d="M21 15l-5-5L5 21" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       ),
-      label: 'Image (Coming Soon)',
+      label: 'Image',
       isUpload: true,
-      disabled: true,
     },
   ];
 
