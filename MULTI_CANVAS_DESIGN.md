@@ -351,16 +351,51 @@ Firebase Realtime Database:
 
 ---
 
-## ❓ Questions to Discuss
+## ✅ Design Decisions (Confirmed)
 
-1. **Default behavior:** Should new users start with a blank canvas or a dashboard?
-2. **Sharing model:** Email invites, shareable links, or direct user ID?
-3. **Canvas limits:** Max canvases per user? (prevent abuse)
-4. **Naming:** "Canvas", "Project", "Board", "Workspace"?
-5. **Templates:** Pre-made canvas layouts? (e.g., brainstorming, wireframe)
-6. **Public canvases:** Allow public/unlisted canvases?
+1. **Default behavior:** New users start at the **Canvas Dashboard**
+   - Shows their canvases in a grid/list view
+   - Prominent "Create New Canvas" button
+   - Clean, welcoming first impression
+
+2. **Sharing model:** **Both shareable links AND email invites**
+   - **Shareable links:** Generate unique URLs like `canvas.app/c/abc123` with access codes
+   - **Email invites:** Send invitation emails with direct links (requires backend email service)
+   - Users can choose which method per canvas
+
+3. **Canvas limits:** **Max 2 canvases per user** (for initial release)
+   - Prevents abuse and manages Firebase usage
+   - Can be increased later based on user feedback
+   - Free tier limit keeps costs predictable
+
+4. **Naming:** **"Canvas"** throughout the UI
+   - "My Canvases", "Create New Canvas", "Canvas Settings"
+   - Simple, clear, matches the product name
+
+5. **Templates:** **3 pre-made canvas templates:**
+   
+   **Template 1: Blank Canvas** (Default)
+   - Empty canvas
+   - Quick start for freeform creativity
+   
+   **Template 2: Brainstorming Board**
+   - Pre-placed sticky note zones (colored rectangles)
+   - Labels: "Ideas", "Actions", "Questions"
+   - Grid layout for organization
+   
+   **Template 3: Wireframe / Design Layout**
+   - Pre-placed layout guides (light gray rectangles)
+   - Header, sidebar, content area markers
+   - Helpful for UI/UX planning
+
+6. **Public canvases:** **Not implementing for now**
+   - Keeps permissions simple
+   - All canvases are private by default
+   - Can add later if users request it
 
 ---
 
-**Ready to discuss?** Let me know your thoughts on this plan before we start implementing! 🎨
+## 🎯 Ready to Implement!
+
+All key decisions are made. The design is approved and ready for development!
 

@@ -2,28 +2,41 @@
   "rules": {
     "canvases": {
       "$canvasId": {
-        ".read": "auth != null",
-        ".write": "auth != null",
+        "metadata": {
+          ".read": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).exists() || root.child('userCanvases').child(auth.uid).child($canvasId).exists())",
+          ".write": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'owner' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'editor')"
+        },
+        "permissions": {
+          ".read": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).exists() || root.child('userCanvases').child(auth.uid).child($canvasId).exists())",
+          "$userId": {
+            ".write": "auth != null && root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'owner'"
+          }
+        },
         "objects": {
+          ".read": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).exists() || root.child('userCanvases').child(auth.uid).child($canvasId).exists())",
           "$objectId": {
-            ".read": "auth != null",
-            ".write": "auth != null"
+            ".write": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'owner' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'editor')"
           }
         },
         "cursors": {
+          ".read": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).exists() || root.child('userCanvases').child(auth.uid).child($canvasId).exists())",
           "$sessionId": {
-            ".read": "auth != null",
             ".write": "auth != null"
           }
         },
         "presence": {
+          ".read": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).exists() || root.child('userCanvases').child(auth.uid).child($canvasId).exists())",
           "$sessionId": {
-            ".read": "auth != null",
             ".write": "auth != null"
           }
         }
       }
+    },
+    "userCanvases": {
+      "$userId": {
+        ".read": "auth != null && auth.uid == $userId",
+        ".write": "auth != null && auth.uid == $userId"
+      }
     }
   }
 }
-

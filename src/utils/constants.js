@@ -108,6 +108,19 @@ export const LOCKED_OVERLAY_COLOR = 'rgba(255, 100, 100, 0.1)';
 // Default canvas ID (for MVP we use a single canvas)
 export const DEFAULT_CANVAS_ID = 'main-canvas';
 
+// Multi-Canvas Constants
+export const MAX_CANVASES_PER_USER = 2; // Maximum canvases per user
+export const CANVAS_TEMPLATES = {
+  BLANK: 'blank',
+  BRAINSTORM: 'brainstorm',
+  WIREFRAME: 'wireframe',
+};
+export const CANVAS_ROLE = {
+  OWNER: 'owner',
+  EDITOR: 'editor',
+  VIEWER: 'viewer',
+};
+
 // Data Models
 
 /**

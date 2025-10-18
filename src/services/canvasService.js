@@ -20,12 +20,16 @@ import { DEFAULT_CANVAS_ID } from '../utils/constants';
 
 // Reference paths for Realtime Database
 const getCanvasRef = (canvasId = DEFAULT_CANVAS_ID) => ref(realtimeDb, `canvases/${canvasId}`);
+const getCanvasMetadataRef = (canvasId = DEFAULT_CANVAS_ID) => ref(realtimeDb, `canvases/${canvasId}/metadata`);
+const getCanvasPermissionsRef = (canvasId = DEFAULT_CANVAS_ID) => ref(realtimeDb, `canvases/${canvasId}/permissions`);
 const getObjectsRef = (canvasId = DEFAULT_CANVAS_ID) => ref(realtimeDb, `canvases/${canvasId}/objects`);
 const getObjectRef = (canvasId = DEFAULT_CANVAS_ID, objectId) => ref(realtimeDb, `canvases/${canvasId}/objects/${objectId}`);
 const getCursorsRef = (canvasId = DEFAULT_CANVAS_ID) => ref(realtimeDb, `canvases/${canvasId}/cursors`);
 const getCursorRef = (canvasId = DEFAULT_CANVAS_ID, sessionId) => ref(realtimeDb, `canvases/${canvasId}/cursors/${sessionId}`);
 const getPresenceRef = (canvasId = DEFAULT_CANVAS_ID) => ref(realtimeDb, `canvases/${canvasId}/presence`);
 const getPresenceSessionRef = (canvasId = DEFAULT_CANVAS_ID, sessionId) => ref(realtimeDb, `canvases/${canvasId}/presence/${sessionId}`);
+const getUserCanvasesRef = (userId) => ref(realtimeDb, `userCanvases/${userId}`);
+const getUserCanvasRef = (userId, canvasId) => ref(realtimeDb, `userCanvases/${userId}/${canvasId}`);
 
 // ============================================================================
 // CONNECTION MONITORING
@@ -532,5 +536,293 @@ export const testFirestoreConnection = async () => {
   } catch (error) {
     console.error('❌ Realtime Database connection test failed:', error);
     return false;
+  }
+};
+
+// ============================================================================
+// CANVAS MANAGEMENT (Multi-Canvas Support)
+// ============================================================================
+
+/**
+ * Generate a unique canvas ID
+ * @param {string} userId - User ID
+ * @returns {string} Unique canvas ID
+ */
+export const generateCanvasId = (userId) => {
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 9);
+  return `${userId}_${timestamp}_${random}`;
+};
+
+/**
+ * Create a new canvas
+ * @param {string} userId - Owner user ID
+ * @param {string} canvasName - Canvas name
+ * @param {string} [template='blank'] - Template type ('blank', 'brainstorm', 'wireframe')
+ * @returns {Promise<string>} Canvas ID
+ */
+export const createCanvas = async (userId, canvasName, template = 'blank') => {
+  try {
+    const canvasId = generateCanvasId(userId);
+    const now = Date.now();
+    
+    // Canvas metadata
+    const metadata = {
+      name: canvasName,
+      createdBy: userId,
+      createdAt: now,
+      lastModified: now,
+      template,
+    };
+    
+    // Set canvas metadata
+    await set(getCanvasMetadataRef(canvasId), metadata);
+    
+    // Set owner permissions
+    await set(ref(realtimeDb, `canvases/${canvasId}/permissions/${userId}`), 'owner');
+    
+    // Add canvas to user's canvas list
+    await set(getUserCanvasRef(userId, canvasId), {
+      name: canvasName,
+      role: 'owner',
+      lastAccessed: now,
+      starred: false,
+    });
+    
+    // Initialize template shapes if not blank
+    if (template !== 'blank') {
+      const templateShapes = getTemplateShapes(template, userId);
+      if (templateShapes.length > 0) {
+        const objectsRef = getObjectsRef(canvasId);
+        for (const shape of templateShapes) {
+          const objectId = generateObjectId(userId);
+          await set(ref(realtimeDb, `canvases/${canvasId}/objects/${objectId}`), {
+            ...shape,
+            id: objectId,
+            timestamp: now,
+          });
+        }
+      }
+    }
+    
+    console.log('✅ Canvas created:', canvasId, canvasName);
+    return canvasId;
+  } catch (error) {
+    console.error('❌ Error creating canvas:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get template shapes based on template type
+ * @param {string} template - Template type
+ * @param {string} userId - User ID (for createdBy field)
+ * @returns {Array} Array of shape objects
+ */
+const getTemplateShapes = (template, userId) => {
+  const baseShape = {
+    createdBy: userId,
+    rotation: 0,
+    lockedBy: null,
+    lockedByUserName: null,
+  };
+  
+  if (template === 'brainstorm') {
+    return [
+      // Ideas zone (Yellow)
+      { ...baseShape, type: 'rectangle', x: 100, y: 100, width: 400, height: 500, color: 'rgba(255, 235, 59, 0.2)', zIndex: Date.now() },
+      { ...baseShape, type: 'text', x: 150, y: 120, width: 300, height: 50, text: '💡 Ideas', fontSize: 24, fontWeight: 'bold', textColor: 'rgba(255, 235, 59, 1)', zIndex: Date.now() + 1 },
+      // Actions zone (Green)
+      { ...baseShape, type: 'rectangle', x: 550, y: 100, width: 400, height: 500, color: 'rgba(76, 175, 80, 0.2)', zIndex: Date.now() + 2 },
+      { ...baseShape, type: 'text', x: 600, y: 120, width: 300, height: 50, text: '⚡ Actions', fontSize: 24, fontWeight: 'bold', textColor: 'rgba(76, 175, 80, 1)', zIndex: Date.now() + 3 },
+      // Questions zone (Blue)
+      { ...baseShape, type: 'rectangle', x: 1000, y: 100, width: 400, height: 500, color: 'rgba(33, 150, 243, 0.2)', zIndex: Date.now() + 4 },
+      { ...baseShape, type: 'text', x: 1050, y: 120, width: 300, height: 50, text: '❓ Questions', fontSize: 24, fontWeight: 'bold', textColor: 'rgba(33, 150, 243, 1)', zIndex: Date.now() + 5 },
+    ];
+  } else if (template === 'wireframe') {
+    return [
+      // Header
+      { ...baseShape, type: 'rectangle', x: 100, y: 100, width: 1200, height: 100, color: 'rgba(200, 200, 200, 0.3)', zIndex: Date.now() },
+      { ...baseShape, type: 'text', x: 150, y: 130, width: 200, height: 40, text: 'Header Area', fontSize: 20, textColor: 'rgba(100, 100, 100, 1)', zIndex: Date.now() + 1 },
+      // Sidebar
+      { ...baseShape, type: 'rectangle', x: 100, y: 220, width: 250, height: 600, color: 'rgba(200, 200, 200, 0.3)', zIndex: Date.now() + 2 },
+      { ...baseShape, type: 'text', x: 150, y: 250, width: 150, height: 40, text: 'Sidebar', fontSize: 18, textColor: 'rgba(100, 100, 100, 1)', zIndex: Date.now() + 3 },
+      // Main Content
+      { ...baseShape, type: 'rectangle', x: 370, y: 220, width: 930, height: 600, color: 'rgba(255, 255, 255, 0)', zIndex: Date.now() + 4 },
+      { ...baseShape, type: 'text', x: 420, y: 250, width: 300, height: 40, text: 'Main Content Area', fontSize: 20, textColor: 'rgba(100, 100, 100, 1)', zIndex: Date.now() + 5 },
+    ];
+  }
+  
+  return []; // blank template
+};
+
+/**
+ * Get canvas metadata
+ * @param {string} canvasId - Canvas ID
+ * @returns {Promise<Object>} Canvas metadata
+ */
+export const getCanvasMetadata = async (canvasId) => {
+  try {
+    const snapshot = await get(getCanvasMetadataRef(canvasId));
+    if (snapshot.exists()) {
+      return snapshot.val();
+    }
+    return null;
+  } catch (error) {
+    console.error('❌ Error getting canvas metadata:', error);
+    throw error;
+  }
+};
+
+/**
+ * Update canvas metadata
+ * @param {string} canvasId - Canvas ID
+ * @param {Object} updates - Fields to update
+ * @returns {Promise<void>}
+ */
+export const updateCanvasMetadata = async (canvasId, updates) => {
+  try {
+    await update(getCanvasMetadataRef(canvasId), {
+      ...updates,
+      lastModified: Date.now(),
+    });
+    console.log('✅ Canvas metadata updated:', canvasId);
+  } catch (error) {
+    console.error('❌ Error updating canvas metadata:', error);
+    throw error;
+  }
+};
+
+/**
+ * Delete a canvas
+ * @param {string} canvasId - Canvas ID
+ * @param {string} userId - User ID (must be owner)
+ * @returns {Promise<void>}
+ */
+export const deleteCanvas = async (canvasId, userId) => {
+  try {
+    // Verify user is owner
+    const permissionsSnapshot = await get(ref(realtimeDb, `canvases/${canvasId}/permissions/${userId}`));
+    if (!permissionsSnapshot.exists() || permissionsSnapshot.val() !== 'owner') {
+      throw new Error('Only the owner can delete the canvas');
+    }
+    
+    // Delete entire canvas
+    await remove(getCanvasRef(canvasId));
+    
+    // Remove from all users' canvas lists
+    const permissionsRef = getCanvasPermissionsRef(canvasId);
+    const permissionsSnap = await get(permissionsRef);
+    if (permissionsSnap.exists()) {
+      const permissions = permissionsSnap.val();
+      const userIds = Object.keys(permissions);
+      
+      for (const uid of userIds) {
+        await remove(getUserCanvasRef(uid, canvasId));
+      }
+    }
+    
+    console.log('✅ Canvas deleted:', canvasId);
+  } catch (error) {
+    console.error('❌ Error deleting canvas:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get all canvases for a user
+ * @param {string} userId - User ID
+ * @returns {Promise<Array>} Array of canvas data
+ */
+export const getUserCanvases = async (userId) => {
+  try {
+    const snapshot = await get(getUserCanvasesRef(userId));
+    if (!snapshot.exists()) {
+      return [];
+    }
+    
+    const canvasesData = snapshot.val();
+    const canvases = [];
+    
+    for (const [canvasId, canvasInfo] of Object.entries(canvasesData)) {
+      canvases.push({
+        id: canvasId,
+        ...canvasInfo,
+      });
+    }
+    
+    // Sort by lastAccessed (most recent first)
+    canvases.sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0));
+    
+    return canvases;
+  } catch (error) {
+    console.error('❌ Error getting user canvases:', error);
+    throw error;
+  }
+};
+
+/**
+ * Add canvas permission for a user
+ * @param {string} canvasId - Canvas ID
+ * @param {string} userId - User ID to grant permission
+ * @param {string} role - Role ('owner', 'editor', 'viewer')
+ * @param {string} canvasName - Canvas name (for user's canvas list)
+ * @returns {Promise<void>}
+ */
+export const addCanvasPermission = async (canvasId, userId, role, canvasName) => {
+  try {
+    // Add permission to canvas
+    await set(ref(realtimeDb, `canvases/${canvasId}/permissions/${userId}`), role);
+    
+    // Add canvas to user's canvas list
+    await set(getUserCanvasRef(userId, canvasId), {
+      name: canvasName,
+      role,
+      lastAccessed: Date.now(),
+      starred: false,
+    });
+    
+    console.log('✅ Canvas permission added:', canvasId, userId, role);
+  } catch (error) {
+    console.error('❌ Error adding canvas permission:', error);
+    throw error;
+  }
+};
+
+/**
+ * Remove canvas permission for a user
+ * @param {string} canvasId - Canvas ID
+ * @param {string} userId - User ID to remove
+ * @returns {Promise<void>}
+ */
+export const removeCanvasPermission = async (canvasId, userId) => {
+  try {
+    // Remove permission from canvas
+    await remove(ref(realtimeDb, `canvases/${canvasId}/permissions/${userId}`));
+    
+    // Remove canvas from user's canvas list
+    await remove(getUserCanvasRef(userId, canvasId));
+    
+    console.log('✅ Canvas permission removed:', canvasId, userId);
+  } catch (error) {
+    console.error('❌ Error removing canvas permission:', error);
+    throw error;
+  }
+};
+
+/**
+ * Update user's last accessed time for a canvas
+ * @param {string} userId - User ID
+ * @param {string} canvasId - Canvas ID
+ * @returns {Promise<void>}
+ */
+export const updateCanvasAccess = async (userId, canvasId) => {
+  try {
+    await update(getUserCanvasRef(userId, canvasId), {
+      lastAccessed: Date.now(),
+    });
+  } catch (error) {
+    // Silently fail - not critical
+    console.warn('Warning: Could not update canvas access time:', error);
   }
 };
