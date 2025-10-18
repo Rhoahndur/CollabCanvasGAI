@@ -147,16 +147,12 @@ const TextBox = memo(function TextBox({
 
   return (
     <g
-      onClick={handleClick}
-      onMouseDown={handleMouseDown}
-      onDoubleClick={handleDoubleClick}
       style={{ 
-        cursor: isLocked ? 'not-allowed' : 'pointer',
         transform: `rotate(${rotation}deg)`,
         transformOrigin: `${centerX}px ${centerY}px`,
       }}
     >
-      {/* Background rectangle */}
+      {/* Background rectangle - handles all interactions */}
       <rect
         x={x}
         y={y}
@@ -166,6 +162,12 @@ const TextBox = memo(function TextBox({
         stroke={color}
         strokeWidth={2}
         rx={4}
+        onClick={handleClick}
+        onMouseDown={handleMouseDown}
+        onDoubleClick={handleDoubleClick}
+        style={{ 
+          cursor: isLocked ? 'not-allowed' : 'pointer',
+        }}
       />
       
       {/* Clipping path for text overflow */}
