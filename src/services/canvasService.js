@@ -689,9 +689,16 @@ export const getCanvasMetadata = async (canvasId) => {
  */
 export const duplicateCanvas = async (sourceCanvasId, userId, newName) => {
   try {
-    // Verify user is owner of source canvas
-    const permissionsSnapshot = await get(ref(realtimeDb, `canvases/${sourceCanvasId}/permissions/${userId}`));
-    if (!permissionsSnapshot.exists() || permissionsSnapshot.val() !== 'owner') {
+    // Verify user is owner of source canvas by checking their userCanvases
+    const userCanvasRef = getUserCanvasRef(userId, sourceCanvasId);
+    const userCanvasSnapshot = await get(userCanvasRef);
+    
+    if (!userCanvasSnapshot.exists()) {
+      throw new Error('Canvas not found in your list');
+    }
+    
+    const userCanvasData = userCanvasSnapshot.val();
+    if (userCanvasData.role !== 'owner') {
       throw new Error('Only the owner can duplicate the canvas');
     }
     
