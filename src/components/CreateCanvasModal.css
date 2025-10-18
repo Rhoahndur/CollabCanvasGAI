@@ -55,11 +55,30 @@
   border-bottom: 1px solid #333;
 }
 
+.header-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
 .modal-header h2 {
   margin: 0;
   font-size: 1.5rem;
   font-weight: 600;
   color: #fff;
+}
+
+.canvas-limit-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  background-color: rgba(100, 108, 255, 0.15);
+  border: 1px solid rgba(100, 108, 255, 0.3);
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #646cff;
+  width: fit-content;
 }
 
 .modal-close-btn {
@@ -286,6 +305,12 @@
   
   .modal-header h2 {
     color: #1a1a1a;
+  }
+  
+  .canvas-limit-badge {
+    background-color: rgba(100, 108, 255, 0.1);
+    border-color: rgba(100, 108, 255, 0.25);
+    color: #535bf2;
   }
   
   .modal-close-btn {

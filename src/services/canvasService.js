@@ -566,6 +566,13 @@ export const createCanvas = async (userId, canvasName, template = 'blank') => {
     const canvasId = generateCanvasId(userId);
     const now = Date.now();
     
+    console.log('🎨 Creating canvas:', canvasId, canvasName, template);
+    
+    // IMPORTANT: Set permissions FIRST before writing any other data
+    // Security rules require permissions to exist before writing metadata/objects
+    await set(ref(realtimeDb, `canvases/${canvasId}/permissions/${userId}`), 'owner');
+    console.log('✅ Permissions set');
+    
     // Canvas metadata
     const metadata = {
       name: canvasName,
@@ -575,11 +582,9 @@ export const createCanvas = async (userId, canvasName, template = 'blank') => {
       template,
     };
     
-    // Set canvas metadata
+    // Set canvas metadata (now permissions exist, so this will work)
     await set(getCanvasMetadataRef(canvasId), metadata);
-    
-    // Set owner permissions
-    await set(ref(realtimeDb, `canvases/${canvasId}/permissions/${userId}`), 'owner');
+    console.log('✅ Metadata set');
     
     // Add canvas to user's canvas list
     await set(getUserCanvasRef(userId, canvasId), {
@@ -588,6 +593,7 @@ export const createCanvas = async (userId, canvasName, template = 'blank') => {
       lastAccessed: now,
       starred: false,
     });
+    console.log('✅ User canvas index updated');
     
     // Initialize template shapes if not blank
     if (template !== 'blank') {

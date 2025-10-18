@@ -78,7 +78,12 @@ function CreateCanvasModal({ isOpen, onClose, onCreateCanvas, userCanvasCount = 
     <div className="modal-overlay" onClick={handleClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>Create New Canvas</h2>
+          <div className="header-content">
+            <h2>Create New Canvas</h2>
+            <div className="canvas-limit-badge">
+              {userCanvasCount} / {MAX_CANVASES_PER_USER} canvases
+            </div>
+          </div>
           <button 
             className="modal-close-btn" 
             onClick={handleClose}
