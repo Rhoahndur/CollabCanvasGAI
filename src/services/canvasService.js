@@ -28,10 +28,13 @@ const getPresenceSessionRef = (canvasId = DEFAULT_CANVAS_ID, sessionId) => ref(r
 
 /**
  * Generate a composite object ID to prevent conflicts
- * Format: {userId}_{timestamp}
+ * Format: {userId}_{timestamp}_{random}
+ * The random component ensures uniqueness even if multiple shapes are created in the same millisecond
  */
 export const generateObjectId = (userId) => {
-  return `${userId}_${Date.now()}`;
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 9); // 7-char random string
+  return `${userId}_${timestamp}_${random}`;
 };
 
 // ============================================================================
