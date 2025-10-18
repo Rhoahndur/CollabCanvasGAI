@@ -712,7 +712,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       // Calculate new dimensions based on handle and shape type
       let updates = {};
       
-      if (resizeInitial.type === SHAPE_TYPES.RECTANGLE) {
+      if (resizeInitial.type === SHAPE_TYPES.RECTANGLE || resizeInitial.type === SHAPE_TYPES.TEXT) {
         const { x, y, width, height } = resizeInitial;
         let newX = x, newY = y, newWidth = width, newHeight = height;
         
@@ -1028,7 +1028,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
         try {
           // Sync to Firestore (different fields for different shape types)
           let updates = {};
-          if (shape.type === SHAPE_TYPES.RECTANGLE) {
+          if (shape.type === SHAPE_TYPES.RECTANGLE || shape.type === SHAPE_TYPES.TEXT) {
             updates = { x: shape.x, y: shape.y, width: shape.width, height: shape.height };
           } else if (shape.type === SHAPE_TYPES.CIRCLE || shape.type === SHAPE_TYPES.POLYGON) {
             updates = { radius: shape.radius };
@@ -1702,6 +1702,11 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
                   {...shapeProps}
                   text={shape.text || 'Double-click to edit'}
                   fontSize={shape.fontSize || 16}
+                  fontWeight={shape.fontWeight || 'normal'}
+                  fontStyle={shape.fontStyle || 'normal'}
+                  textColor={shape.textColor}
+                  width={shape.width || 200}
+                  height={shape.height || 60}
                 />
               );
             } else {
@@ -1946,9 +1951,29 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
           shape={rectangles.find(r => r.id === editingTextId)}
           text={editingText}
           onTextChange={setEditingText}
-          onFinish={(save) => {
-            if (save && editingText !== rectangles.find(r => r.id === editingTextId)?.text) {
-              updateShape(undefined, editingTextId, { text: editingText });
+          onFinish={(save, formattingUpdates) => {
+            if (save) {
+              const currentShape = rectangles.find(r => r.id === editingTextId);
+              const updates = { text: editingText };
+              
+              // Add formatting updates if provided
+              if (formattingUpdates) {
+                Object.assign(updates, formattingUpdates);
+              }
+              
+              // Only update if something changed
+              const hasChanges = 
+                editingText !== currentShape?.text ||
+                (formattingUpdates && (
+                  formattingUpdates.fontSize !== currentShape?.fontSize ||
+                  formattingUpdates.fontWeight !== currentShape?.fontWeight ||
+                  formattingUpdates.fontStyle !== currentShape?.fontStyle ||
+                  formattingUpdates.textColor !== currentShape?.textColor
+                ));
+              
+              if (hasChanges) {
+                updateShape(undefined, editingTextId, updates);
+              }
             }
             setEditingTextId(null);
             setEditingText('');

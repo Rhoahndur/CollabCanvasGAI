@@ -15,6 +15,10 @@ const Circle = memo(function Circle({
   color,
   rotation = 0,
   text = null,
+  fontSize = 14,
+  fontWeight = 'normal',
+  fontStyle = 'normal',
+  textColor = null,
   isSelected = false,
   isLocked = false,
   lockedBy = null,
@@ -69,8 +73,10 @@ const Circle = memo(function Circle({
         <text
           x={x}
           y={y}
-          fill={getContrastColor(color)}
-          fontSize={14}
+          fill={textColor || getContrastColor(color)}
+          fontSize={fontSize}
+          fontWeight={fontWeight}
+          fontStyle={fontStyle}
           fontFamily="Arial, sans-serif"
           textAnchor="middle"
           dominantBaseline="middle"
@@ -83,7 +89,7 @@ const Circle = memo(function Circle({
             <tspan
               key={i}
               x={x}
-              dy={i === 0 ? -((arr.length - 1) * 14) / 2 : 14}
+              dy={i === 0 ? -((arr.length - 1) * fontSize) / 2 : fontSize}
             >
               {line}
             </tspan>

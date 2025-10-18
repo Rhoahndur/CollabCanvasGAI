@@ -49,6 +49,26 @@ export const CANVAS_COLORS = [
   '#f59e0b', // Orange
 ];
 
+// Text color palette (for text formatting)
+export const TEXT_COLORS = [
+  '#ffffff', // White
+  '#cccccc', // Light Gray
+  '#888888', // Gray
+  '#646cff', // Purple-blue
+  '#9333ea', // Purple
+  '#06b6d4', // Cyan
+  '#10b981', // Green
+  '#f59e0b', // Orange
+  '#ef4444', // Red
+  '#ec4899', // Pink
+  '#000000', // Black
+];
+
+// Text formatting defaults
+export const DEFAULT_FONT_SIZE = 16;
+export const FONT_SIZES = [12, 14, 16, 18, 20, 24, 28, 32, 36, 40, 48];
+export const DEFAULT_TEXT_COLOR = '#ffffff';
+
 // Grid configuration
 export const GRID_SIZE = 50;
 export const GRID_COLOR = 'rgba(255, 255, 255, 0.1)';
