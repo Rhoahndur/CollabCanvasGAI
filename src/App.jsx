@@ -23,7 +23,14 @@ function App() {
   }, []);
   
   const { user, loading, signIn } = useAuth()
-  const { onlineUsers } = usePresence(sessionIdRef.current, user?.uid, user?.displayName)
+  
+  // Only use presence when on a canvas (not on dashboard)
+  const { onlineUsers } = usePresence(
+    sessionIdRef.current, 
+    user?.uid, 
+    user?.displayName,
+    currentView === 'canvas' ? currentCanvasId : null
+  )
 
   // Handle opening a canvas
   const handleOpenCanvas = (canvasId) => {

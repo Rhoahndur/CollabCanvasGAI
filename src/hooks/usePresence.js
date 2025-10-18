@@ -43,9 +43,13 @@ export function usePresence(sessionId, userId, userName, canvasId = DEFAULT_CANV
 
   // Subscribe to presence updates
   useEffect(() => {
-    if (!sessionId || !userId || !userName) return;
+    // Don't connect if no canvasId (e.g., on dashboard)
+    if (!sessionId || !userId || !userName || !canvasId) {
+      console.log('⏸️ Skipping presence setup (no canvasId or missing params)');
+      return;
+    }
 
-    console.log('Setting up presence for user:', userName, 'session:', sessionId);
+    console.log('Setting up presence for user:', userName, 'session:', sessionId, 'canvas:', canvasId);
 
     // Clean up stale sessions on mount (especially helpful for Safari and duplicate sessions)
     cleanupStalePresence(canvasId).then((cleanedCount) => {

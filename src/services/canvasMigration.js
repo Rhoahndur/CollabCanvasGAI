@@ -39,11 +39,12 @@ export const needsMigration = async (userId) => {
  * Migrate existing canvas data to multi-canvas structure
  * @param {string} userId - User ID
  * @param {string} userName - User display name
+ * @param {Object} user - Full user object with providerData
  * @returns {Promise<boolean>} True if migration successful
  */
-export const migrateToMultiCanvas = async (userId, userName) => {
+export const migrateToMultiCanvas = async (userId, userName, user = null) => {
   try {
-    console.log('🔄 Starting canvas migration for user:', userId);
+    console.log('🔄 Starting canvas migration for user:', userId, userName);
     
     // Check if migration needed
     const shouldMigrate = await needsMigration(userId);
@@ -57,7 +58,7 @@ export const migrateToMultiCanvas = async (userId, userName) => {
     const oldCanvasSnapshot = await get(oldCanvasRef);
     
     if (!oldCanvasSnapshot.exists()) {
-      console.log('⚠️ No data to migrate');
+      console.log('⚠️ No data to migrate - creating empty canvas entry');
       // Create empty user canvas list
       await set(ref(realtimeDb, `userCanvases/${userId}/${DEFAULT_CANVAS_ID}`), {
         name: 'My First Canvas',
@@ -71,10 +72,56 @@ export const migrateToMultiCanvas = async (userId, userName) => {
     const oldCanvasData = oldCanvasSnapshot.val();
     console.log('📦 Found old canvas data:', Object.keys(oldCanvasData));
     
+    // Check if metadata already exists (migration already happened)
+    const existingMetadata = oldCanvasData.metadata;
+    if (existingMetadata) {
+      console.log('✅ Canvas already has metadata, just adding to user list');
+      
+      // Add canvas to user's canvas list if not already there
+      await set(ref(realtimeDb, `userCanvases/${userId}/${DEFAULT_CANVAS_ID}`), {
+        name: existingMetadata.name || 'My First Canvas',
+        role: 'owner',
+        lastAccessed: now,
+        starred: false,
+      });
+      
+      // Add user to permissions if not already there
+      const existingPermissions = oldCanvasData.permissions || {};
+      if (!existingPermissions[userId]) {
+        await set(ref(realtimeDb, `canvases/${DEFAULT_CANVAS_ID}/permissions/${userId}`), 'owner');
+        console.log('✅ Added user to canvas permissions');
+      }
+      
+      return true;
+    }
+    
+    // Determine the original owner
+    // Check objects to find who created them
+    let originalOwnerId = userId; // Default to current user
+    const objects = oldCanvasData.objects || {};
+    
+    if (Object.keys(objects).length > 0) {
+      // Try to find the most common createdBy user
+      const creatorCounts = {};
+      Object.values(objects).forEach(obj => {
+        if (obj.createdBy) {
+          creatorCounts[obj.createdBy] = (creatorCounts[obj.createdBy] || 0) + 1;
+        }
+      });
+      
+      // Get the user who created the most objects
+      if (Object.keys(creatorCounts).length > 0) {
+        originalOwnerId = Object.keys(creatorCounts).reduce((a, b) => 
+          creatorCounts[a] > creatorCounts[b] ? a : b
+        );
+        console.log(`📊 Detected original owner: ${originalOwnerId} (created ${creatorCounts[originalOwnerId]} objects)`);
+      }
+    }
+    
     // Create metadata for the default canvas
     const metadata = {
       name: 'My First Canvas',
-      createdBy: userId,
+      createdBy: originalOwnerId,
       createdAt: now,
       lastModified: now,
       template: 'blank',
@@ -83,21 +130,30 @@ export const migrateToMultiCanvas = async (userId, userName) => {
     await set(ref(realtimeDb, `canvases/${DEFAULT_CANVAS_ID}/metadata`), metadata);
     console.log('✅ Created canvas metadata');
     
-    // Set permissions
-    await set(ref(realtimeDb, `canvases/${DEFAULT_CANVAS_ID}/permissions/${userId}`), 'owner');
-    console.log('✅ Set canvas permissions');
+    // Set permissions for original owner
+    await set(ref(realtimeDb, `canvases/${DEFAULT_CANVAS_ID}/permissions/${originalOwnerId}`), 'owner');
+    console.log('✅ Set canvas permissions for original owner');
     
-    // Add canvas to user's canvas list
-    await set(ref(realtimeDb, `userCanvases/${userId}/${DEFAULT_CANVAS_ID}`), {
+    // Add canvas to original owner's canvas list
+    await set(ref(realtimeDb, `userCanvases/${originalOwnerId}/${DEFAULT_CANVAS_ID}`), {
       name: 'My First Canvas',
       role: 'owner',
       lastAccessed: now,
       starred: false,
     });
-    console.log('✅ Added canvas to user list');
+    console.log('✅ Added canvas to original owner list');
     
-    // Clean up any stale presence/cursor data (keep objects)
-    // This is optional - we can keep the old structure and it will work with new structure
+    // If current user is different from original owner, add them as editor
+    if (userId !== originalOwnerId) {
+      console.log(`ℹ️ Current user (${userId}) is not the original owner, adding as viewer`);
+      await set(ref(realtimeDb, `canvases/${DEFAULT_CANVAS_ID}/permissions/${userId}`), 'viewer');
+      await set(ref(realtimeDb, `userCanvases/${userId}/${DEFAULT_CANVAS_ID}`), {
+        name: 'My First Canvas',
+        role: 'viewer',
+        lastAccessed: now,
+        starred: false,
+      });
+    }
     
     console.log('✅ Migration completed successfully!');
     return true;
@@ -113,14 +169,15 @@ export const migrateToMultiCanvas = async (userId, userName) => {
  * Called on app startup
  * @param {string} userId - User ID
  * @param {string} userName - User display name
+ * @param {Object} user - Full user object
  * @returns {Promise<void>}
  */
-export const autoMigrate = async (userId, userName) => {
+export const autoMigrate = async (userId, userName, user = null) => {
   try {
     const shouldMigrate = await needsMigration(userId);
     if (shouldMigrate) {
       console.log('🔄 Auto-migration triggered');
-      await migrateToMultiCanvas(userId, userName);
+      await migrateToMultiCanvas(userId, userName, user);
       
       // Show user a notification (optional)
       console.log('✨ Your canvas has been upgraded to support multiple canvases!');

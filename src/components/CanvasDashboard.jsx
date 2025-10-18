@@ -39,7 +39,7 @@ function CanvasDashboard({ onOpenCanvas }) {
       setError(null);
       
       // Auto-migrate if needed
-      await autoMigrate(user.uid, user.displayName);
+      await autoMigrate(user.uid, user.displayName, user);
       
       // Load canvases
       const userCanvases = await getUserCanvases(user.uid);
