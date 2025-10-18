@@ -1199,6 +1199,18 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
     });
   }, [viewport, containerSize]);
   
+  // Attach wheel event listener with passive: false to allow preventDefault
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    
+    svg.addEventListener('wheel', handleWheel, { passive: false });
+    
+    return () => {
+      svg.removeEventListener('wheel', handleWheel);
+    };
+  }, [handleWheel]);
+  
   // Programmatic zoom functions (for zoom controls)
   const handleZoomIn = useCallback(() => {
     if (!svgRef.current) return;
@@ -1910,7 +1922,6 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
         className="canvas-svg"
         viewBox={viewBox}
         onMouseDown={handleCanvasMouseDown}
-        onWheel={handleWheel}
         style={{ 
           cursor: isPanning ? 'grabbing' : isDragging ? 'move' : isDrawing ? 'crosshair' : 'crosshair'
         }}
