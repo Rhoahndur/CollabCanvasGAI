@@ -1531,9 +1531,9 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
     }
   }, [user, viewport, containerSize, notifyFirestoreActivity]);
   
-  // Add paste event listener
+  // Add paste event listener (non-passive to allow preventDefault)
   useEffect(() => {
-    window.addEventListener('paste', handlePaste);
+    window.addEventListener('paste', handlePaste, { passive: false });
     return () => {
       window.removeEventListener('paste', handlePaste);
     };
