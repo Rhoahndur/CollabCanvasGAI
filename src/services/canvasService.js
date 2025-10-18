@@ -183,7 +183,7 @@ export const unlockObject = async (canvasId = DEFAULT_CANVAS_ID, rectId) => {
 export const subscribeToObjects = (canvasId = DEFAULT_CANVAS_ID, callback, errorCallback) => {
   const objectsRef = getObjectsRef(canvasId);
   
-  const listener = onValue(
+  onValue(
     objectsRef,
     (snapshot) => {
       const objects = [];
@@ -207,7 +207,7 @@ export const subscribeToObjects = (canvasId = DEFAULT_CANVAS_ID, callback, error
   
   // Return unsubscribe function
   return () => {
-    off(objectsRef, 'value', listener);
+    off(objectsRef);
   };
 };
 
@@ -264,7 +264,7 @@ export const updateCursor = async (
 export const subscribeToCursors = (canvasId = DEFAULT_CANVAS_ID, callback) => {
   const cursorsRef = getCursorsRef(canvasId);
   
-  const listener = onValue(
+  onValue(
     cursorsRef,
     (snapshot) => {
       const cursors = [];
@@ -285,7 +285,7 @@ export const subscribeToCursors = (canvasId = DEFAULT_CANVAS_ID, callback) => {
   
   // Return unsubscribe function
   return () => {
-    off(cursorsRef, 'value', listener);
+    off(cursorsRef);
   };
 };
 
@@ -360,7 +360,7 @@ export const setUserPresence = async (
 export const subscribeToPresence = (canvasId = DEFAULT_CANVAS_ID, callback) => {
   const presenceRef = getPresenceRef(canvasId);
   
-  const listener = onValue(
+  onValue(
     presenceRef,
     (snapshot) => {
       const presenceData = [];
@@ -381,7 +381,7 @@ export const subscribeToPresence = (canvasId = DEFAULT_CANVAS_ID, callback) => {
   
   // Return unsubscribe function
   return () => {
-    off(presenceRef, 'value', listener);
+    off(presenceRef);
   };
 };
 
