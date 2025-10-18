@@ -1,60 +1,50 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { useChat } from 'ai/react';
 import './ChatPanel.css';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
 /**
- * ChatPanel component - Slide-up chat interface for LLM helper agent
- * Currently UI only, logic to be added later
+ * ChatPanel component - Slide-up chat interface for Canny AI assistant
+ * Uses Vercel AI SDK for streaming responses
  */
 function ChatPanel() {
   const [isOpen, setIsOpen] = useState(false);
-  const [inputValue, setInputValue] = useState('');
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      type: 'system',
-      text: 'Canny ready! (UI only - logic coming soon)',
-      timestamp: Date.now(),
-    }
-  ]);
+  const messagesEndRef = useRef(null);
+  
+  // Use AI SDK's useChat hook for streaming
+  const { messages, input, handleInputChange, handleSubmit, isLoading, error } = useChat({
+    api: `${API_URL}/api/chat`,
+    initialMessages: [
+      {
+        id: 'welcome',
+        role: 'assistant',
+        content: '👋 Hi! I\'m Canny, your CollabCanvas assistant! Ask me anything about using the canvas, collaboration features, or get creative suggestions! 🎨',
+      }
+    ],
+  });
 
   const handleToggle = () => {
     setIsOpen(!isOpen);
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    
-    if (!inputValue.trim()) return;
-
-    // For now, just add the message to the UI (no actual AI processing)
-    const newMessage = {
-      id: Date.now(),
-      type: 'user',
-      text: inputValue,
-      timestamp: Date.now(),
-    };
-
-    setMessages([...messages, newMessage]);
-    setInputValue('');
-
-    // Placeholder for Canny response
-    setTimeout(() => {
-      setMessages(prev => [...prev, {
-        id: Date.now(),
-        type: 'assistant',
-        text: 'Canny\'s response will appear here once logic is implemented.',
-        timestamp: Date.now(),
-      }]);
-    }, 500);
+  const handleClear = () => {
+    // Reload page to clear chat (simpler than managing SDK state)
+    if (window.confirm('Clear chat history? This will refresh the page.')) {
+      window.location.reload();
+    }
   };
 
-  const handleClear = () => {
-    setMessages([{
-      id: Date.now(),
-      type: 'system',
-      text: 'Chat cleared',
-      timestamp: Date.now(),
-    }]);
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Format message role to display type
+  const getMessageType = (role) => {
+    if (role === 'user') return 'user';
+    if (role === 'assistant') return 'assistant';
+    return 'system';
   };
 
   return (
@@ -91,7 +81,8 @@ function ChatPanel() {
               <path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01" />
             </svg>
             <h3>Canny</h3>
-            <span className="chat-status">Ready</span>
+            <span className="chat-status">{isLoading ? 'Thinking...' : 'Ready'}</span>
+            {error && <span className="chat-error" title={error.message}>⚠️</span>}
           </div>
           <div className="chat-header-actions">
             <button 
@@ -119,22 +110,38 @@ function ChatPanel() {
 
         {/* Messages */}
         <div className="chat-messages">
-          {messages.map((message) => (
-            <div key={message.id} className={`chat-message ${message.type}`}>
-              <div className="message-avatar">
-                {message.type === 'user' ? '👤' : message.type === 'assistant' ? '🤖' : 'ℹ️'}
+          {messages.map((message, index) => {
+            const messageType = getMessageType(message.role);
+            return (
+              <div key={message.id || index} className={`chat-message ${messageType}`}>
+                <div className="message-avatar">
+                  {messageType === 'user' ? '👤' : messageType === 'assistant' ? '🤖' : 'ℹ️'}
+                </div>
+                <div className="message-content">
+                  <div className="message-text">{message.content}</div>
+                  {message.createdAt && (
+                    <div className="message-time">
+                      {new Date(message.createdAt).toLocaleTimeString([], { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
+            );
+          })}
+          {isLoading && (
+            <div className="chat-message assistant loading">
+              <div className="message-avatar">🤖</div>
               <div className="message-content">
-                <div className="message-text">{message.text}</div>
-                <div className="message-time">
-                  {new Date(message.timestamp).toLocaleTimeString([], { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                  })}
+                <div className="message-text typing-indicator">
+                  <span></span><span></span><span></span>
                 </div>
               </div>
             </div>
-          ))}
+          )}
+          <div ref={messagesEndRef} />
         </div>
 
         {/* Input */}
@@ -143,14 +150,15 @@ function ChatPanel() {
             type="text"
             className="chat-input"
             placeholder="Ask Canny..."
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
+            value={input}
+            onChange={handleInputChange}
+            disabled={isLoading}
             aria-label="Chat message input"
           />
           <button 
             type="submit" 
             className="chat-send-btn"
-            disabled={!inputValue.trim()}
+            disabled={!input.trim() || isLoading}
             aria-label="Send message"
           >
             <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
