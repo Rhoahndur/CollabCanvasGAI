@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { subscribeToObjects, lockObject, unlockObject } from '../services/canvasService';
+import { subscribeToObjects, lockObject, unlockObject, monitorConnection } from '../services/canvasService';
 import { DEFAULT_CANVAS_ID } from '../utils/constants';
 
 /**
@@ -96,6 +96,27 @@ export function useCanvas(userId, userName = '', canvasId = DEFAULT_CANVAS_ID) {
       }
     };
   }, [canvasId]);
+  
+  // Monitor Realtime Database connection status
+  useEffect(() => {
+    console.log('Setting up Realtime Database connection monitoring');
+    
+    const unsubscribe = monitorConnection((connected) => {
+      if (connected) {
+        setConnectionStatus('connected');
+        setError(null);
+        lastUpdateTimeRef.current = Date.now();
+      } else {
+        setConnectionStatus('reconnecting');
+        setError('Connection lost. Attempting to reconnect...');
+      }
+    });
+    
+    return () => {
+      console.log('Cleaning up connection monitor');
+      unsubscribe();
+    };
+  }, []);
   
   // Monitor connection health and detect reconnection
   useEffect(() => {

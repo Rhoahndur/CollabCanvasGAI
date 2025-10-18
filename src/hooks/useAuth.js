@@ -69,6 +69,36 @@ export function useAuth() {
     return () => unsubscribe();
   }, []);
 
+  // Token refresh mechanism - refresh token every 50 minutes (before 1-hour expiry)
+  useEffect(() => {
+    if (!user) return;
+
+    const refreshToken = async () => {
+      try {
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+          // Force token refresh
+          await currentUser.getIdToken(true);
+          console.log('🔄 Auth token refreshed successfully');
+        }
+      } catch (error) {
+        console.error('❌ Failed to refresh auth token:', error);
+        // If token refresh fails, it might indicate the user needs to re-authenticate
+        if (error.code === 'auth/user-token-expired') {
+          console.warn('⚠️ Token expired, user may need to sign in again');
+        }
+      }
+    };
+
+    // Refresh immediately on mount (to ensure fresh token)
+    refreshToken();
+
+    // Then refresh every 50 minutes (3000000 ms)
+    const intervalId = setInterval(refreshToken, 50 * 60 * 1000);
+
+    return () => clearInterval(intervalId);
+  }, [user]);
+
   // Note: signIn is now handled directly in LoginPage component
   // to support multiple auth providers (GitHub, Google)
   const signIn = async () => {

@@ -1613,6 +1613,70 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
         }
       }
 
+      // Duplicate selected shapes (Ctrl/Cmd + D)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd' && (selectedRectId || selectedShapeIds.length > 0) && !isDrawing && !isDragging && !isResizing && !isRotating && !isSelecting) {
+        e.preventDefault();
+        
+        console.log('📋 DUPLICATE KEY PRESSED');
+        
+        // Determine which shapes to duplicate
+        const shapesToDuplicate = selectedShapeIds.length > 0 ? selectedShapeIds : [selectedRectId];
+        console.log('  shapesToDuplicate:', shapesToDuplicate);
+        
+        try {
+          const newShapeIds = [];
+          const duplicateOffset = 20; // Offset for duplicated shapes
+          
+          // Deselect current shapes first
+          if (selectedRectId) {
+            await deselectRectangle();
+          }
+          setSelectedShapeIds([]);
+          
+          // Create duplicates
+          for (const shapeId of shapesToDuplicate) {
+            const shape = rectangles.find(r => r.id === shapeId);
+            if (!shape) continue;
+            
+            // Create a copy with offset position
+            const duplicatedShape = {
+              ...shape,
+              x: shape.x + duplicateOffset,
+              y: shape.y + duplicateOffset,
+              createdBy: user.uid,
+              // Remove lock-related fields
+              lockedBy: null,
+              lockedByUserName: null,
+            };
+            
+            // Remove id so a new one will be generated
+            delete duplicatedShape.id;
+            delete duplicatedShape.timestamp;
+            
+            const newId = await createShape(undefined, duplicatedShape);
+            newShapeIds.push(newId);
+            console.log(`  ✅ Duplicated shape ${shapeId} -> ${newId}`);
+          }
+          
+          console.log(`✅ ${newShapeIds.length} shape(s) duplicated successfully`);
+          
+          // Select the new duplicates
+          if (newShapeIds.length === 1) {
+            // Single shape - use normal selection
+            setTimeout(() => selectRectangle(newShapeIds[0]), 100);
+          } else {
+            // Multiple shapes - use multi-selection
+            setTimeout(() => setSelectedShapeIds(newShapeIds), 100);
+          }
+          
+          notifyFirestoreActivity();
+        } catch (error) {
+          console.error('❌ Failed to duplicate shapes:', error);
+        }
+        
+        return;
+      }
+
       // Delete selected shapes when Delete or Backspace is pressed
       if ((e.key === 'Delete' || e.key === 'Backspace') && (selectedRectId || selectedShapeIds.length > 0) && !isDrawing && !isDragging && !isResizing && !isRotating && !isSelecting) {
         e.preventDefault(); // Prevent browser back navigation on Backspace
@@ -1694,7 +1758,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [selectedRectId, selectedShapeIds, rectangles, user, isDrawing, isDragging, isResizing, isRotating, isSelecting, deselectRectangle, notifyFirestoreActivity, handleZoomIn, handleZoomOut, handleZoomReset, trackActivity]);
+  }, [selectedRectId, selectedShapeIds, rectangles, user, isDrawing, isDragging, isResizing, isRotating, isSelecting, deselectRectangle, selectRectangle, notifyFirestoreActivity, handleZoomIn, handleZoomOut, handleZoomReset, trackActivity]);
   
   // Calculate viewBox for SVG (memoized)
   const viewBox = useMemo(() => 

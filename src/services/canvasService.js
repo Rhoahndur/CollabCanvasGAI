@@ -13,6 +13,7 @@ import {
   get,
   query,
   orderByChild,
+  onDisconnect,
 } from 'firebase/database';
 import { realtimeDb } from './firebase';
 import { DEFAULT_CANVAS_ID } from '../utils/constants';
@@ -25,6 +26,27 @@ const getCursorsRef = (canvasId = DEFAULT_CANVAS_ID) => ref(realtimeDb, `canvase
 const getCursorRef = (canvasId = DEFAULT_CANVAS_ID, sessionId) => ref(realtimeDb, `canvases/${canvasId}/cursors/${sessionId}`);
 const getPresenceRef = (canvasId = DEFAULT_CANVAS_ID) => ref(realtimeDb, `canvases/${canvasId}/presence`);
 const getPresenceSessionRef = (canvasId = DEFAULT_CANVAS_ID, sessionId) => ref(realtimeDb, `canvases/${canvasId}/presence/${sessionId}`);
+
+// ============================================================================
+// CONNECTION MONITORING
+// ============================================================================
+
+/**
+ * Monitor Realtime Database connection status
+ * @param {Function} callback - Called with connection status (true/false)
+ * @returns {Function} Unsubscribe function
+ */
+export const monitorConnection = (callback) => {
+  const connectedRef = ref(realtimeDb, '.info/connected');
+  
+  const unsubscribe = onValue(connectedRef, (snapshot) => {
+    const connected = snapshot.val() === true;
+    console.log(connected ? '🟢 Connected to Realtime Database' : '🔴 Disconnected from Realtime Database');
+    callback(connected);
+  });
+  
+  return unsubscribe;
+};
 
 /**
  * Generate a composite object ID to prevent conflicts
@@ -242,6 +264,13 @@ export const updateCursor = async (
 ) => {
   try {
     const cursorRef = getCursorRef(canvasId, sessionId);
+    
+    // Set up automatic cleanup on disconnect (only once per session)
+    // Note: This is idempotent - calling multiple times won't create multiple cleanup handlers
+    if (isActive) {
+      await onDisconnect(cursorRef).remove();
+    }
+    
     await set(cursorRef, {
       sessionId,
       userId,
@@ -338,6 +367,12 @@ export const setUserPresence = async (
 ) => {
   try {
     const presenceRef = getPresenceSessionRef(canvasId, sessionId);
+    
+    // Set up automatic cleanup on disconnect
+    await onDisconnect(presenceRef).remove();
+    console.log('🔌 Auto-cleanup configured for presence:', userName);
+    
+    // Set the presence data
     await set(presenceRef, {
       sessionId,
       userId,

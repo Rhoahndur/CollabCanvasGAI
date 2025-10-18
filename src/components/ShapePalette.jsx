@@ -68,8 +68,9 @@ const ShapePalette = memo(function ShapePalette({
           <path d="M21 15l-5-5L5 21" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       ),
-      label: 'Image',
+      label: 'Image (Coming Soon)',
       isUpload: true,
+      disabled: true,
     },
   ];
 
@@ -82,8 +83,9 @@ const ShapePalette = memo(function ShapePalette({
         {tools.map((tool) => (
           <button
             key={tool.type}
-            className={`tool-button ${selectedTool === tool.type ? 'active' : ''}`}
+            className={`tool-button ${selectedTool === tool.type ? 'active' : ''} ${tool.disabled ? 'disabled' : ''}`}
             onClick={() => {
+              if (tool.disabled) return;
               if (tool.isUpload && onImageUpload) {
                 onImageUpload();
               } else {
@@ -92,6 +94,7 @@ const ShapePalette = memo(function ShapePalette({
             }}
             title={tool.label}
             aria-label={tool.label}
+            disabled={tool.disabled}
           >
             {tool.icon}
             <span className="tool-label">{tool.label}</span>
@@ -130,8 +133,7 @@ const ShapePalette = memo(function ShapePalette({
       )}
       
       <div className="shape-palette-hint">
-        Click and drag to create<br />
-        <small>Or paste images (Ctrl+V)</small>
+        Click and drag to create
       </div>
     </div>
   );
