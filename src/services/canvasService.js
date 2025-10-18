@@ -681,6 +681,97 @@ export const getCanvasMetadata = async (canvasId) => {
 };
 
 /**
+ * Duplicate a canvas
+ * @param {string} sourceCanvasId - Canvas ID to duplicate
+ * @param {string} userId - User ID (must be owner)
+ * @param {string} newName - Name for the duplicated canvas
+ * @returns {Promise<string>} New canvas ID
+ */
+export const duplicateCanvas = async (sourceCanvasId, userId, newName) => {
+  try {
+    // Verify user is owner of source canvas
+    const permissionsSnapshot = await get(ref(realtimeDb, `canvases/${sourceCanvasId}/permissions/${userId}`));
+    if (!permissionsSnapshot.exists() || permissionsSnapshot.val() !== 'owner') {
+      throw new Error('Only the owner can duplicate the canvas');
+    }
+    
+    // Get source canvas data
+    const sourceCanvasSnapshot = await get(getCanvasRef(sourceCanvasId));
+    if (!sourceCanvasSnapshot.exists()) {
+      throw new Error('Source canvas not found');
+    }
+    
+    const sourceData = sourceCanvasSnapshot.val();
+    
+    // Generate new canvas ID
+    const timestamp = Date.now();
+    const newCanvasId = `canvas_${userId}_${timestamp}`;
+    
+    // Create new canvas with duplicated data
+    const newCanvasData = {
+      metadata: {
+        name: newName,
+        createdBy: userId,
+        createdAt: timestamp,
+        lastModified: timestamp,
+        template: sourceData.metadata?.template || 'blank',
+        settings: {
+          backgroundColor: sourceData.metadata?.settings?.backgroundColor || '#1a1a1a',
+          gridVisible: sourceData.metadata?.settings?.gridVisible !== false,
+          ...sourceData.metadata?.settings,
+        },
+      },
+      permissions: {
+        [userId]: 'owner',
+      },
+      objects: {},
+      cursors: {},
+      presence: {},
+    };
+    
+    // Copy all objects with slight position offset
+    if (sourceData.objects) {
+      const offsetX = 20; // Offset duplicated objects by 20px
+      const offsetY = 20;
+      
+      Object.entries(sourceData.objects).forEach(([oldId, obj]) => {
+        // Generate new ID for duplicated object
+        const newId = generateObjectId(userId);
+        
+        // Copy object with offset position
+        newCanvasData.objects[newId] = {
+          ...obj,
+          id: newId,
+          x: obj.x + offsetX,
+          y: obj.y + offsetY,
+          createdBy: userId,
+          lockedBy: null,
+          lockedByUserName: null,
+          timestamp: timestamp,
+        };
+      });
+    }
+    
+    // Save new canvas
+    await set(getCanvasRef(newCanvasId), newCanvasData);
+    
+    // Add to user's canvas list
+    await set(getUserCanvasRef(userId, newCanvasId), {
+      name: newName,
+      role: 'owner',
+      lastAccessed: timestamp,
+      starred: false,
+    });
+    
+    console.log('✅ Canvas duplicated:', sourceCanvasId, '→', newCanvasId);
+    return newCanvasId;
+  } catch (error) {
+    console.error('❌ Error duplicating canvas:', error);
+    throw error;
+  }
+};
+
+/**
  * Update canvas metadata
  * @param {string} canvasId - Canvas ID
  * @param {Object} updates - Fields to update

@@ -59,7 +59,13 @@ import './Canvas.css';
 /**
  * Canvas component - SVG-based collaborative canvas with pan and zoom
  */
-function Canvas({ sessionId, onlineUsersCount = 0, canvasId = DEFAULT_CANVAS_ID }) {
+function Canvas({ 
+  sessionId, 
+  onlineUsersCount = 0, 
+  canvasId = DEFAULT_CANVAS_ID,
+  backgroundColor = '#1a1a1a',
+  gridVisible = true,
+}) {
   const svgRef = useRef(null);
   const containerRef = useRef(null);
   
@@ -2226,13 +2232,15 @@ function Canvas({ sessionId, onlineUsersCount = 0, canvasId = DEFAULT_CANVAS_ID 
           y={0}
           width={CANVAS_WIDTH}
           height={CANVAS_HEIGHT}
-          fill="#1a1a1a"
+          fill={backgroundColor}
         />
         
         {/* Grid */}
-        <g className="canvas-grid">
-          {gridLines}
-        </g>
+        {gridVisible && (
+          <g className="canvas-grid">
+            {gridLines}
+          </g>
+        )}
         
         {/* Canvas boundary */}
         <rect

@@ -5,6 +5,7 @@ import {
   createCanvas, 
   deleteCanvas,
   updateCanvasMetadata,
+  duplicateCanvas,
 } from '../services/canvasService';
 import { autoMigrate } from '../services/canvasMigration';
 import CanvasCard from './CanvasCard';
@@ -94,6 +95,23 @@ function CanvasDashboard({ onOpenCanvas }) {
       );
     } catch (error) {
       console.error('Error renaming canvas:', error);
+      throw error;
+    }
+  };
+
+  const handleDuplicateCanvas = async (canvasId, canvasName) => {
+    try {
+      const newName = `${canvasName} (Copy)`;
+      const newCanvasId = await duplicateCanvas(canvasId, user.uid, newName);
+      console.log('✅ Canvas duplicated:', canvasId, '→', newCanvasId);
+      
+      // Reload canvases
+      await loadCanvases();
+      
+      // Optionally open the new canvas
+      // onOpenCanvas(newCanvasId, newName);
+    } catch (error) {
+      console.error('Error duplicating canvas:', error);
       throw error;
     }
   };
@@ -209,6 +227,7 @@ function CanvasDashboard({ onOpenCanvas }) {
               onOpenCanvas={onOpenCanvas}
               onDeleteCanvas={handleDeleteCanvas}
               onRenameCanvas={handleRenameCanvas}
+              onDuplicateCanvas={handleDuplicateCanvas}
             />
           ))}
         </div>

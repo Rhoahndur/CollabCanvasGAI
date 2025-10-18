@@ -4,7 +4,7 @@ import './CanvasCard.css';
 /**
  * CanvasCard - Individual canvas card in the dashboard
  */
-function CanvasCard({ canvas, onOpenCanvas, onDeleteCanvas, onRenameCanvas }) {
+function CanvasCard({ canvas, onOpenCanvas, onDeleteCanvas, onRenameCanvas, onDuplicateCanvas }) {
   const [showMenu, setShowMenu] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [newName, setNewName] = useState(canvas.name);
@@ -69,6 +69,17 @@ function CanvasCard({ canvas, onOpenCanvas, onDeleteCanvas, onRenameCanvas }) {
     e.stopPropagation();
     setNewName(canvas.name);
     setIsRenaming(false);
+  };
+
+  const handleDuplicate = async (e) => {
+    e.stopPropagation();
+    
+    try {
+      await onDuplicateCanvas(canvas.id, canvas.name);
+    } catch (error) {
+      alert(`Failed to duplicate canvas: ${error.message}`);
+    }
+    setShowMenu(false);
   };
 
   const toggleMenu = (e) => {
@@ -136,6 +147,9 @@ function CanvasCard({ canvas, onOpenCanvas, onDeleteCanvas, onRenameCanvas }) {
           <div className="canvas-menu" onClick={(e) => e.stopPropagation()}>
             <button onClick={handleRename} disabled={canvas.role !== 'owner'}>
               ✏️ Rename
+            </button>
+            <button onClick={handleDuplicate} disabled={canvas.role !== 'owner'}>
+              📋 Duplicate
             </button>
             <button onClick={handleDelete} disabled={canvas.role !== 'owner'} className="danger">
               🗑️ Delete

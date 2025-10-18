@@ -6,6 +6,7 @@ import CanvasDashboard from './components/CanvasDashboard'
 import Canvas from './components/Canvas'
 import PresenceSidebar from './components/PresenceSidebar'
 import ShareCanvasModal from './components/ShareCanvasModal'
+import CanvasSettingsModal from './components/CanvasSettingsModal'
 import './App.css'
 
 function App() {
@@ -19,6 +20,13 @@ function App() {
   
   // Share modal state
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
+  
+  // Settings modal state
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
+  const [canvasSettings, setCanvasSettings] = useState({
+    backgroundColor: '#1a1a1a',
+    gridVisible: true,
+  })
   
   // Store sessionId globally for access during sign out
   useEffect(() => {
@@ -59,6 +67,21 @@ function App() {
   // Handle closing share modal
   const handleCloseShareModal = () => {
     setIsShareModalOpen(false)
+  }
+  
+  // Handle opening settings modal
+  const handleOpenSettingsModal = () => {
+    setIsSettingsModalOpen(true)
+  }
+  
+  // Handle closing settings modal
+  const handleCloseSettingsModal = () => {
+    setIsSettingsModalOpen(false)
+  }
+  
+  // Handle settings change
+  const handleSettingsChange = (newSettings) => {
+    setCanvasSettings(newSettings)
   }
 
   // Show loading state while checking auth
@@ -103,6 +126,17 @@ function App() {
         </div>
         <div className="header-right">
           <button 
+            className="btn-settings" 
+            onClick={handleOpenSettingsModal}
+            title="Canvas Settings"
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24" />
+            </svg>
+            Settings
+          </button>
+          <button 
             className="btn-share" 
             onClick={handleOpenShareModal}
             title="Share Canvas"
@@ -129,12 +163,23 @@ function App() {
           sessionId={sessionIdRef.current} 
           onlineUsersCount={onlineUsers.length}
           canvasId={currentCanvasId}
+          backgroundColor={canvasSettings.backgroundColor}
+          gridVisible={canvasSettings.gridVisible}
         />
         <PresenceSidebar 
           onlineUsers={onlineUsers} 
           currentSessionId={sessionIdRef.current}
         />
       </main>
+      
+      {/* Canvas Settings Modal */}
+      <CanvasSettingsModal
+        canvasId={currentCanvasId}
+        canvasName={currentCanvasName}
+        isOpen={isSettingsModalOpen}
+        onClose={handleCloseSettingsModal}
+        onSettingsChange={handleSettingsChange}
+      />
       
       {/* Share Canvas Modal */}
       <ShareCanvasModal
