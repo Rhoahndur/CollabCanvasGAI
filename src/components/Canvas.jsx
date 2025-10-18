@@ -705,10 +705,27 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
           const shape = rectangles.find(r => r.id === id);
           const initial = dragInitialPositions[id];
           if (shape && initial) {
-            updateShape(undefined, id, {
-              x: initial.x + dx,
-              y: initial.y + dy,
-        }).catch(console.error);
+            let newX = initial.x + dx;
+            let newY = initial.y + dy;
+            
+            // Apply same constraints as local display
+            if (shape.type === SHAPE_TYPES.RECTANGLE || shape.type === SHAPE_TYPES.TEXT) {
+              const constrained = constrainRectangle(newX, newY, shape.width, shape.height, CANVAS_WIDTH, CANVAS_HEIGHT);
+              newX = constrained.x;
+              newY = constrained.y;
+            } else if (shape.type === SHAPE_TYPES.IMAGE) {
+              const topLeftX = newX - shape.width / 2;
+              const topLeftY = newY - shape.height / 2;
+              const constrained = constrainRectangle(topLeftX, topLeftY, shape.width, shape.height, CANVAS_WIDTH, CANVAS_HEIGHT);
+              newX = constrained.x + shape.width / 2;
+              newY = constrained.y + shape.height / 2;
+            } else if (shape.type === SHAPE_TYPES.CIRCLE || shape.type === SHAPE_TYPES.POLYGON) {
+              const constrained = constrainCircle(newX, newY, shape.radius, CANVAS_WIDTH, CANVAS_HEIGHT);
+              newX = constrained.x;
+              newY = constrained.y;
+            }
+            
+            updateShape(undefined, id, { x: newX, y: newY }).catch(console.error);
           }
         });
         lastDragUpdate.current = now;
@@ -1552,13 +1569,12 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
   }, [user, viewport, containerSize, notifyFirestoreActivity]);
   
   // Add paste event listener (non-passive to allow preventDefault)
-  // TEMPORARILY DISABLED FOR DEBUGGING
-  // useEffect(() => {
-  //   window.addEventListener('paste', handlePaste, { passive: false });
-  //   return () => {
-  //     window.removeEventListener('paste', handlePaste);
-  //   };
-  // }, [handlePaste]);
+  useEffect(() => {
+    window.addEventListener('paste', handlePaste, { passive: false });
+    return () => {
+      window.removeEventListener('paste', handlePaste);
+    };
+  }, [handlePaste]);
   
   // Add global mouse event listeners for panning, selecting, drawing, dragging, resizing, and rotating
   useEffect(() => {
@@ -1988,22 +2004,24 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
                 ))}
                 
                 {/* Selection count label */}
-                <g transform={`translate(${minX - padding}, ${minY - padding - 20 / viewport.zoom})`}>
+                <g transform={`translate(${minX - padding}, ${minY - padding - 25 / viewport.zoom})`}>
                   <rect
                     x="0"
                     y="0"
-                    width={`${selectedShapeIds.length}`.length * 7 + 50}
-                    height={16 / viewport.zoom}
-                    fill="rgba(255, 165, 0, 0.9)"
-                    rx={3 / viewport.zoom}
+                    width={`${selectedShapeIds.length}`.length * 7 + 55}
+                    height={18 / viewport.zoom}
+                    fill="rgba(255, 165, 0, 0.95)"
+                    rx={4 / viewport.zoom}
+                    stroke="#fff"
+                    strokeWidth={0.5 / viewport.zoom}
                     style={{ pointerEvents: 'none' }}
                   />
                   <text
-                    x={((`${selectedShapeIds.length}`.length * 7 + 50) / 2)}
-                    y={12 / viewport.zoom}
+                    x={((`${selectedShapeIds.length}`.length * 7 + 55) / 2)}
+                    y={13 / viewport.zoom}
                     fill="#fff"
                     fontSize={12 / viewport.zoom}
-                    fontWeight="600"
+                    fontWeight="700"
                     fontFamily="system-ui, -apple-system, sans-serif"
                     textAnchor="middle"
                     style={{ pointerEvents: 'none', userSelect: 'none' }}
