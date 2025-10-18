@@ -4,12 +4,12 @@
       "$canvasId": {
         "metadata": {
           ".read": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).exists() || root.child('userCanvases').child(auth.uid).child($canvasId).exists())",
-          ".write": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'owner' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'editor')"
+          ".write": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'owner' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'editor' || !root.child('canvases').child($canvasId).child('metadata').exists())"
         },
         "permissions": {
           ".read": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).exists() || root.child('userCanvases').child(auth.uid).child($canvasId).exists())",
           "$userId": {
-            ".write": "auth != null && root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'owner'"
+            ".write": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'owner' || (auth.uid == $userId && !root.child('canvases').child($canvasId).child('permissions').exists()))"
           }
         },
         "objects": {
