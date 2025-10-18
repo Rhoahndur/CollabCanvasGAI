@@ -867,6 +867,36 @@ export const getUserCanvases = async (userId) => {
  * @returns {Promise<void>}
  */
 /**
+ * Toggle starred status for a canvas
+ * @param {string} canvasId - Canvas ID
+ * @param {string} userId - User ID
+ * @returns {Promise<boolean>} New starred status
+ */
+export const toggleCanvasStarred = async (canvasId, userId) => {
+  try {
+    const userCanvasRef = getUserCanvasRef(userId, canvasId);
+    const snapshot = await get(userCanvasRef);
+    
+    if (!snapshot.exists()) {
+      throw new Error('Canvas not found in user\'s list');
+    }
+    
+    const currentStarred = snapshot.val().starred || false;
+    const newStarred = !currentStarred;
+    
+    await update(userCanvasRef, {
+      starred: newStarred,
+    });
+    
+    console.log('⭐ Canvas starred status toggled:', canvasId, newStarred);
+    return newStarred;
+  } catch (error) {
+    console.error('❌ Error toggling starred status:', error);
+    throw error;
+  }
+};
+
+/**
  * Get user's role for a specific canvas
  * @param {string} canvasId - Canvas ID
  * @param {string} userId - User ID

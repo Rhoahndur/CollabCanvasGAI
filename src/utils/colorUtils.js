@@ -60,3 +60,31 @@ export function getContrastColor(hexColor) {
   return luminance > 0.5 ? '#000000' : '#ffffff';
 }
 
+/**
+ * Get an appropriate grid color based on background color
+ * Light backgrounds get dark grid, dark backgrounds get light grid
+ * 
+ * @param {string} backgroundColor - Hex color code for background
+ * @returns {string} Hex color code for grid
+ */
+export function getGridColor(backgroundColor) {
+  // Remove # if present
+  const hex = backgroundColor.replace('#', '');
+  
+  // Convert to RGB
+  const r = parseInt(hex.substr(0, 2), 16);
+  const g = parseInt(hex.substr(2, 2), 16);
+  const b = parseInt(hex.substr(4, 2), 16);
+  
+  // Calculate luminance
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  
+  // Light background (luminance > 0.5) → dark grid with low opacity
+  // Dark background (luminance <= 0.5) → light grid with low opacity
+  if (luminance > 0.5) {
+    return 'rgba(0, 0, 0, 0.1)'; // Dark grid for light backgrounds
+  } else {
+    return 'rgba(255, 255, 255, 0.1)'; // Light grid for dark backgrounds
+  }
+}
+

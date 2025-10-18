@@ -4,7 +4,7 @@ import './CanvasCard.css';
 /**
  * CanvasCard - Individual canvas card in the dashboard
  */
-function CanvasCard({ canvas, onOpenCanvas, onDeleteCanvas, onRenameCanvas, onDuplicateCanvas }) {
+function CanvasCard({ canvas, onOpenCanvas, onDeleteCanvas, onRenameCanvas, onDuplicateCanvas, onToggleStar }) {
   const [showMenu, setShowMenu] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [newName, setNewName] = useState(canvas.name);
@@ -82,6 +82,11 @@ function CanvasCard({ canvas, onOpenCanvas, onDeleteCanvas, onRenameCanvas, onDu
     setShowMenu(false);
   };
 
+  const handleToggleStar = (e) => {
+    e.stopPropagation();
+    onToggleStar(canvas.id);
+  };
+
   const toggleMenu = (e) => {
     e.stopPropagation();
     setShowMenu(!showMenu);
@@ -131,9 +136,14 @@ function CanvasCard({ canvas, onOpenCanvas, onDeleteCanvas, onRenameCanvas, onDu
       
       {/* Canvas Actions */}
       <div className="canvas-actions">
-        {canvas.starred && (
-          <span className="canvas-star" title="Starred">⭐</span>
-        )}
+        <button
+          className="canvas-star-btn"
+          onClick={handleToggleStar}
+          title={canvas.starred ? "Unstar canvas" : "Star canvas"}
+          aria-label={canvas.starred ? "Unstar canvas" : "Star canvas"}
+        >
+          {canvas.starred ? '⭐' : '☆'}
+        </button>
         
         <button
           className="canvas-menu-btn"

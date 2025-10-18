@@ -40,7 +40,7 @@ import { useCanvas } from '../hooks/useCanvas';
 import { useCursors } from '../hooks/useCursors';
 import { useAuth } from '../hooks/useAuth';
 import { useHistory } from '../hooks/useHistory';
-import { getRandomColor } from '../utils/colorUtils';
+import { getRandomColor, getGridColor } from '../utils/colorUtils';
 import { setup500Test, generateTestShapes } from '../utils/testData';
 import Rectangle from './Rectangle';
 import Circle from './Circle';
@@ -2103,6 +2103,9 @@ function Canvas({
   }, [isDrawing, drawStart.x, drawStart.y, drawCurrent.x, drawCurrent.y]);
   
   // Generate grid lines (memoized - only recalculate when zoom changes)
+  // Calculate grid color based on background color for better contrast
+  const dynamicGridColor = useMemo(() => getGridColor(backgroundColor), [backgroundColor]);
+  
   const gridLines = useMemo(() => {
     const lines = [];
     
@@ -2115,7 +2118,7 @@ function Canvas({
           y1={0}
           x2={x}
           y2={CANVAS_HEIGHT}
-          stroke={GRID_COLOR}
+          stroke={dynamicGridColor}
           strokeWidth={1 / viewport.zoom}
         />
       );
@@ -2130,14 +2133,14 @@ function Canvas({
           y1={y}
           x2={CANVAS_WIDTH}
           y2={y}
-          stroke={GRID_COLOR}
+          stroke={dynamicGridColor}
           strokeWidth={1 / viewport.zoom}
         />
       );
     }
     
     return lines;
-  }, [viewport.zoom]);
+  }, [viewport.zoom, dynamicGridColor]);
   
   // Viewport culling: only render rectangles visible in current viewport (memoized)
   const visibleRectangles = useMemo(() => {

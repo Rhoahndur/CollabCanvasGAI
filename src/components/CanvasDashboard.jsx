@@ -6,11 +6,15 @@ import {
   deleteCanvas,
   updateCanvasMetadata,
   duplicateCanvas,
+  toggleCanvasStarred,
 } from '../services/canvasService';
 import { autoMigrate } from '../services/canvasMigration';
 import CanvasCard from './CanvasCard';
 import CreateCanvasModal from './CreateCanvasModal';
 import './CanvasDashboard.css';
+
+// Canvas limit per user
+const CANVAS_LIMIT = 2;
 
 /**
  * CanvasDashboard - Main dashboard for managing multiple canvases
@@ -21,8 +25,11 @@ function CanvasDashboard({ onOpenCanvas }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showLimitModal, setShowLimitModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+  const [sortBy, setSortBy] = useState('lastAccessed'); // 'lastAccessed', 'name', 'created'
+  const [filterBy, setFilterBy] = useState('all'); // 'all', 'owned', 'shared'
 
   // Load user's canvases
   useEffect(() => {
@@ -54,6 +61,12 @@ function CanvasDashboard({ onOpenCanvas }) {
   };
 
   const handleCreateCanvas = async (name, template) => {
+    // Check canvas limit
+    if (canvases.length >= CANVAS_LIMIT) {
+      setShowLimitModal(true);
+      return;
+    }
+    
     try {
       const canvasId = await createCanvas(user.uid, name, template);
       console.log('✅ Canvas created:', canvasId);
@@ -116,10 +129,57 @@ function CanvasDashboard({ onOpenCanvas }) {
     }
   };
 
-  // Filter canvases based on search query
-  const filteredCanvases = canvases.filter(canvas =>
-    canvas.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const handleToggleStar = async (canvasId) => {
+    try {
+      const newStarred = await toggleCanvasStarred(canvasId, user.uid);
+      console.log('⭐ Canvas star toggled:', canvasId, newStarred);
+      
+      // Update local state
+      setCanvases(prevCanvases =>
+        prevCanvases.map(canvas =>
+          canvas.id === canvasId ? { ...canvas, starred: newStarred } : canvas
+        )
+      );
+    } catch (error) {
+      console.error('Error toggling star:', error);
+    }
+  };
+
+  // Filter and sort canvases
+  const filteredCanvases = canvases
+    .filter(canvas => {
+      // Search query filter
+      if (!canvas.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+        return false;
+      }
+      
+      // Role filter
+      if (filterBy === 'owned' && canvas.role !== 'owner') {
+        return false;
+      }
+      if (filterBy === 'shared' && canvas.role === 'owner') {
+        return false;
+      }
+      
+      return true;
+    })
+    .sort((a, b) => {
+      // Starred canvases always first
+      if (a.starred && !b.starred) return -1;
+      if (!a.starred && b.starred) return 1;
+      
+      // Then by selected sort option
+      switch (sortBy) {
+        case 'name':
+          return a.name.localeCompare(b.name);
+        case 'created':
+          // Assuming canvasId contains timestamp, or use a created field if available
+          return a.id.localeCompare(b.id);
+        case 'lastAccessed':
+        default:
+          return (b.lastAccessed || 0) - (a.lastAccessed || 0);
+      }
+    });
 
   if (!user) {
     return (
@@ -185,6 +245,30 @@ function CanvasDashboard({ onOpenCanvas }) {
         </div>
       </header>
 
+      {/* Filter Tabs */}
+      {canvases.length > 0 && (
+        <div className="filter-tabs">
+          <button
+            className={`filter-tab ${filterBy === 'all' ? 'active' : ''}`}
+            onClick={() => setFilterBy('all')}
+          >
+            All Canvases
+          </button>
+          <button
+            className={`filter-tab ${filterBy === 'owned' ? 'active' : ''}`}
+            onClick={() => setFilterBy('owned')}
+          >
+            My Canvases
+          </button>
+          <button
+            className={`filter-tab ${filterBy === 'shared' ? 'active' : ''}`}
+            onClick={() => setFilterBy('shared')}
+          >
+            Shared with Me
+          </button>
+        </div>
+      )}
+      
       {/* Search and View Controls */}
       {canvases.length > 0 && (
         <div className="dashboard-controls">
@@ -196,6 +280,14 @@ function CanvasDashboard({ onOpenCanvas }) {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
+          </div>
+          
+          <div className="sort-select">
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+              <option value="lastAccessed">Last Accessed</option>
+              <option value="name">Name</option>
+              <option value="created">Date Created</option>
+            </select>
           </div>
           
           <div className="view-toggle">
@@ -228,6 +320,7 @@ function CanvasDashboard({ onOpenCanvas }) {
               onDeleteCanvas={handleDeleteCanvas}
               onRenameCanvas={handleRenameCanvas}
               onDuplicateCanvas={handleDuplicateCanvas}
+              onToggleStar={handleToggleStar}
             />
           ))}
         </div>
@@ -257,6 +350,35 @@ function CanvasDashboard({ onOpenCanvas }) {
         onCreateCanvas={handleCreateCanvas}
         userCanvasCount={canvases.length}
       />
+      
+      {/* Canvas Limit Modal */}
+      {showLimitModal && (
+        <div className="modal-overlay" onClick={() => setShowLimitModal(false)}>
+          <div className="modal-content limit-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Canvas Limit Reached</h2>
+              <button className="modal-close" onClick={() => setShowLimitModal(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div className="limit-icon">🎨</div>
+              <p className="limit-message">
+                You've reached the maximum of <strong>{CANVAS_LIMIT} canvases</strong> for your account.
+              </p>
+              <p className="limit-hint">
+                To create a new canvas, please delete an existing one first.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button 
+                className="btn btn-primary" 
+                onClick={() => setShowLimitModal(false)}
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
