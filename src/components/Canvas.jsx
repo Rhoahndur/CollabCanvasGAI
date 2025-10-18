@@ -679,6 +679,13 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
               const constrained = constrainRectangle(newX, newY, r.width, r.height, CANVAS_WIDTH, CANVAS_HEIGHT);
               newX = constrained.x;
               newY = constrained.y;
+            } else if (r.type === SHAPE_TYPES.IMAGE) {
+              // IMAGE uses center coordinates, convert for constraint check
+              const topLeftX = newX - r.width / 2;
+              const topLeftY = newY - r.height / 2;
+              const constrained = constrainRectangle(topLeftX, topLeftY, r.width, r.height, CANVAS_WIDTH, CANVAS_HEIGHT);
+              newX = constrained.x + r.width / 2; // Convert back to center
+              newY = constrained.y + r.height / 2;
             } else if (r.type === SHAPE_TYPES.CIRCLE || r.type === SHAPE_TYPES.POLYGON) {
               const constrained = constrainCircle(newX, newY, r.radius, CANVAS_WIDTH, CANVAS_HEIGHT);
               newX = constrained.x;
@@ -714,7 +721,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       // Calculate new dimensions based on handle and shape type
       let updates = {};
       
-      if (resizeInitial.type === SHAPE_TYPES.RECTANGLE || resizeInitial.type === SHAPE_TYPES.TEXT) {
+      if (resizeInitial.type === SHAPE_TYPES.RECTANGLE || resizeInitial.type === SHAPE_TYPES.TEXT || resizeInitial.type === SHAPE_TYPES.IMAGE) {
         const { x, y, width, height } = resizeInitial;
         
         // Calculate center of the shape

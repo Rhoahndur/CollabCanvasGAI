@@ -7,21 +7,21 @@
 /**
  * Convert image file to base64 data URL with optional resizing
  * @param {File|Blob} file - Image file or blob to convert
- * @param {number} maxWidth - Maximum width (default: 800)
- * @param {number} maxHeight - Maximum height (default: 800)
+ * @param {number} maxWidth - Maximum width (default: 400)
+ * @param {number} maxHeight - Maximum height (default: 400)
  * @returns {Promise<{dataUrl: string, width: number, height: number}>} Base64 data URL and dimensions
  */
-export async function convertImageToDataUrl(file, maxWidth = 800, maxHeight = 800) {
+export async function convertImageToDataUrl(file, maxWidth = 400, maxHeight = 400) {
   try {
     // Validate file is an image
     if (!file.type.startsWith('image/')) {
       throw new Error('File must be an image');
     }
 
-    // Limit file size to 2MB (before compression)
-    const MAX_SIZE = 2 * 1024 * 1024; // 2MB
+    // Limit file size to 1MB (before compression)
+    const MAX_SIZE = 1 * 1024 * 1024; // 1MB
     if (file.size > MAX_SIZE) {
-      throw new Error('Image must be smaller than 2MB');
+      throw new Error('Image must be smaller than 1MB');
     }
 
     return new Promise((resolve, reject) => {
@@ -56,7 +56,7 @@ export async function convertImageToDataUrl(file, maxWidth = 800, maxHeight = 80
           ctx.drawImage(img, 0, 0, width, height);
           
           // Convert to base64 data URL with compression
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.8); // 80% quality JPEG
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.6); // 60% quality JPEG for smaller size
           
           console.log(`✅ Image converted: ${img.width}x${img.height} → ${width}x${height}`);
           console.log(`   Data URL size: ${(dataUrl.length / 1024).toFixed(1)}KB`);
