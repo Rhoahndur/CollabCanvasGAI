@@ -691,16 +691,24 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       // Send throttled updates to Firestore during drag for real-time sync
       const now = Date.now();
       if (now - lastDragUpdate.current > DRAG_UPDATE_THROTTLE) {
-        draggedShapeIds.forEach(id => {
-          const shape = rectangles.find(r => r.id === id);
-          const initial = dragInitialPositions[id];
-          if (shape && initial) {
-            updateShape(undefined, id, {
-              x: initial.x + dx,
-              y: initial.y + dy,
-        }).catch(console.error);
-          }
-        });
+        // Update in smaller batches to avoid overwhelming database
+        const batchSize = 5;
+        for (let i = 0; i < draggedShapeIds.length; i += batchSize) {
+          const batch = draggedShapeIds.slice(i, i + batchSize);
+          batch.forEach(id => {
+            const shape = rectangles.find(r => r.id === id);
+            const initial = dragInitialPositions[id];
+            if (shape && initial) {
+              updateShape(undefined, id, {
+                x: initial.x + dx,
+                y: initial.y + dy,
+              }).catch(err => {
+                // Silently catch errors during drag to prevent crashes
+                console.warn('Drag update failed:', err.message);
+              });
+            }
+          });
+        }
         lastDragUpdate.current = now;
       }
     } else if (isResizing && svgRef.current && selectedRectId && resizeInitial) {
@@ -1007,22 +1015,35 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
         // Sync all dragged shapes to Firestore
         if (user) {
           try {
-            await Promise.all(
-              draggedShapeIds.map(id => {
-                const shape = rectangles.find(r => r.id === id);
-                if (shape) {
-                  return updateShape(undefined, id, {
-                    x: shape.x,
-                    y: shape.y,
-                  });
-                }
-                return Promise.resolve();
-              })
-            );
+            // Update in batches to avoid overwhelming database
+            const batchSize = 5;
+            for (let i = 0; i < draggedShapeIds.length; i += batchSize) {
+              const batch = draggedShapeIds.slice(i, i + batchSize);
+              await Promise.all(
+                batch.map(id => {
+                  const shape = rectangles.find(r => r.id === id);
+                  if (shape) {
+                    return updateShape(undefined, id, {
+                      x: shape.x,
+                      y: shape.y,
+                    }).catch(err => {
+                      console.warn(`Failed to update shape ${id}:`, err.message);
+                      return null;
+                    });
+                  }
+                  return Promise.resolve();
+                })
+              );
+              // Small delay between batches
+              if (i + batchSize < draggedShapeIds.length) {
+                await new Promise(resolve => setTimeout(resolve, 50));
+              }
+            }
             console.log(`${draggedShapeIds.length} shape(s) position updated in Firestore`);
-          notifyFirestoreActivity(); // Notify of successful operation
-        } catch (error) {
+            notifyFirestoreActivity(); // Notify of successful operation
+          } catch (error) {
             console.error('Failed to update shape positions:', error);
+            // Don't crash, just log the error
           }
         }
       }
@@ -1409,15 +1430,6 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       
       console.log('✅ generateTestShapes completed');
       notifyFirestoreActivity();
-      
-      // Wait for Realtime Database to sync
-      setTimeout(() => {
-        const shapesAfter = rectangles.length;
-        const created = shapesAfter - shapesBefore;
-        console.log('Shapes after generation:', shapesAfter);
-        console.log(`✅ Created ${created} new shapes!`);
-        alert(`Generated ${created} shapes! Total shapes now: ${shapesAfter}`);
-      }, 1000); // Longer wait for Realtime DB sync
     } catch (error) {
       console.error('❌ Failed to generate shapes:', error);
       alert(`Failed to generate shapes: ${error.message}`);

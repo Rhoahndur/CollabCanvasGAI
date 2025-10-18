@@ -80,7 +80,7 @@ export const FPS_UPDATE_INTERVAL = 500; // Update FPS every 500ms
 
 // Firestore configuration
 export const CURSOR_UPDATE_THROTTLE = 75; // Max cursor updates per second (ms) - reduced for performance
-export const DRAG_UPDATE_THROTTLE = 50; // Throttle rectangle drag updates (ms)
+export const DRAG_UPDATE_THROTTLE = 100; // Throttle rectangle drag updates (ms) - increased for Realtime DB
 export const PRESENCE_HEARTBEAT_INTERVAL = 5000; // Update presence every 5 seconds (frequent for reliability)
 export const PRESENCE_TIMEOUT = 60000; // Consider user offline after 60 seconds of inactivity (generous buffer)
 export const PRESENCE_AWAY_TIMEOUT = 120000; // Consider user away after 2 minutes of inactivity
