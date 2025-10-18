@@ -23,6 +23,7 @@ import {
   TOOL_TYPES,
   DEFAULT_POLYGON_SIDES,
   AUTO_LOGOUT_TIMEOUT,
+  DEFAULT_CANVAS_ID,
 } from '../utils/constants';
 import {
   screenToCanvas,
