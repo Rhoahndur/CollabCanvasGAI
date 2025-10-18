@@ -224,7 +224,7 @@ function Canvas({
             console.log('  Rotation:', shape.rotation || 0);
             console.log('  Full data:', JSON.stringify(shape, null, 2));
           });
-          return rectangles;
+          return shapes;
         },
         
         // Inspect a specific shape by ID
@@ -389,7 +389,7 @@ function Canvas({
       console.log('  - window.debugShapes.forceDelete(id) - Force delete a specific shape');
       console.log('  - window.debugShapes.currentUser() - Show current user info');
     }
-  }, [user?.uid, rectangles, notifyFirestoreActivity]);
+  }, [user?.uid, shapes, notifyFirestoreActivity]);
   
   // Update container size on mount and resize
   useEffect(() => {
@@ -631,7 +631,7 @@ function Canvas({
     setIsDraggingLocal(true); // Tell hook we're dragging
     
     e.preventDefault();
-  }, [rectangles, user, selectedShapeId, selectedShapeIds, selectShape, viewport, setIsDraggingLocal]);
+  }, [shapes, user, selectedShapeId, selectedShapeIds, selectShape, viewport, setIsDraggingLocal]);
   
   // Handle resize start
   const handleResizeStart = useCallback((handle, e) => {
@@ -650,7 +650,7 @@ function Canvas({
     setIsDraggingLocal(true); // Prevent Firestore updates during resize
     
     e.preventDefault();
-  }, [selectedShapeId, rectangles, viewport, setIsDraggingLocal]);
+  }, [selectedShapeId, shapes, viewport, setIsDraggingLocal]);
   
   // Handle rotation start
   const handleRotateStart = useCallback((e) => {
@@ -668,7 +668,7 @@ function Canvas({
     setIsDraggingLocal(true); // Prevent Firestore updates during rotation
     
     e.preventDefault();
-  }, [selectedShapeId, rectangles, viewport, setIsDraggingLocal]);
+  }, [selectedShapeId, shapes, viewport, setIsDraggingLocal]);
   
   // Handle mouse move for panning, drawing, dragging, and cursor tracking
   const handleMouseMove = useCallback((e) => {
@@ -988,7 +988,7 @@ function Canvas({
           : r
       ));
     }
-  }, [isPanning, isSelecting, isDrawing, isDragging, isResizing, isRotating, panStart, panOffset, viewport, containerSize, dragStart, dragOffset, draggedShapeIds, dragInitialPositions, resizeStart, resizeHandle, resizeInitial, rotateStart, rotateInitial, selectedShapeId, rectangles, user, sessionId, notifyFirestoreActivity, trackActivity]);
+  }, [isPanning, isSelecting, isDrawing, isDragging, isResizing, isRotating, panStart, panOffset, viewport, containerSize, dragStart, dragOffset, draggedShapeIds, dragInitialPositions, resizeStart, resizeHandle, resizeInitial, rotateStart, rotateInitial, selectedShapeId, shapes, user, sessionId, notifyFirestoreActivity, trackActivity]);
   
   // Handle mouse up to stop panning, finish drawing, or finish dragging
   const handleMouseUp = useCallback(async () => {
@@ -1291,7 +1291,7 @@ function Canvas({
         }
       }
     }
-  }, [isPanning, isSelecting, isDrawing, isDragging, isResizing, isRotating, selectStart, selectCurrent, drawStart, drawCurrent, selectedShapeId, draggedShapeIds, rectangles, user, sessionId, selectedTool, setIsDraggingLocal, notifyFirestoreActivity, deselectShape, trackActivity]);
+  }, [isPanning, isSelecting, isDrawing, isDragging, isResizing, isRotating, selectStart, selectCurrent, drawStart, drawCurrent, selectedShapeId, draggedShapeIds, shapes, user, sessionId, selectedTool, setIsDraggingLocal, notifyFirestoreActivity, deselectShape, trackActivity]);
   
   // Handle mouse wheel for zooming
   const handleWheel = useCallback((e) => {
@@ -1622,7 +1622,7 @@ function Canvas({
       
       alert('Failed to clear shapes. Please check the console and try again.');
     }
-  }, [rectangles, user, deselectShape, setSelectedShapeIds, notifyFirestoreActivity, setBatchDeleting]);
+  }, [shapes, user, deselectShape, setSelectedShapeIds, notifyFirestoreActivity, setBatchDeleting]);
 
   // Handle generating 10 random shapes
   const handleGenerate500 = useCallback(async () => {
@@ -1658,7 +1658,7 @@ function Canvas({
       console.error('❌ Failed to generate shapes:', error);
       alert(`Failed to generate shapes: ${error.message}`);
     }
-  }, [user, notifyFirestoreActivity, rectangles]);
+  }, [user, notifyFirestoreActivity, shapes]);
   
   // Handle image upload button click
   const handleImageUpload = useCallback(() => {
@@ -1919,7 +1919,7 @@ function Canvas({
           const canDelete = shape && (!shape.lockedBy || shape.lockedBy === user?.uid);
           
           if (!shape) {
-            console.warn(`  ❌ Shape ${id} not found in rectangles array`);
+            console.warn(`  ❌ Shape ${id} not found in shapes array`);
           } else if (shape.lockedBy && shape.lockedBy !== user?.uid) {
             console.warn(`  🔒 Shape ${id} locked by another user:`, shape.lockedBy, 'Current user:', user?.uid);
           } else {
@@ -2083,7 +2083,7 @@ function Canvas({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [selectedShapeId, selectedShapeIds, rectangles, user, isDrawing, isDragging, isResizing, isRotating, isSelecting, isDrawingCustomPolygon, customPolygonVertices, deselectShape, selectShape, notifyFirestoreActivity, handleZoomIn, handleZoomOut, handleZoomReset, handleFinishCustomPolygon, trackActivity]);
+  }, [selectedShapeId, selectedShapeIds, shapes, user, isDrawing, isDragging, isResizing, isRotating, isSelecting, isDrawingCustomPolygon, customPolygonVertices, deselectShape, selectShape, notifyFirestoreActivity, handleZoomIn, handleZoomOut, handleZoomReset, handleFinishCustomPolygon, trackActivity]);
   
   // Calculate viewBox for SVG (memoized)
   const viewBox = useMemo(() => 
@@ -2142,7 +2142,7 @@ function Canvas({
     return lines;
   }, [viewport.zoom, dynamicGridColor]);
   
-  // Viewport culling: only render rectangles visible in current viewport (memoized)
+  // Viewport culling: only render shapes visible in current viewport (memoized)
   const visibleShapes = useMemo(() => {
     // Calculate visible area with buffer for smooth panning
     const bufferSize = 200; // pixels of buffer around viewport
@@ -2151,12 +2151,12 @@ function Canvas({
     const viewportRight = viewport.offsetX + (containerSize.width / viewport.zoom) + bufferSize;
     const viewportBottom = viewport.offsetY + (containerSize.height / viewport.zoom) + bufferSize;
     
-    // Filter rectangles that intersect with viewport
+    // Filter shapes that intersect with viewport
     const visible = shapes.filter(rect => {
       const rectRight = rect.x + rect.width;
       const rectBottom = rect.y + rect.height;
       
-      // Check if rectangle intersects with viewport
+      // Check if shape's bounding box intersects with viewport
       return !(
         rect.x > viewportRight ||
         rectRight < viewportLeft ||
@@ -2167,7 +2167,7 @@ function Canvas({
     
     // Sort by z-index (back to front) for proper rendering order
     return visible.sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
-  }, [rectangles, viewport.offsetX, viewport.offsetY, viewport.zoom, containerSize.width, containerSize.height]);
+  }, [shapes, viewport.offsetX, viewport.offsetY, viewport.zoom, containerSize.width, containerSize.height]);
   
   return (
     <div className="canvas-container" ref={containerRef}>
