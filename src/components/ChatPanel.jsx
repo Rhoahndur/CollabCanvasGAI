@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useChat } from 'ai/react';
+import { useChat } from 'ai';
 import './ChatPanel.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
