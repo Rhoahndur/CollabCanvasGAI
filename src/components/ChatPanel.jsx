@@ -12,7 +12,7 @@ function ChatPanel() {
     {
       id: 1,
       type: 'system',
-      text: 'AI Assistant ready! (UI only - logic coming soon)',
+      text: 'Canny ready! (UI only - logic coming soon)',
       timestamp: Date.now(),
     }
   ]);
@@ -37,12 +37,12 @@ function ChatPanel() {
     setMessages([...messages, newMessage]);
     setInputValue('');
 
-    // Placeholder for AI response
+    // Placeholder for Canny response
     setTimeout(() => {
       setMessages(prev => [...prev, {
         id: Date.now(),
         type: 'assistant',
-        text: 'AI response will appear here once logic is implemented.',
+        text: 'Canny\'s response will appear here once logic is implemented.',
         timestamp: Date.now(),
       }]);
     }, 500);
@@ -63,8 +63,8 @@ function ChatPanel() {
       <button 
         className="chat-toggle"
         onClick={handleToggle}
-        title={isOpen ? 'Close AI Assistant' : 'Open AI Assistant'}
-        aria-label={isOpen ? 'Close AI Assistant' : 'Open AI Assistant'}
+        title={isOpen ? 'Close Canny' : 'Open Canny'}
+        aria-label={isOpen ? 'Close Canny' : 'Open Canny'}
       >
         {isOpen ? (
           <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -76,7 +76,7 @@ function ChatPanel() {
               <circle cx="12" cy="12" r="10" />
               <path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01" />
             </svg>
-            <span className="chat-badge">AI</span>
+            <span className="chat-badge">Canny</span>
           </>
         )}
       </button>
@@ -90,7 +90,7 @@ function ChatPanel() {
               <circle cx="12" cy="12" r="10" />
               <path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01" />
             </svg>
-            <h3>AI Assistant</h3>
+            <h3>Canny</h3>
             <span className="chat-status">Ready</span>
           </div>
           <div className="chat-header-actions">
@@ -142,7 +142,7 @@ function ChatPanel() {
           <input
             type="text"
             className="chat-input"
-            placeholder="Ask the AI assistant..."
+            placeholder="Ask Canny..."
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             aria-label="Chat message input"

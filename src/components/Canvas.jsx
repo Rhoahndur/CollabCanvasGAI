@@ -706,61 +706,81 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       const rect = svgRef.current.getBoundingClientRect();
       const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, rect);
       
-      const dx = canvasPos.x - resizeStart.x;
-      const dy = canvasPos.y - resizeStart.y;
-      
       // Calculate new dimensions based on handle and shape type
       let updates = {};
       
       if (resizeInitial.type === SHAPE_TYPES.RECTANGLE || resizeInitial.type === SHAPE_TYPES.TEXT) {
         const { x, y, width, height } = resizeInitial;
+        
+        // Calculate center of the shape
+        const centerX = x + width / 2;
+        const centerY = y + height / 2;
+        
+        // Calculate distance from cursor to center
+        const distX = Math.abs(canvasPos.x - centerX);
+        const distY = Math.abs(canvasPos.y - centerY);
+        
         let newX = x, newY = y, newWidth = width, newHeight = height;
         
-        // Handle corner and edge resizing
-        if (resizeHandle.includes('w')) {
-          newX = x + dx;
-          newWidth = width - dx;
-        } else if (resizeHandle.includes('e')) {
-          newWidth = width + dx;
+        // Resize based on which handle is being dragged
+        if (resizeHandle.includes('e')) {
+          // East handle: set width based on distance from center
+          newWidth = distX * 2;
+          newX = centerX - newWidth / 2;
+        } else if (resizeHandle.includes('w')) {
+          // West handle: set width based on distance from center
+          newWidth = distX * 2;
+          newX = centerX - newWidth / 2;
         }
         
-        if (resizeHandle.includes('n')) {
-          newY = y + dy;
-          newHeight = height - dy;
-        } else if (resizeHandle.includes('s')) {
-          newHeight = height + dy;
+        if (resizeHandle.includes('s')) {
+          // South handle: set height based on distance from center
+          newHeight = distY * 2;
+          newY = centerY - newHeight / 2;
+        } else if (resizeHandle.includes('n')) {
+          // North handle: set height based on distance from center
+          newHeight = distY * 2;
+          newY = centerY - newHeight / 2;
         }
         
         // Enforce minimum size
         if (newWidth < MIN_RECTANGLE_SIZE) {
           newWidth = MIN_RECTANGLE_SIZE;
-          newX = x + width - MIN_RECTANGLE_SIZE;
+          newX = centerX - newWidth / 2;
         }
         if (newHeight < MIN_RECTANGLE_SIZE) {
           newHeight = MIN_RECTANGLE_SIZE;
-          newY = y + height - MIN_RECTANGLE_SIZE;
+          newY = centerY - newHeight / 2;
         }
         
         // Constrain to canvas boundaries
         const constrained = constrainRectangle(newX, newY, newWidth, newHeight, CANVAS_WIDTH, CANVAS_HEIGHT);
         updates = constrained;
       } else if (resizeInitial.type === SHAPE_TYPES.CIRCLE || resizeInitial.type === SHAPE_TYPES.POLYGON) {
-        // For circles and polygons, resize by adjusting radius
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        const direction = resizeHandle === 'e' || resizeHandle === 's' ? 1 : -1;
-        let newRadius = Math.max(MIN_CIRCLE_RADIUS, resizeInitial.radius + distance * direction * 0.5);
+        // For circles and polygons, radius is distance from cursor to center
+        const centerX = resizeInitial.x;
+        const centerY = resizeInitial.y;
         
-        // Constrain to canvas boundaries (keep center, adjust radius if needed)
-        const maxRadiusX = Math.min(resizeInitial.x, CANVAS_WIDTH - resizeInitial.x);
-        const maxRadiusY = Math.min(resizeInitial.y, CANVAS_HEIGHT - resizeInitial.y);
-        const maxRadius = Math.min(maxRadiusX, maxRadiusY);
-        newRadius = Math.min(newRadius, maxRadius);
+        // Calculate distance from cursor to center
+        const distanceToCenter = Math.sqrt(
+          Math.pow(canvasPos.x - centerX, 2) + 
+          Math.pow(canvasPos.y - centerY, 2)
+        );
+        
+        // New radius is simply the distance from cursor to center
+        let newRadius = distanceToCenter;
         
         // Enforce minimum radius
         const minRadius = resizeInitial.type === SHAPE_TYPES.CIRCLE ? MIN_CIRCLE_RADIUS : MIN_POLYGON_RADIUS;
         if (newRadius < minRadius) {
           newRadius = minRadius;
         }
+        
+        // Constrain to canvas boundaries (keep center, adjust radius if needed)
+        const maxRadiusX = Math.min(centerX, CANVAS_WIDTH - centerX);
+        const maxRadiusY = Math.min(centerY, CANVAS_HEIGHT - centerY);
+        const maxRadius = Math.min(maxRadiusX, maxRadiusY);
+        newRadius = Math.min(newRadius, maxRadius);
         
         updates = { radius: newRadius };
       }

@@ -2,7 +2,8 @@
 .chat-panel {
   position: fixed;
   bottom: 0;
-  right: 20px;
+  left: 50%;
+  transform: translateX(-50%);
   width: 400px;
   max-width: calc(100vw - 40px);
   background: #1e1e1e;
@@ -17,11 +18,11 @@
 }
 
 .chat-panel.closed {
-  transform: translateY(calc(100% - 50px));
+  transform: translate(-50%, calc(100% - 50px));
 }
 
 .chat-panel.open {
-  transform: translateY(0);
+  transform: translate(-50%, 0);
   height: 500px;
   max-height: 70vh;
 }
@@ -304,7 +305,6 @@
 /* Responsive */
 @media (max-width: 768px) {
   .chat-panel {
-    right: 10px;
     width: calc(100vw - 20px);
   }
 
