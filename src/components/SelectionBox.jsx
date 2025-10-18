@@ -30,8 +30,8 @@ const SelectionBox = memo(function SelectionBox({
   // Calculate bounding box based on shape type
   let bounds = { x: 0, y: 0, width: 0, height: 0, centerX: 0, centerY: 0 };
   
-  if (shape.type === SHAPE_TYPES.RECTANGLE || shape.type === SHAPE_TYPES.TEXT || shape.type === SHAPE_TYPES.IMAGE) {
-    // Rectangles, text boxes, and images have the same bounding box structure
+  if (shape.type === SHAPE_TYPES.RECTANGLE || shape.type === SHAPE_TYPES.TEXT) {
+    // Rectangles and text boxes have the same bounding box structure
     bounds = {
       x: shape.x,
       y: shape.y,
@@ -60,10 +60,10 @@ const SelectionBox = memo(function SelectionBox({
     };
   }
 
-  // Resize handles for rectangles, text boxes, and images (8 handles: 4 corners + 4 edges)
+  // Resize handles for rectangles and text boxes (8 handles: 4 corners + 4 edges)
   const resizeHandles = [];
   
-  if (shape.type === SHAPE_TYPES.RECTANGLE || shape.type === SHAPE_TYPES.TEXT || shape.type === SHAPE_TYPES.IMAGE) {
+  if (shape.type === SHAPE_TYPES.RECTANGLE || shape.type === SHAPE_TYPES.TEXT) {
     // Corners
     resizeHandles.push(
       { type: 'nw', x: bounds.x, y: bounds.y, cursor: 'nw-resize' },
