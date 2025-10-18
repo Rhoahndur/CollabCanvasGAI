@@ -3,11 +3,11 @@
  * Utility functions for generating test data for performance testing
  */
 
-import { createShape, createRectangle } from '../services/canvasService';
+import { createShape } from '../services/canvasService';
 import { DEFAULT_CANVAS_ID, CANVAS_WIDTH, CANVAS_HEIGHT, SHAPE_TYPES } from './constants';
 
 /**
- * Color palette for test rectangles
+ * Color palette for test shapes
  */
 const TEST_COLORS = [
   '#FF6B6B',
@@ -214,11 +214,11 @@ export async function generateTestShapes(count, userId, canvasId = DEFAULT_CANVA
 export const generateTestRectangles = generateTestShapes;
 
 /**
- * Generate test rectangles in a grid pattern
+ * Generate test shapes in a grid pattern
  * Useful for testing rendering performance with organized layouts
  */
 export async function generateGridRectangles(rows, cols, userId, canvasId = DEFAULT_CANVAS_ID) {
-  console.log(`🔧 Generating ${rows}x${cols} grid of rectangles...`);
+  console.log(`🔧 Generating ${rows}x${cols} grid of shapes...`);
   const startTime = performance.now();
   
   const rectWidth = 80;
@@ -233,6 +233,7 @@ export async function generateGridRectangles(rows, cols, userId, canvasId = DEFA
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
         const rectData = {
+          type: SHAPE_TYPES.RECTANGLE,
           x: startX + col * (rectWidth + spacing),
           y: startY + row * (rectHeight + spacing),
           width: rectWidth,
@@ -241,7 +242,7 @@ export async function generateGridRectangles(rows, cols, userId, canvasId = DEFA
           createdBy: userId,
         };
         
-        promises.push(createRectangle(canvasId, rectData));
+        promises.push(createShape(canvasId, rectData));
         
         // Process in batches of 10
         if (promises.length === 10) {
@@ -261,9 +262,9 @@ export async function generateGridRectangles(rows, cols, userId, canvasId = DEFA
     const duration = Math.round(endTime - startTime);
     const total = rows * cols;
     
-    console.log(`✅ Successfully created ${total} rectangles in grid pattern in ${duration}ms`);
+    console.log(`✅ Successfully created ${total} shapes in grid pattern in ${duration}ms`);
   } catch (error) {
-    console.error('❌ Error generating grid rectangles:', error);
+    console.error('❌ Error generating grid shapes:', error);
     throw error;
   }
 }
@@ -282,6 +283,6 @@ export function setup500Test(userId) {
   console.log('🧪 Test functions available:');
   console.log('  - window.testCanvas.generate500() - Generate 500 random shapes');
   console.log('  - window.testCanvas.generate1000() - Generate 1000 random shapes');
-  console.log('  - window.testCanvas.generateGrid(rows, cols) - Generate grid of rectangles');
+  console.log('  - window.testCanvas.generateGrid(rows, cols) - Generate grid of shapes');
 }
 

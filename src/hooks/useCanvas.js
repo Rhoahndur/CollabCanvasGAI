@@ -7,23 +7,23 @@ import { DEFAULT_CANVAS_ID } from '../utils/constants';
  * Handles shapes (rectangles, circles, polygons), selection, locking, and real-time updates
  */
 export function useCanvas(userId, userName = '', canvasId = DEFAULT_CANVAS_ID) {
-  const [rectangles, setRectangles] = useState([]); // Note: named 'rectangles' for backward compatibility, but holds all shape types
-  const [selectedRectId, setSelectedRectId] = useState(null); // Note: named 'selectedRectId' for backward compatibility, but works for all shapes
+  const [shapes, setShapes] = useState([]); // Holds all shape types: rectangles, circles, polygons, text, images
+  const [selectedShapeId, setSelectedShapeId] = useState(null); // Currently selected shape ID
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState('connecting'); // 'connecting' | 'connected' | 'reconnecting' | 'offline' | 'error'
   
   // Use refs to track dragging state (avoid stale closures in subscription)
   const isDraggingRef = useRef(false);
-  const selectedRectIdRef = useRef(null);
+  const selectedShapeIdRef = useRef(null);
   const lastUpdateTimeRef = useRef(Date.now());
   const connectionCheckIntervalRef = useRef(null);
   const isBatchDeletingRef = useRef(false); // Track when we're doing batch deletions
   
   // Keep refs in sync with state
   useEffect(() => {
-    selectedRectIdRef.current = selectedRectId;
-  }, [selectedRectId]);
+    selectedShapeIdRef.current = selectedShapeId;
+  }, [selectedShapeId]);
 
   // Subscribe to Firestore objects collection
   useEffect(() => {
@@ -44,8 +44,8 @@ export function useCanvas(userId, userName = '', canvasId = DEFAULT_CANVAS_ID) {
         setConnectionStatus('connected');
         setError(null);
         
-        // Update rectangles, but preserve local optimistic updates while dragging
-        setRectangles(prevRectangles => {
+        // Update shapes, but preserve local optimistic updates while dragging
+        setShapes(prevShapes => {
           // If batch deleting, ALWAYS use Firestore data (don't merge)
           if (isBatchDeletingRef.current) {
             console.log('Batch delete mode: using fresh Firestore data', objects.length);
@@ -58,18 +58,18 @@ export function useCanvas(userId, userName = '', canvasId = DEFAULT_CANVAS_ID) {
           }
           
           // If dragging, merge: keep local position for selected, use Firestore for others
-          const currentSelectedId = selectedRectIdRef.current;
-          const selectedRect = prevRectangles.find(r => r.id === currentSelectedId);
+          const currentSelectedId = selectedShapeIdRef.current;
+          const selectedShape = prevShapes.find(s => s.id === currentSelectedId);
           
-          if (!selectedRect || !currentSelectedId) {
+          if (!selectedShape || !currentSelectedId) {
             return objects;
           }
           
-          // Update all rectangles from Firestore except the one being dragged
-          return objects.map(rect => 
-            rect.id === currentSelectedId && selectedRect
-              ? { ...rect, x: selectedRect.x, y: selectedRect.y } // Keep local position
-              : rect // Use Firestore data
+          // Update all shapes from Firestore except the one being dragged
+          return objects.map(shape => 
+            shape.id === currentSelectedId && selectedShape
+              ? { ...shape, x: selectedShape.x, y: selectedShape.y } // Keep local position
+              : shape // Use Firestore data
           );
         });
         
@@ -144,53 +144,53 @@ export function useCanvas(userId, userName = '', canvasId = DEFAULT_CANVAS_ID) {
     };
   }, [connectionStatus]);
 
-  // Select a rectangle and lock it
-  const selectRectangle = useCallback(async (rectId) => {
+  // Select a shape and lock it
+  const selectShape = useCallback(async (shapeId) => {
     if (!userId) return;
     
-    const rect = rectangles.find(r => r.id === rectId);
+    const shape = shapes.find(s => s.id === shapeId);
     
     // Don't select if locked by another user
-    if (rect && rect.lockedBy && rect.lockedBy !== userId) {
+    if (shape && shape.lockedBy && shape.lockedBy !== userId) {
       console.log('Cannot select - locked by another user');
       return;
     }
     
     try {
       // Lock the object
-      await lockObject(canvasId, rectId, userId, userName);
-      setSelectedRectId(rectId);
-      console.log('Rectangle selected and locked:', rectId);
+      await lockObject(canvasId, shapeId, userId, userName);
+      setSelectedShapeId(shapeId);
+      console.log('Shape selected and locked:', shapeId);
     } catch (error) {
-      console.error('Failed to lock rectangle:', error);
+      console.error('Failed to lock shape:', error);
     }
-  }, [rectangles, userId, userName, canvasId]);
+  }, [shapes, userId, userName, canvasId]);
 
-  // Deselect current rectangle and unlock it
-  const deselectRectangle = useCallback(async () => {
-    if (!selectedRectId) return;
+  // Deselect current shape and unlock it
+  const deselectShape = useCallback(async () => {
+    if (!selectedShapeId) return;
     
     try {
       // Unlock the object
-      await unlockObject(canvasId, selectedRectId);
-      setSelectedRectId(null);
-      console.log('Rectangle deselected and unlocked');
+      await unlockObject(canvasId, selectedShapeId);
+      setSelectedShapeId(null);
+      console.log('Shape deselected and unlocked');
     } catch (error) {
-      console.error('Failed to unlock rectangle:', error);
+      console.error('Failed to unlock shape:', error);
     }
-  }, [selectedRectId, canvasId]);
+  }, [selectedShapeId, canvasId]);
 
   // Cleanup: unlock on unmount if selected
   useEffect(() => {
     return () => {
-      if (selectedRectId) {
-        unlockObject(canvasId, selectedRectId).catch(console.error);
+      if (selectedShapeId) {
+        unlockObject(canvasId, selectedShapeId).catch(console.error);
       }
     };
-  }, [selectedRectId, canvasId]);
+  }, [selectedShapeId, canvasId]);
 
-  // Get selected rectangle object
-  const selectedRectangle = rectangles.find(r => r.id === selectedRectId) || null;
+  // Get selected shape object
+  const selectedShape = shapes.find(s => s.id === selectedShapeId) || null;
 
   // Function to set dragging state
   const setIsDraggingLocal = useCallback((dragging) => {
@@ -214,12 +214,12 @@ export function useCanvas(userId, userName = '', canvasId = DEFAULT_CANVAS_ID) {
   }, []);
 
   return {
-    rectangles,
-    setRectangles,
-    selectedRectId,
-    selectedRectangle,
-    selectRectangle,
-    deselectRectangle,
+    shapes,
+    setShapes,
+    selectedShapeId,
+    selectedShape,
+    selectShape,
+    deselectShape,
     loading,
     error,
     connectionStatus,

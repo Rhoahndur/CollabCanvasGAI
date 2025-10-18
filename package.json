@@ -9,6 +9,9 @@
     "dev:all": "npm run server & npm run dev",
     "build": "vite build",
     "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
     "deploy": "npm run build && firebase deploy",
     "deploy:hosting": "npm run build && firebase deploy --only hosting",
     "deploy:rules": "firebase deploy --only firestore:rules",
@@ -31,7 +34,10 @@
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
+    "@vitest/ui": "^1.6.1",
+    "jsdom": "^23.2.0",
     "terser": "^5.44.0",
-    "vite": "^5.4.2"
+    "vite": "^5.4.2",
+    "vitest": "^1.6.1"
   }
 }

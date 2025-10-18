@@ -94,15 +94,6 @@ export const createShape = async (canvasId = DEFAULT_CANVAS_ID, shapeData) => {
   }
 };
 
-/**
- * Create a new rectangle on the canvas (backward compatibility)
- * @param {string} canvasId - Canvas ID
- * @param {Object} rectData - Rectangle data {x, y, width, height, color, createdBy}
- * @returns {Promise<string>} Created rectangle ID
- */
-export const createRectangle = async (canvasId = DEFAULT_CANVAS_ID, rectData) => {
-  return createShape(canvasId, { ...rectData, type: 'rectangle' });
-};
 
 /**
  * Update an existing shape
@@ -123,17 +114,6 @@ export const updateShape = async (canvasId = DEFAULT_CANVAS_ID, shapeId, updates
 };
 
 /**
- * Update an existing rectangle (backward compatibility)
- * @param {string} canvasId - Canvas ID
- * @param {string} rectId - Rectangle ID
- * @param {Object} updates - Fields to update
- * @returns {Promise<void>}
- */
-export const updateRectangle = async (canvasId = DEFAULT_CANVAS_ID, rectId, updates) => {
-  return updateShape(canvasId, rectId, updates);
-};
-
-/**
  * Delete a shape
  * @param {string} canvasId - Canvas ID
  * @param {string} shapeId - Shape ID
@@ -151,31 +131,21 @@ export const deleteShape = async (canvasId = DEFAULT_CANVAS_ID, shapeId) => {
 };
 
 /**
- * Delete a rectangle (backward compatibility)
- * @param {string} canvasId - Canvas ID
- * @param {string} rectId - Rectangle ID
- * @returns {Promise<void>}
- */
-export const deleteRectangle = async (canvasId = DEFAULT_CANVAS_ID, rectId) => {
-  return deleteShape(canvasId, rectId);
-};
-
-/**
  * Lock an object to prevent simultaneous manipulation
  * @param {string} canvasId - Canvas ID
- * @param {string} rectId - Rectangle ID
+ * @param {string} objectId - Object ID
  * @param {string} userId - User ID acquiring the lock
  * @param {string} userName - User display name
  * @returns {Promise<void>}
  */
-export const lockObject = async (canvasId = DEFAULT_CANVAS_ID, rectId, userId, userName = '') => {
+export const lockObject = async (canvasId = DEFAULT_CANVAS_ID, objectId, userId, userName = '') => {
   try {
-    const objectRef = getObjectRef(canvasId, rectId);
+    const objectRef = getObjectRef(canvasId, objectId);
     await update(objectRef, {
       lockedBy: userId,
       lockedByUserName: userName,
     });
-    console.log('Object locked:', rectId, 'by', userName);
+    console.log('Object locked:', objectId, 'by', userName);
   } catch (error) {
     console.error('Error locking object:', error);
     throw error;
@@ -185,17 +155,17 @@ export const lockObject = async (canvasId = DEFAULT_CANVAS_ID, rectId, userId, u
 /**
  * Unlock an object
  * @param {string} canvasId - Canvas ID
- * @param {string} rectId - Rectangle ID
+ * @param {string} objectId - Object ID
  * @returns {Promise<void>}
  */
-export const unlockObject = async (canvasId = DEFAULT_CANVAS_ID, rectId) => {
+export const unlockObject = async (canvasId = DEFAULT_CANVAS_ID, objectId) => {
   try {
-    const objectRef = getObjectRef(canvasId, rectId);
+    const objectRef = getObjectRef(canvasId, objectId);
     await update(objectRef, {
       lockedBy: null,
       lockedByUserName: null,
     });
-    console.log('Object unlocked:', rectId);
+    console.log('Object unlocked:', objectId);
   } catch (error) {
     console.error('Error unlocking object:', error);
     throw error;

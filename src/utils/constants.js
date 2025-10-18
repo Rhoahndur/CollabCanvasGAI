@@ -34,7 +34,7 @@ export const TOOL_TYPES = {
 
 // Shape defaults
 export const MIN_SHAPE_SIZE = 20; // Minimum width/height/radius for shapes
-export const MIN_RECTANGLE_SIZE = 20; // Minimum width/height for rectangles (kept for backward compatibility)
+export const MIN_RECTANGLE_SIZE = 20; // Alias for MIN_SHAPE_SIZE (kept for backward compatibility)
 export const DEFAULT_RECTANGLE_WIDTH = 100;
 export const DEFAULT_RECTANGLE_HEIGHT = 100;
 export const MIN_CIRCLE_RADIUS = 10;
@@ -81,7 +81,7 @@ export const FPS_UPDATE_INTERVAL = 500; // Update FPS every 500ms
 
 // Firestore configuration
 export const CURSOR_UPDATE_THROTTLE = 75; // Max cursor updates per second (ms) - reduced for performance
-export const DRAG_UPDATE_THROTTLE = 50; // Throttle rectangle drag updates (ms)
+export const DRAG_UPDATE_THROTTLE = 50; // Throttle shape drag updates (ms)
 export const PRESENCE_HEARTBEAT_INTERVAL = 5000; // Update presence every 5 seconds (frequent for reliability)
 export const PRESENCE_TIMEOUT = 60000; // Consider user offline after 60 seconds of inactivity (generous buffer)
 export const PRESENCE_AWAY_TIMEOUT = 120000; // Consider user away after 2 minutes of inactivity
@@ -127,8 +127,8 @@ export const CANVAS_ROLE = {
  * Shape object structure (base for all shapes)
  * {
  *   id: string,              // Composite ID format: {userId}_{timestamp}
- *   type: string,            // Shape type: 'rectangle', 'circle', or 'polygon'
- *   x: number,               // X position on canvas (center for circle/polygon, top-left for rectangle)
+ *   type: string,            // Shape type: 'rectangle', 'circle', 'polygon', 'customPolygon', 'text', 'image'
+ *   x: number,               // X position on canvas (center for circle/polygon, top-left for rectangle/text/image)
  *   y: number,               // Y position on canvas
  *   color: string,           // Hex color code
  *   createdBy: string,       // User ID of creator
