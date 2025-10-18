@@ -1,25 +1,49 @@
 # Progress Tracking
 
-## What Works (MVP Complete ✅)
+## What Works (MVP Complete + Enhanced ✅)
 
 ### 🎨 Canvas Infrastructure
 - ✅ **SVG-based rendering** - Crisp graphics at any zoom level
 - ✅ **Pan functionality** - Hold Shift/Cmd/Ctrl and drag, or middle mouse drag
 - ✅ **Zoom functionality** - Scroll wheel zooms toward cursor position
+- ✅ **Zoom controls UI** - Buttons for zoom in/out, reset, and percentage input
 - ✅ **Fixed canvas boundaries** - 5000×5000px with visible border
-- ✅ **Panning limits** - Cannot pan beyond canvas boundaries
+- ✅ **Panning limits** - Cannot pan beyond 20% outside canvas boundaries
 - ✅ **Coordinate system** - screenToCanvas/canvasToScreen transformations work correctly
-- ✅ **60 FPS performance** - Maintains smooth framerate with 500+ objects
+- ✅ **60 FPS performance** - Maintains smooth framerate with 1000+ objects
+- ✅ **Shape boundary constraints** - Cannot create or move shapes outside canvas
 
-### 📦 Rectangle Management
-- ✅ **Rectangle creation** - Click and drag to create rectangles
-- ✅ **Minimum size validation** - Enforces 20×20px minimum
+### 🔷 Shape Management (Multiple Types)
+- ✅ **Rectangle shapes** - Click and drag to create rectangles
+- ✅ **Circle shapes** - Circular shapes with radius-based sizing
+- ✅ **Polygon shapes** - Regular polygons (default 6 sides/hexagon)
+- ✅ **Text box shapes** - Dedicated text boxes with editable content
+- ✅ **Shape palette UI** - Left sidebar tool selector for shape types
+- ✅ **Minimum size validation** - Enforces minimum sizes per shape type
 - ✅ **Pseudorandom colors** - Assigns from palette of 5 colors
-- ✅ **Rectangle selection** - Click to select, shows blue outline
-- ✅ **Rectangle dragging** - Drag selected rectangles to new positions
-- ✅ **Auto-deselection** - Cursor leaving rectangle auto-deselects (unless dragging)
-- ✅ **Visual feedback** - Preview rectangle during creation, selection outline
-- ✅ **State persistence** - Rectangles persist through refresh and disconnect
+- ✅ **Shape selection** - Click to select, shows blue outline
+- ✅ **Shape dragging** - Drag selected shapes to new positions
+- ✅ **Multi-shape dragging** - Drag multiple selected shapes together
+- ✅ **Auto-deselection** - Cursor leaving shape auto-deselects (unless dragging)
+- ✅ **Visual feedback** - Preview shapes during creation, selection outline
+- ✅ **State persistence** - All shapes persist through refresh and disconnect
+
+### ✏️ Text Editing
+- ✅ **Inline text editor** - Direct in-canvas text editing overlay
+- ✅ **Double-click to edit** - Double-click any shape or text box to edit text
+- ✅ **Keyboard shortcuts** - Cmd/Ctrl+Enter to save, Esc to cancel
+- ✅ **Viewport-aware positioning** - Editor follows shape position with zoom/pan
+- ✅ **Auto-focus** - Automatically focuses and selects existing text
+- ✅ **Centered text** - Text displays centered in shapes and text boxes
+
+### 🎯 Selection & Transformation
+- ✅ **Single selection** - Click shapes to select individually
+- ✅ **Multi-select** - Drag selection rectangle to select multiple shapes
+- ✅ **Resize handles** - 8-point resize (corners and edges) for rectangles
+- ✅ **Rotation handle** - Rotate shapes with top handle
+- ✅ **Delete operation** - Delete key removes selected shapes
+- ✅ **Selection box** - Visual selection box with transformation handles
+- ✅ **Real-time sync** - All transformations sync across users instantly
 
 ### 🔒 Object Locking System
 - ✅ **Lock on selection** - Selecting a rectangle locks it to the user
@@ -47,11 +71,13 @@
 
 ### 🔐 Authentication
 - ✅ **GitHub OAuth** - Primary authentication provider working
-- ✅ **Login page** - Unauthenticated users see clean login UI
+- ✅ **Google OAuth** - Secondary authentication provider working
+- ✅ **Login page** - Unauthenticated users see clean login UI with both options
 - ✅ **Direct canvas access** - Authenticated users go straight to canvas
-- ✅ **Display name handling** - Uses GitHub display name, falls back to username
+- ✅ **Display name handling** - Uses provider display name, falls back to username
 - ✅ **Session persistence** - Auth state persists through refresh
 - ✅ **Sign out** - Users can sign out from canvas view
+- ✅ **Auto-logout** - Automatically signs out after 30 minutes of inactivity
 
 ### 🔄 State Persistence & Sync
 - ✅ **Firestore persistence** - All canvas data persists in Firestore
@@ -82,42 +108,58 @@
 - ✅ **Connection status** - Visual indicator for Firestore connection
 - ✅ **Error handling** - Error boundaries and error overlays
 - ✅ **Loading states** - Loading spinner during initial sync
-- ✅ **Performance testing** - Test utilities to generate 500/1000 rectangles
+- ✅ **Performance testing** - Test utilities to generate 10 test shapes
+- ✅ **Clear all button** - Delete all shapes with confirmation prompt
+- ✅ **Debug utilities** - Console helpers for inspecting and managing shapes
+- ✅ **Presence tracking** - Enhanced activity tracking with heartbeat mechanism
+
+### 💬 Chat Interface (UI Only)
+- ✅ **Chat panel UI** - Slide-out panel on the right side
+- ✅ **Message display area** - Scrollable message history area
+- ✅ **Input field** - Message input with send button
+- ✅ **Modern dark theme** - Matches canvas UI aesthetic
+- ⏳ **Backend integration** - Ready for AI agent (OpenAI/Anthropic) - not yet connected
 
 ## What's Left to Build
 
-### ❌ Explicitly Out of Scope (MVP)
-These features are intentionally **not** part of the MVP:
-- Multiple shape types (circles, lines, text, polygons)
-- Advanced selection (multi-select, drag-to-select, lasso)
-- Transformations (resize, rotate, skew)
+### ✅ Previously Out of Scope - Now Implemented
+These were originally **not** part of the MVP but have been added:
+- ✅ Multiple shape types (rectangles, circles, polygons, text boxes)
+- ✅ Advanced selection (multi-select, drag-to-select)
+- ✅ Transformations (resize, rotate)
+- ✅ Delete operations (Delete key)
+- ✅ Text editing (inline text editor with double-click)
+- ✅ Google OAuth (alongside GitHub)
+- ✅ Chat UI (ready for AI agent backend)
+
+### ❌ Still Out of Scope
+These features remain intentionally **not** implemented:
+- Line shapes (two-point drawing)
+- Skew transformation
 - Layer management (z-index reordering, grouping)
-- Delete/duplicate operations
-- Color picker UI
-- Text formatting or text objects
+- Duplicate operation (Ctrl+D)
+- Color picker UI (still using pseudorandom colors)
+- Advanced text formatting (fonts, sizes, alignment options)
 - Undo/redo functionality
-- Export/import features
-- Multiple canvas support
-- Canvas sharing/permissions
-- AI agent capabilities
+- Export/import features (PNG/SVG export)
+- Multiple canvas support (workspace concept)
+- Canvas sharing/permissions (granular access control)
+- AI agent backend (UI ready, logic not connected)
 
 ### 🔮 Potential Future Enhancements
-These features could be added **after** MVP validation:
+These features could be added in future iterations:
 
 #### High Priority
-- **Delete operation** - Allow users to delete their rectangles
-  - UI: Click rectangle → Delete key or right-click menu
-  - Backend: Check ownership before deleting
-  - Sync: Broadcast delete to all users
+- **AI Chat Backend** - Connect chat panel to AI agent
+  - Integrate OpenAI or Anthropic API
+  - Define agent capabilities (create shapes, answer questions, modify canvas)
+  - Handle streaming responses
+  - Context: pass canvas state to AI
 
-- **Duplicate operation** - Duplicate existing rectangles
-  - UI: Click rectangle → Ctrl+D or right-click menu
-  - Creates new rectangle with same dimensions, new ID
-
-- **Google OAuth** - Add Google as authentication provider
-  - Firebase Auth already supports it
-  - Add button to login page
-  - Minor changes to auth service
+- **Duplicate operation** - Duplicate existing shapes
+  - UI: Click shape → Ctrl+D or right-click menu
+  - Creates new shape with same properties, new ID
+  - Position offset to avoid exact overlap
 
 - **Email/password auth** - Traditional authentication option
   - Firebase Auth already supports it
@@ -125,26 +167,26 @@ These features could be added **after** MVP validation:
   - Handle password reset flow
 
 #### Medium Priority
-- **Circle shapes** - Add circles to shape palette
-  - New component: `Circle.jsx`
-  - Similar to rectangles but with `<circle>` SVG element
-  - Same selection/locking/dragging patterns
-
 - **Line shapes** - Add straight lines
   - New component: `Line.jsx`
   - Different creation UX (click-drag defines endpoints)
   - Locking and selection work similarly
+  - Resize by dragging endpoints
+
+- **Arrow shapes** - Lines with arrowheads
+  - Extension of line shapes
+  - Different arrowhead styles (triangle, circle, diamond)
 
 - **Custom colors** - Let users pick colors
   - Add color picker UI (react-color or similar)
   - Store selected color in user state
   - Apply to new shapes
+  - Allow changing color of existing shapes
 
-- **Multi-select** - Select multiple rectangles
-  - Ctrl+click to add to selection
-  - Shift+drag for lasso selection
-  - Move all selected objects together
-  - Complex: need to handle locking multiple objects
+- **Shape properties panel** - Edit shape properties
+  - Width, height, radius, color, rotation
+  - Text content, font size
+  - Position (x, y coordinates)
 
 #### Lower Priority
 - **Undo/redo** - Action history with reversal
@@ -242,11 +284,12 @@ These are technical improvements, not features:
 **None** - No critical or high-priority bugs identified
 
 ### Minor UX Issues
-- Rectangle colors are pseudorandom (can't choose specific color)
-- No way to delete rectangles from UI (must use Firestore Console)
+- Shape colors are pseudorandom (can't choose specific color)
 - No undo if you accidentally create/move something
-- Cannot resize or rotate rectangles
 - Single canvas only (all users in same space)
+- No duplicate operation (Ctrl+D)
+- Chat panel has no backend logic yet
+- Text formatting options limited (no font/size picker)
 
 ### Performance Notes
 - Viewport culling is critical for performance (without it, FPS drops at 200+ objects)
@@ -349,24 +392,39 @@ npm run deploy:vercel
 17. ✅ State persists through disconnect/reconnect
 18. ✅ Performance targets met (60 FPS, <100ms sync)
 
-### Stretch Goals
+### Enhancement Goals (Also Implemented ✅)
+- ✅ **Multiple shape types** - Circles, polygons, text boxes
+- ✅ **Delete operation** - Delete key removes shapes
+- ✅ **Multi-select** - Drag-to-select and multi-drag
+- ✅ **Resize and rotate** - Full transformation support
+- ✅ **Text editing** - Inline editor with double-click
+- ✅ **Google OAuth** - Secondary auth provider
 - ✅ **Viewport culling** - Implemented, 85% reduction
 - ✅ **Connection status indicator** - Visual feedback for users
 - ✅ **Auto-deselection** - Improved UX for selection workflow
 - ✅ **Performance testing utilities** - Dev tools for testing
 - ✅ **FPS monitoring** - Real-time performance metrics
+- ✅ **Zoom controls UI** - Button controls for zoom
+- ✅ **Clear all button** - Mass delete with confirmation
+- ✅ **Chat panel UI** - Ready for AI backend integration
+- ✅ **Auto-logout** - 30-minute inactivity timeout
 
 ## Next Milestone
 
-### Potential: MVP Enhancement Phase
-**Not yet committed - awaiting validation**
+### Potential: AI Agent Integration
+**Ready to implement when needed**
 
-Possible enhancement priorities:
-1. Delete operation (most requested)
-2. Google OAuth (expand user base)
-3. Custom color picker (user creativity)
-4. Circle shapes (shape variety)
-5. Multi-select (power user feature)
+Priorities for AI chat backend:
+1. Choose LLM provider (OpenAI GPT-4 vs Anthropic Claude)
+2. Define agent capabilities (what can it do?)
+   - Create shapes based on natural language
+   - Modify existing shapes
+   - Answer questions about the canvas
+   - Suggest layouts or improvements
+3. Implement streaming responses
+4. Pass canvas context to AI (shapes, users, viewport)
+5. Handle tool use / function calling
+6. Rate limiting and cost management
 
 ### Potential: Production Hardening
 **Technical improvements for long-term maintenance**
@@ -379,9 +437,9 @@ Priorities:
 
 ---
 
-**Last Updated:** Today (Memory Bank initialization)  
-**Status:** MVP Complete and Deployed ✅  
-**Conclusion:** All core requirements met, project successful, ready for next phase
+**Last Updated:** Today (Memory Bank synchronization with current state)  
+**Status:** MVP Complete + Major Enhancements Implemented ✅  
+**Conclusion:** Core requirements met, many stretch goals achieved, ready for AI agent integration
 
 *This document tracks what has been built and what remains. Update after significant progress or when scope changes.*
 

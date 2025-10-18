@@ -3,7 +3,7 @@
 ## Project Identity
 **Name:** CollabCanvasGAI (CollabCanvas)  
 **Type:** Real-time collaborative canvas application  
-**Status:** MVP Complete, Deployed, Production-ready
+**Status:** MVP Complete + Enhanced, Deployed, Production-ready
 
 ## Core Mission
 Build a **bulletproof multiplayer infrastructure** for collaborative design tools. The focus is on proving real-time synchronization works flawlessly before adding advanced features.
@@ -21,16 +21,19 @@ This is not a feature-rich drawing app. This is a **proof of concept** that demo
 ## Scope Definition
 **What This Is:**
 - Single shared canvas accessible to all authenticated users
-- Real-time rectangle creation, selection, and movement
+- Real-time multi-shape creation (rectangles, circles, polygons, text boxes)
+- Advanced selection and manipulation (multi-select, resize, rotate, delete)
+- Inline text editing with double-click activation
 - Multiplayer cursor tracking with presence awareness
 - Object locking to prevent simultaneous manipulation
 - SVG-based rendering for crisp graphics at any zoom level
+- Chat UI ready for AI agent integration
 
 **What This Is Not:**
-- A full-featured design tool (no text, shapes, layers, undo/redo)
+- A full-featured design tool (no undo/redo, layer management, advanced text formatting)
 - A multi-canvas workspace (single canvas only)
-- An AI-powered tool (despite the "GAI" suffix)
-- A feature-complete product (MVP validation stage)
+- An AI-powered tool yet (chat UI exists, backend not connected)
+- A feature-complete product (still evolving based on needs)
 
 ## Success Criteria
 The MVP is a **hard gate**. Success means:
@@ -43,26 +46,31 @@ The MVP is a **hard gate**. Success means:
 
 ## Key Requirements Summary
 
-### Must-Have Features (All Implemented)
-- ✅ **Canvas Infrastructure:** Pan, zoom, fixed boundaries, 60 FPS
-- ✅ **Rectangle Shapes:** Create via click-drag, pseudorandom colors
+### Must-Have Features (All Implemented ✅)
+- ✅ **Canvas Infrastructure:** Pan, zoom, fixed boundaries, 60 FPS, zoom controls
+- ✅ **Multiple Shape Types:** Rectangles, circles, polygons, text boxes
+- ✅ **Shape Palette:** Tool selector for choosing shape type
 - ✅ **Object Manipulation:** Click-to-select, drag to move, object locking
-- ✅ **Real-time Cursors:** <50ms sync, name labels on hover
-- ✅ **Presence Awareness:** Sidebar showing online users
-- ✅ **Authentication:** GitHub OAuth (primary)
+- ✅ **Advanced Selection:** Multi-select via drag-to-select rectangle
+- ✅ **Transformations:** Resize (8-point handles), rotate (top handle)
+- ✅ **Delete Operation:** Delete key removes selected shapes
+- ✅ **Text Editing:** Inline editor with double-click, Cmd+Enter to save
+- ✅ **Real-time Cursors:** ~75ms sync, name labels on hover
+- ✅ **Presence Awareness:** Sidebar showing online users with heartbeat
+- ✅ **Authentication:** GitHub OAuth (primary) + Google OAuth (secondary)
+- ✅ **Auto-logout:** 30-minute inactivity timeout
 - ✅ **State Persistence:** Survives disconnects and refreshes
 - ✅ **Deployment:** Publicly accessible, supports 5+ concurrent users
+- ✅ **Chat UI:** Panel ready for AI agent (no backend yet)
 
-### Out of Scope (Not in MVP)
-- ❌ Multiple shape types (circles, text, lines, polygons)
-- ❌ Advanced selection (multi-select, lasso)
-- ❌ Transformations (resize, rotate, skew)
-- ❌ Delete/duplicate operations
-- ❌ Color picker UI
+### Enhanced But Still Out of Scope
+- ❌ Line/arrow shapes
+- ❌ Duplicate operation (Ctrl+D)
+- ❌ Custom color picker UI (still pseudorandom)
 - ❌ Undo/redo functionality
 - ❌ Export/import features
 - ❌ Multiple canvas support
-- ❌ AI agent capabilities
+- ❌ AI agent backend (UI ready)
 
 ## Technical Foundation
 - **Frontend:** React 18 + Vite
@@ -108,7 +116,15 @@ The MVP is **COMPLETE** when:
 - [x] State persists through disconnects
 - [x] No critical bugs or crashes
 
-**Current Status:** ✅ MVP COMPLETE
+**Current Status:** ✅ MVP COMPLETE + ENHANCED
+
+The project has evolved beyond the original MVP scope with:
+- Multiple shape types (4 types)
+- Full transformation support (resize, rotate, delete)
+- Multi-select capability
+- Inline text editing
+- Google OAuth
+- Chat UI for AI integration (ready for backend)
 
 ---
 

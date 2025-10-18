@@ -1,52 +1,63 @@
 # Active Context
 
 ## Current State
-**Status:** ✅ MVP Complete and Deployed  
-**Last Major Update:** Production deployment with all features implemented  
-**Current Focus:** Maintenance, documentation, and potential enhancement planning
+**Status:** ✅ MVP Complete + Enhanced Features Implemented  
+**Last Major Update:** Inline text editor for text boxes  
+**Current Focus:** Documentation sync and potential AI chat integration
 
 ## Recent Changes
 
-### Last Session (Based on Memory)
-1. **Auto-deselection on mouse leave** - Fixed issue where selected rectangles kept selection outline after cursor moved away
-   - Added `onMouseLeave` handler in `Rectangle.jsx`
-   - Added `handleRectangleMouseLeave` callback in `Canvas.jsx`
-   - Only deselects if not actively dragging
-   - Prevents confusion about which rectangle would be dragged next
+### Latest Session (Inline Text Editor)
+1. **Inline text editor** - Added direct in-canvas text editing
+   - Created `InlineTextEditor.jsx` component with overlay editing
+   - Created `InlineTextEditor.css` with dark theme styling
+   - Double-click on text boxes or shapes triggers editor
+   - Keyboard shortcuts: Cmd/Ctrl+Enter to save, Esc to cancel
+   - Viewport-aware positioning (adjusts for zoom/pan)
+   - Auto-focuses and selects existing text
+   - Modified `Canvas.jsx` to integrate editor with shape interactions
 
-2. **Multiple interaction modes** - Clarified and documented canvas interaction patterns
-   - Drawing mode: click-drag on empty canvas
-   - Pan mode: Shift/Cmd/Ctrl + drag
-   - Select mode: click rectangles
-   - Drag mode: drag selected rectangles
-   - Zoom mode: scroll wheel
+### Previous Session (Multiple Shape Types)
+1. **Shape system expansion** - Added circles, polygons, and text boxes
+   - Created `Circle.jsx` component for circular shapes
+   - Created `Polygon.jsx` component (default 6 sides)
+   - Created `TextBox.jsx` component with centered text
+   - Added `ShapePalette.jsx` for tool selection
+   - Shape type constants in `constants.js` (RECTANGLE, CIRCLE, POLYGON, TEXT)
 
-3. **Canvas state management** - Optimized rectangle state handling
-   - `isDragging` flag prevents premature deselection
-   - `selectedRectId` tracks current selection
-   - Optimistic updates for smooth dragging
-   - Throttled Firestore syncs during drag operations
+2. **Advanced selection features** - Multi-select and manipulation
+   - Multi-select via drag-to-select rectangle (SELECT tool)
+   - Shift/Cmd/Ctrl multi-select by clicking multiple shapes
+   - Drag multiple selected shapes simultaneously
+   - `SelectionBox.jsx` with resize and rotate handles
+
+3. **Delete and transformation** - Full object manipulation
+   - Delete key removes selected shapes
+   - Resize handles on all corners and edges
+   - Rotation handle at the top
+   - All transformations sync in real-time
+
+4. **Chat panel UI** - Prepared for AI agent integration
+   - Created `ChatPanel.jsx` with slide-out panel
+   - Created `ChatPanel.css` with modern dark UI
+   - Message input with send button
+   - No backend logic yet (ready for LLM integration)
 
 ## Active Work
 
-### Current Sprint: Memory Bank Initialization
-**Goal:** Create comprehensive documentation system for future sessions
+### Current Sprint: Memory Bank Synchronization
+**Goal:** Update memory bank to reflect all implemented enhancements
 
 **Tasks:**
-- [x] Read and understand project structure
-- [x] Analyze PRD and architecture documentation
-- [x] Review implementation in Canvas.jsx and hooks
-- [x] Create Memory Bank directory structure
-- [x] Write projectbrief.md (foundation document)
-- [x] Write productContext.md (why and how)
-- [x] Write systemPatterns.md (architecture and patterns)
-- [x] Write techContext.md (technologies and setup)
-- [ ] Write activeContext.md (this file)
-- [ ] Write progress.md (what works and what's left)
-- [ ] Create .cursor/rules/ files for project intelligence
+- [x] Inline text editor implementation
+- [x] Append prompts to running_log.txt automatically
+- [ ] Update activeContext.md (in progress)
+- [ ] Update progress.md with new features
+- [ ] Update productContext.md with current capabilities
+- [ ] Update projectbrief.md with expanded scope
 
 ### No Active Development Tasks
-The MVP is feature-complete. No outstanding bugs or features in active development.
+All requested features are implemented. Ready for AI chat agent integration when needed.
 
 ## Next Steps
 
@@ -62,13 +73,18 @@ The MVP is feature-complete. No outstanding bugs or features in active developme
 4. Test that Memory Bank provides sufficient context for new tasks
 
 ### Medium-term (Future Sessions)
-**Potential Enhancement Areas** (not committed):
-- Additional shape types (circles, lines, text)
-- Delete and duplicate operations
-- Multi-select functionality
-- Google OAuth and email/password authentication
-- Multiple canvas support (workspace concept)
-- Undo/redo with operational transformation
+**Potential Enhancement Areas**:
+- ✅ ~~Additional shape types~~ (DONE: circles, polygons, text boxes)
+- ✅ ~~Delete operations~~ (DONE: Delete key)
+- ✅ ~~Multi-select functionality~~ (DONE: drag-to-select + multi-drag)
+- ✅ ~~Resize and rotate~~ (DONE: handles on all shapes)
+- ✅ ~~Google OAuth~~ (DONE: alongside GitHub)
+- ✅ ~~Chat panel UI~~ (DONE: ready for AI agent)
+- 🔮 AI chat agent backend integration (OpenAI/Anthropic)
+- 🔮 Duplicate operation (Ctrl+D)
+- 🔮 Multiple canvas support (workspace concept)
+- 🔮 Undo/redo with operational transformation
+- 🔮 Line shapes (two-point drawing)
 
 **Infrastructure Improvements:**
 - Add automated testing (Jest + React Testing Library)
@@ -100,17 +116,28 @@ The MVP is feature-complete. No outstanding bugs or features in active developme
 4. **Auto-deselection is new** - Recent fix to improve selection UX
 
 ### Key Files Modified Recently
-- `src/components/Canvas.jsx` - Added `handleRectangleMouseLeave` handler
-- `src/components/Rectangle.jsx` - Added `onMouseLeave` prop and handler
-- `memory-bank/*` - Created all Memory Bank documentation
+- `src/components/InlineTextEditor.jsx` - NEW: Overlay text editor component
+- `src/components/InlineTextEditor.css` - NEW: Styling for text editor
+- `src/components/Canvas.jsx` - Integrated inline editor, added text editing state
+- `src/components/Circle.jsx` - Circle shape component
+- `src/components/Polygon.jsx` - Polygon shape component
+- `src/components/TextBox.jsx` - Text box component
+- `src/components/ShapePalette.jsx` - Tool selection palette
+- `src/components/SelectionBox.jsx` - Resize/rotate handles
+- `src/components/ChatPanel.jsx` - AI chat UI (no backend yet)
+- `memory-bank/*` - Being updated to reflect current state
 
 ### Important State Management Details
 The canvas has complex state management with multiple modes:
 - **Viewport state:** `viewport` (offsetX, offsetY, zoom)
 - **Pan state:** `isPanning`, `panStart`, `panOffset`
 - **Draw state:** `isDrawing`, `drawStart`, `drawCurrent`
-- **Drag state:** `isDragging`, `dragStart`, `dragOffset`
-- **Selection state:** `selectedRectId` (from useCanvas hook)
+- **Drag state:** `isDragging`, `dragStart`, `dragOffset`, `draggedShapeIds` (multi-drag)
+- **Selection state:** `selectedRectId`, `selectedShapeIds` (multi-select)
+- **Resize state:** `isResizing`, `resizeHandle`, `resizeStart`, `resizeInitial`
+- **Rotate state:** `isRotating`, `rotateStart`, `rotateInitial`
+- **Text editing state:** `editingTextId`, `editingText`
+- **Tool state:** `selectedTool` (SELECT, RECTANGLE, CIRCLE, POLYGON, TEXT)
 
 **Critical pattern:** Use refs (`isDraggingRef`, `selectedRectIdRef`) to access current values in Firestore subscription callbacks without stale closures.
 
@@ -135,10 +162,12 @@ User cursor leaves selected rectangle
 ```
 
 ## Questions for Next Session
-1. Should we add automated tests? (would improve confidence but add complexity)
-2. Should we migrate to TypeScript? (better DX but significant refactor)
-3. Should we implement any of the enhancement areas? (circles, delete, multi-select)
-4. Are there any edge cases we haven't documented?
+1. Should we integrate AI chat backend? (OpenAI vs Anthropic)
+2. What should the AI agent be able to do? (create shapes, modify canvas, answer questions)
+3. Should we add automated tests now that features are stabilized?
+4. Should we migrate to TypeScript? (better DX but significant refactor)
+5. Any other shape types needed? (lines, arrows, connectors)
+6. Should we implement duplicate operation (Ctrl+D)?
 
 ## Session Notes
 

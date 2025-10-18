@@ -48,6 +48,7 @@ import ShapePalette from './ShapePalette';
 import SelectionBox from './SelectionBox';
 import ZoomControls from './ZoomControls';
 import ChatPanel from './ChatPanel';
+import InlineTextEditor from './InlineTextEditor';
 import './Canvas.css';
 
 /**
@@ -940,9 +941,21 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
               fontSize: 16,
               rotation: 0
             };
-            await createShape(undefined, shapeData);
+            const newTextBoxId = await createShape(undefined, shapeData);
             console.log('Text box created successfully');
             notifyFirestoreActivity();
+            
+            // Switch back to SELECT tool after creating text box
+            setSelectedTool(TOOL_TYPES.SELECT);
+            
+            // Auto-select and start editing the new text box
+            setTimeout(() => {
+              if (newTextBoxId) {
+                selectRectangle(newTextBoxId);
+                setEditingTextId(newTextBoxId);
+                setEditingText('');
+              }
+            }, 100);
           }
         } catch (error) {
           console.error('Failed to create shape:', error);
@@ -1661,14 +1674,9 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
               e.stopPropagation();
               if (!shape.lockedBy || shape.lockedBy === user?.uid) {
                 selectRectangle(shape.id);
-                // Show prompt for text editing
-                setTimeout(() => {
-                  const newText = prompt('Edit text:', shape.text || '');
-                  if (newText !== null && newText !== shape.text) {
-                    updateShape(undefined, shape.id, { text: newText });
-                  }
-                  deselectRectangle();
-                }, 0);
+                // Start inline editing
+                setEditingTextId(shape.id);
+                setEditingText(shape.text || '');
               }
             };
             
@@ -1931,6 +1939,25 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       
       {/* AI Chat Panel */}
       <ChatPanel />
+      
+      {/* Inline Text Editor */}
+      {editingTextId && (
+        <InlineTextEditor
+          shape={rectangles.find(r => r.id === editingTextId)}
+          text={editingText}
+          onTextChange={setEditingText}
+          onFinish={(save) => {
+            if (save && editingText !== rectangles.find(r => r.id === editingTextId)?.text) {
+              updateShape(undefined, editingTextId, { text: editingText });
+            }
+            setEditingTextId(null);
+            setEditingText('');
+            deselectRectangle();
+          }}
+          viewport={viewport}
+          containerSize={containerSize}
+        />
+      )}
     </div>
   );
 }
