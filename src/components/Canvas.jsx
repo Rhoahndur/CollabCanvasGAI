@@ -59,7 +59,7 @@ import './Canvas.css';
 /**
  * Canvas component - SVG-based collaborative canvas with pan and zoom
  */
-function Canvas({ sessionId, onlineUsersCount = 0 }) {
+function Canvas({ sessionId, onlineUsersCount = 0, canvasId = DEFAULT_CANVAS_ID }) {
   const svgRef = useRef(null);
   const containerRef = useRef(null);
   
@@ -77,8 +77,8 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
     setIsDraggingLocal,
     notifyFirestoreActivity,
     setBatchDeleting 
-  } = useCanvas(user?.uid, user?.displayName);
-  const { cursors } = useCursors(sessionId);
+  } = useCanvas(user?.uid, user?.displayName, canvasId);
+  const { cursors } = useCursors(sessionId, canvasId);
   const { recordAction, popUndo, popRedo, canUndo, canRedo } = useHistory();
   
   // Viewport state (pan and zoom)
@@ -314,7 +314,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
             try {
               console.log(`  Deleting broken shape ${id}...`);
               console.log(`    Issues: ${shapeIssues.join(', ')}`);
-              await deleteShape(undefined, id);
+              await deleteShape(canvasId, id);
               deletedCount++;
               console.log(`  ✅ Deleted shape ${id}`);
             } catch (error) {
@@ -364,7 +364,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
           console.log(`🗑️ Force deleting shape ${shapeId}...`);
           console.log('  Shape data:', JSON.stringify(shape, null, 2));
           
-          await deleteShape(undefined, shapeId);
+          await deleteShape(canvasId, shapeId);
           console.log(`✅ Shape ${shapeId} force deleted from database`);
           
           notifyFirestoreActivity();
@@ -540,7 +540,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
         zIndex: Date.now(),
       };
       
-      const shapeId = await createShape(undefined, shapeData);
+      const shapeId = await createShape(canvasId, shapeData);
       recordAction({ type: 'create', shapeId, shapeData });
       console.log('Custom polygon created successfully with', customPolygonVertices.length, 'vertices');
       notifyFirestoreActivity();
@@ -681,7 +681,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
         
         // Update cursor position in Firestore
         updateCursor(
-          undefined,
+          canvasId,
           sessionId,
           user.uid,
           canvasPos.x,
@@ -1079,7 +1079,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
               // Constrain to canvas boundaries
               const constrained = constrainRectangle(x, y, width, height, CANVAS_WIDTH, CANVAS_HEIGHT);
               shapeData = { ...shapeData, ...constrained, rotation: 0, zIndex: Date.now() };
-              const shapeId = await createShape(undefined, shapeData);
+              const shapeId = await createShape(canvasId, shapeData);
               recordAction({ type: 'create', shapeId, shapeData });
               console.log('Rectangle created successfully');
               notifyFirestoreActivity();
@@ -1095,7 +1095,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
               // Constrain to canvas boundaries
               const constrained = constrainCircle(centerX, centerY, radius, CANVAS_WIDTH, CANVAS_HEIGHT);
               shapeData = { ...shapeData, ...constrained, rotation: 0, zIndex: Date.now() };
-              const shapeId = await createShape(undefined, shapeData);
+              const shapeId = await createShape(canvasId, shapeData);
               recordAction({ type: 'create', shapeId, shapeData });
               console.log('Circle created successfully');
               notifyFirestoreActivity();
@@ -1119,7 +1119,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
                 rotation: 0,
                 zIndex: Date.now()
               };
-              const shapeId = await createShape(undefined, shapeData);
+              const shapeId = await createShape(canvasId, shapeData);
               recordAction({ type: 'create', shapeId, shapeData });
               console.log('Polygon created successfully');
               notifyFirestoreActivity();
@@ -1146,7 +1146,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
               rotation: 0,
               zIndex: Date.now()
             };
-            const newTextBoxId = await createShape(undefined, shapeData);
+            const newTextBoxId = await createShape(canvasId, shapeData);
             recordAction({ type: 'create', shapeId: newTextBoxId, shapeData });
             console.log('Text box created successfully');
             notifyFirestoreActivity();
@@ -1173,7 +1173,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       
       // Hide cursor for others (set isActive to false)
       if (user && sessionId) {
-        removeCursor(undefined, sessionId).catch(console.error);
+        removeCursor(canvasId, sessionId).catch(console.error);
       }
       
       // Reset drag state to prevent stale offset on next drag
@@ -1227,7 +1227,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       
       // Hide cursor for others
       if (user && sessionId) {
-        removeCursor(undefined, sessionId).catch(console.error);
+        removeCursor(canvasId, sessionId).catch(console.error);
       }
       
       // Reset resize state
@@ -1250,7 +1250,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
             updates = { radius: shape.radius };
           }
           
-          await updateShape(undefined, selectedRectId, updates);
+          await updateShape(canvasId, selectedRectId, updates);
           console.log('Shape dimensions updated in Firestore');
           notifyFirestoreActivity();
         } catch (error) {
@@ -1263,7 +1263,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       
       // Hide cursor for others
       if (user && sessionId) {
-        removeCursor(undefined, sessionId).catch(console.error);
+        removeCursor(canvasId, sessionId).catch(console.error);
       }
       
       // Reset rotation state
@@ -1275,7 +1275,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       if (shape && user) {
         try {
           // Sync to Firestore
-          await updateShape(undefined, selectedRectId, {
+          await updateShape(canvasId, selectedRectId, {
             rotation: shape.rotation || 0,
           });
           console.log('Shape rotation updated in Firestore');
@@ -1698,7 +1698,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
         zIndex: Date.now(),
       };
       
-      const shapeId = await createShape(DEFAULT_CANVAS_ID, imageData);
+      const shapeId = await createShape(canvasId, imageData);
       recordAction({ type: 'create', shapeId, shapeData: imageData });
       console.log('✅ Image shape created');
       notifyFirestoreActivity();
@@ -1752,7 +1752,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
           zIndex: Date.now(),
         };
         
-        const shapeId = await createShape(DEFAULT_CANVAS_ID, imageData);
+        const shapeId = await createShape(canvasId, imageData);
         recordAction({ type: 'create', shapeId, shapeData: imageData });
         console.log('✅ Pasted image shape created');
         notifyFirestoreActivity();
@@ -1864,7 +1864,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
             delete duplicatedShape.id;
             delete duplicatedShape.timestamp;
             
-            const newId = await createShape(undefined, duplicatedShape);
+            const newId = await createShape(canvasId, duplicatedShape);
             newShapeIds.push(newId);
             console.log(`  ✅ Duplicated shape ${shapeId} -> ${newId}`);
           }
@@ -1946,7 +1946,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
               
               // Images are stored as base64 data URLs in the DB, no separate cleanup needed
               const shapeToDelete = rectangles.find(r => r.id === id);
-              await deleteShape(undefined, id);
+              await deleteShape(canvasId, id);
               if (shapeToDelete) {
                 recordAction({ type: 'delete', shapeId: id, shapeData: shapeToDelete });
               }
@@ -1977,7 +1977,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
         
         try {
           for (const shapeId of shapesToBringForward) {
-            await updateShape(undefined, shapeId, { zIndex: newZIndex });
+            await updateShape(canvasId, shapeId, { zIndex: newZIndex });
           }
           console.log('✅ Brought shapes to front');
           notifyFirestoreActivity();
@@ -1998,7 +1998,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
         
         try {
           for (const shapeId of shapesToSendBack) {
-            await updateShape(undefined, shapeId, { zIndex: newZIndex });
+            await updateShape(canvasId, shapeId, { zIndex: newZIndex });
           }
           console.log('✅ Sent shapes to back');
           notifyFirestoreActivity();
@@ -2024,11 +2024,11 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
         try {
           if (action.type === 'create') {
             // Undo create = delete the shape
-            await deleteShape(undefined, action.shapeId);
+            await deleteShape(canvasId, action.shapeId);
             console.log('✅ Undone: Deleted shape', action.shapeId);
           } else if (action.type === 'delete') {
             // Undo delete = recreate the shape
-            await createShape(undefined, action.shapeData);
+            await createShape(canvasId, action.shapeData);
             console.log('✅ Undone: Restored shape', action.shapeId);
           }
           notifyFirestoreActivity();
@@ -2056,11 +2056,11 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
         try {
           if (action.type === 'create') {
             // Redo create = recreate the shape
-            await createShape(undefined, action.shapeData);
+            await createShape(canvasId, action.shapeData);
             console.log('✅ Redone: Created shape', action.shapeId);
           } else if (action.type === 'delete') {
             // Redo delete = delete the shape again
-            await deleteShape(undefined, action.shapeId);
+            await deleteShape(canvasId, action.shapeId);
             console.log('✅ Redone: Deleted shape', action.shapeId);
           }
           notifyFirestoreActivity();
