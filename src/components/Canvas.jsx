@@ -855,34 +855,47 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
       const minY = Math.min(selectStart.y, selectCurrent.y);
       const maxY = Math.max(selectStart.y, selectCurrent.y);
       
-      // Find all shapes that intersect with selection rectangle
-      const selected = rectangles.filter(shape => {
-        let shapeLeft, shapeRight, shapeTop, shapeBottom;
-        
-        if (shape.type === SHAPE_TYPES.RECTANGLE) {
-          shapeLeft = shape.x;
-          shapeRight = shape.x + shape.width;
-          shapeTop = shape.y;
-          shapeBottom = shape.y + shape.height;
-        } else if (shape.type === SHAPE_TYPES.CIRCLE || shape.type === SHAPE_TYPES.POLYGON) {
-          shapeLeft = shape.x - shape.radius;
-          shapeRight = shape.x + shape.radius;
-          shapeTop = shape.y - shape.radius;
-          shapeBottom = shape.y + shape.radius;
-        } else {
-          // Legacy shapes without type - assume rectangle
-          shapeLeft = shape.x;
-          shapeRight = shape.x + (shape.width || 0);
-          shapeTop = shape.y;
-          shapeBottom = shape.y + (shape.height || 0);
-        }
-        
-        // Check if selection rectangle intersects with shape
-        return !(shapeRight < minX || shapeLeft > maxX || shapeBottom < minY || shapeTop > maxY);
-      });
+      // Calculate selection rectangle dimensions
+      const selectionWidth = maxX - minX;
+      const selectionHeight = maxY - minY;
       
-      setSelectedShapeIds(selected.map(s => s.id));
-      console.log(`Selected ${selected.length} shapes`);
+      // If selection rectangle is too small (just a click), deselect all shapes
+      const MIN_SELECTION_SIZE = 5; // 5 pixels minimum drag to be considered a selection
+      if (selectionWidth < MIN_SELECTION_SIZE && selectionHeight < MIN_SELECTION_SIZE) {
+        // Just a click, not a drag - deselect everything
+        deselectRectangle();
+        setSelectedShapeIds([]);
+        console.log('Clicked on empty canvas - deselected all shapes');
+      } else {
+        // Actual drag selection - find all shapes that intersect with selection rectangle
+        const selected = rectangles.filter(shape => {
+          let shapeLeft, shapeRight, shapeTop, shapeBottom;
+          
+          if (shape.type === SHAPE_TYPES.RECTANGLE) {
+            shapeLeft = shape.x;
+            shapeRight = shape.x + shape.width;
+            shapeTop = shape.y;
+            shapeBottom = shape.y + shape.height;
+          } else if (shape.type === SHAPE_TYPES.CIRCLE || shape.type === SHAPE_TYPES.POLYGON) {
+            shapeLeft = shape.x - shape.radius;
+            shapeRight = shape.x + shape.radius;
+            shapeTop = shape.y - shape.radius;
+            shapeBottom = shape.y + shape.radius;
+          } else {
+            // Legacy shapes without type - assume rectangle
+            shapeLeft = shape.x;
+            shapeRight = shape.x + (shape.width || 0);
+            shapeTop = shape.y;
+            shapeBottom = shape.y + (shape.height || 0);
+          }
+          
+          // Check if selection rectangle intersects with shape
+          return !(shapeRight < minX || shapeLeft > maxX || shapeBottom < minY || shapeTop > maxY);
+        });
+        
+        setSelectedShapeIds(selected.map(s => s.id));
+        console.log(`Selected ${selected.length} shapes`);
+      }
     } else if (isDrawing) {
       setIsDrawing(false);
       
@@ -1539,12 +1552,13 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
   }, [user, viewport, containerSize, notifyFirestoreActivity]);
   
   // Add paste event listener (non-passive to allow preventDefault)
-  useEffect(() => {
-    window.addEventListener('paste', handlePaste, { passive: false });
-    return () => {
-      window.removeEventListener('paste', handlePaste);
-    };
-  }, [handlePaste]);
+  // TEMPORARILY DISABLED FOR DEBUGGING
+  // useEffect(() => {
+  //   window.addEventListener('paste', handlePaste, { passive: false });
+  //   return () => {
+  //     window.removeEventListener('paste', handlePaste);
+  //   };
+  // }, [handlePaste]);
   
   // Add global mouse event listeners for panning, selecting, drawing, dragging, resizing, and rotating
   useEffect(() => {
