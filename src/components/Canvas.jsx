@@ -670,7 +670,7 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
             let newY = initial.y + dy;
             
             // Constrain to canvas boundaries
-            if (r.type === SHAPE_TYPES.RECTANGLE) {
+            if (r.type === SHAPE_TYPES.RECTANGLE || r.type === SHAPE_TYPES.TEXT) {
               const constrained = constrainRectangle(newX, newY, r.width, r.height, CANVAS_WIDTH, CANVAS_HEIGHT);
               newX = constrained.x;
               newY = constrained.y;

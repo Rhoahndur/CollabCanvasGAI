@@ -122,13 +122,34 @@ const TextBox = memo(function TextBox({
   // Calculate starting Y position for vertically centered text
   const totalTextHeight = visibleLines.length * lineHeight;
   const startY = y + (height - totalTextHeight) / 2 + fontSize * 0.8;
+  
+  // Event handlers that pass the id parameter
+  const handleClick = (e) => {
+    e.stopPropagation();
+    if (onClick) {
+      onClick(id, e);
+    }
+  };
+
+  const handleMouseDown = (e) => {
+    e.stopPropagation();
+    if (onMouseDown) {
+      onMouseDown(id, e);
+    }
+  };
+  
+  const handleDoubleClick = (e) => {
+    e.stopPropagation();
+    if (onDoubleClick) {
+      onDoubleClick(e);
+    }
+  };
 
   return (
     <g
-      id={id}
-      onClick={onClick}
-      onMouseDown={onMouseDown}
-      onDoubleClick={onDoubleClick}
+      onClick={handleClick}
+      onMouseDown={handleMouseDown}
+      onDoubleClick={handleDoubleClick}
       style={{ 
         cursor: isLocked ? 'not-allowed' : 'pointer',
         transform: `rotate(${rotation}deg)`,
