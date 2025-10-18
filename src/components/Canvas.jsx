@@ -743,8 +743,9 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
         const { x, y, width, height } = resizeInitial;
         
         // Calculate center of the shape
-        const centerX = x + width / 2;
-        const centerY = y + height / 2;
+        // IMAGE uses center coordinates, RECTANGLE/TEXT use top-left
+        const centerX = resizeInitial.type === SHAPE_TYPES.IMAGE ? x : x + width / 2;
+        const centerY = resizeInitial.type === SHAPE_TYPES.IMAGE ? y : y + height / 2;
         
         // Calculate distance from cursor to center
         const distX = Math.abs(canvasPos.x - centerX);
@@ -785,7 +786,19 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
         
         // Constrain to canvas boundaries
         const constrained = constrainRectangle(newX, newY, newWidth, newHeight, CANVAS_WIDTH, CANVAS_HEIGHT);
-        updates = constrained;
+        
+        // For IMAGE, convert back to center coordinates
+        if (resizeInitial.type === SHAPE_TYPES.IMAGE) {
+          updates = {
+            x: constrained.x + constrained.width / 2,  // Center X
+            y: constrained.y + constrained.height / 2, // Center Y
+            width: constrained.width,
+            height: constrained.height
+          };
+        } else {
+          // For RECTANGLE and TEXT, use top-left coordinates
+          updates = constrained;
+        }
       } else if (resizeInitial.type === SHAPE_TYPES.CIRCLE || resizeInitial.type === SHAPE_TYPES.POLYGON) {
         // For circles and polygons, radius is distance from cursor to center
         const centerX = resizeInitial.x;
@@ -1092,6 +1105,9 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
           // Sync to Firestore (different fields for different shape types)
           let updates = {};
           if (shape.type === SHAPE_TYPES.RECTANGLE || shape.type === SHAPE_TYPES.TEXT) {
+            updates = { x: shape.x, y: shape.y, width: shape.width, height: shape.height };
+          } else if (shape.type === SHAPE_TYPES.IMAGE) {
+            // IMAGE uses center coordinates
             updates = { x: shape.x, y: shape.y, width: shape.width, height: shape.height };
           } else if (shape.type === SHAPE_TYPES.CIRCLE || shape.type === SHAPE_TYPES.POLYGON) {
             updates = { radius: shape.radius };
