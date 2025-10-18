@@ -121,31 +121,60 @@ function generateRandomRectangle(userId, padding = 100) {
  * @param {number} count - Number of shapes to create
  * @param {string} userId - User ID for created shapes
  * @param {string} canvasId - Canvas ID (optional)
- * @param {boolean} batch - Whether to batch the operations (default: true)
+ * @param {boolean} sequential - Whether to create sequentially with delays (default: true for Realtime DB)
  * @returns {Promise<void>}
  */
-export async function generateTestShapes(count, userId, canvasId = DEFAULT_CANVAS_ID, batch = true) {
+export async function generateTestShapes(count, userId, canvasId = DEFAULT_CANVAS_ID, sequential = true) {
   console.log(`🔧 generateTestShapes ENTRY: count=${count}, userId=${userId}, canvasId=${canvasId}`);
   console.log(`🔧 Generating ${count} test shapes...`);
   const startTime = performance.now();
   
+  const createdShapes = [];
+  
   try {
-    if (batch) {
-      // Create shapes in batches of 10 to avoid overwhelming Firestore
-      const batchSize = 10;
+    if (sequential) {
+      // Create shapes one by one with small delays (better for Realtime Database)
+      for (let i = 0; i < count; i++) {
+        try {
+          const shapeData = generateRandomShape(userId);
+          console.log(`  Creating shape ${i + 1}/${count}:`, shapeData.type);
+          
+          const shapeId = await createShape(canvasId, shapeData);
+          createdShapes.push(shapeId);
+          
+          console.log(`  ✓ Created shape ${i + 1}/${count}: ${shapeId}`);
+          
+          // Small delay between creates to avoid overwhelming Realtime Database
+          if (i < count - 1) {
+            await new Promise(resolve => setTimeout(resolve, 50));
+          }
+        } catch (err) {
+          console.error(`  ❌ Failed to create shape ${i + 1}/${count}:`, err);
+          // Continue creating the rest
+        }
+      }
+    } else {
+      // Create shapes in parallel batches
+      const batchSize = 5; // Smaller batches for Realtime Database
       const batches = Math.ceil(count / batchSize);
       
       for (let i = 0; i < batches; i++) {
         const batchPromises = [];
         const currentBatchSize = Math.min(batchSize, count - (i * batchSize));
         
+        console.log(`  Creating batch ${i + 1}/${batches} (${currentBatchSize} shapes)...`);
+        
         for (let j = 0; j < currentBatchSize; j++) {
           const shapeData = generateRandomShape(userId);
           batchPromises.push(
             createShape(canvasId, shapeData)
+              .then(id => {
+                createdShapes.push(id);
+                return id;
+              })
               .catch(err => {
-                console.error(`Failed to create shape ${j + 1} in batch ${i + 1}:`, err);
-                return null; // Return null on failure so Promise.all doesn't fail
+                console.error(`  ❌ Failed to create shape ${j + 1} in batch ${i + 1}:`, err);
+                return null;
               })
           );
         }
@@ -154,21 +183,11 @@ export async function generateTestShapes(count, userId, canvasId = DEFAULT_CANVA
         const successCount = results.filter(r => r !== null).length;
         const failCount = currentBatchSize - successCount;
         
-        console.log(`  ✓ Created batch ${i + 1}/${batches}: ${successCount} succeeded${failCount > 0 ? `, ${failCount} failed` : ''}`);
+        console.log(`  ✓ Batch ${i + 1}/${batches}: ${successCount} succeeded${failCount > 0 ? `, ${failCount} failed` : ''}`);
         
-        // Small delay between batches to avoid rate limiting
+        // Delay between batches
         if (i < batches - 1) {
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
-      }
-    } else {
-      // Create shapes sequentially
-      for (let i = 0; i < count; i++) {
-        const shapeData = generateRandomShape(userId);
-        await createShape(canvasId, shapeData);
-        
-        if ((i + 1) % 50 === 0) {
-          console.log(`  ✓ Created ${i + 1}/${count} shapes`);
+          await new Promise(resolve => setTimeout(resolve, 150));
         }
       }
     }
@@ -176,9 +195,13 @@ export async function generateTestShapes(count, userId, canvasId = DEFAULT_CANVA
     const endTime = performance.now();
     const duration = Math.round(endTime - startTime);
     
-    console.log(`✅ Successfully created ${count} shapes in ${duration}ms`);
-    console.log(`   Average: ${(duration / count).toFixed(2)}ms per shape`);
-    console.log(`   Note: Shapes will appear on the canvas as Firestore syncs (may take a moment)`);
+    console.log(`✅ Successfully created ${createdShapes.length}/${count} shapes in ${duration}ms`);
+    console.log(`   Average: ${(duration / createdShapes.length).toFixed(2)}ms per shape`);
+    console.log(`   Created shape IDs:`, createdShapes);
+    
+    if (createdShapes.length < count) {
+      console.warn(`⚠️ Only ${createdShapes.length}/${count} shapes were created successfully`);
+    }
   } catch (error) {
     console.error('❌ Error generating test shapes:', error);
     throw error;

@@ -1392,28 +1392,33 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
     
     if (!user) {
       console.warn('⚠️ No user found, cannot generate shapes');
+      alert('Please sign in to generate shapes');
       return;
     }
     
     try {
+      const shapesBefore = rectangles.length;
       console.log('🎨 Starting to generate 10 random shapes...');
       console.log('User ID:', user.uid);
-      console.log('Current shapes in state:', rectangles.length);
+      console.log('Current shapes in state:', shapesBefore);
       
+      // Generate shapes (this will take ~500ms with delays)
       await generateTestShapes(10, user.uid);
       
       console.log('✅ generateTestShapes completed');
       notifyFirestoreActivity();
       
-      // Wait a bit for Firestore to sync
+      // Wait for Realtime Database to sync
       setTimeout(() => {
-        console.log('Shapes after generation:', rectangles.length);
-        console.log('✅ 10 shapes generated successfully!');
-        alert(`Generated 10 shapes! Total shapes now: ${rectangles.length}`);
-      }, 500);
+        const shapesAfter = rectangles.length;
+        const created = shapesAfter - shapesBefore;
+        console.log('Shapes after generation:', shapesAfter);
+        console.log(`✅ Created ${created} new shapes!`);
+        alert(`Generated ${created} shapes! Total shapes now: ${shapesAfter}`);
+      }, 1000); // Longer wait for Realtime DB sync
     } catch (error) {
       console.error('❌ Failed to generate shapes:', error);
-      alert('Failed to generate shapes. Please try again.');
+      alert(`Failed to generate shapes: ${error.message}`);
     }
   }, [user, notifyFirestoreActivity, rectangles]);
   
