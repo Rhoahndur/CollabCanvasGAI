@@ -5,6 +5,7 @@ import LoginPage from './components/LoginPage'
 import CanvasDashboard from './components/CanvasDashboard'
 import Canvas from './components/Canvas'
 import PresenceSidebar from './components/PresenceSidebar'
+import ShareCanvasModal from './components/ShareCanvasModal'
 import './App.css'
 
 function App() {
@@ -14,6 +15,10 @@ function App() {
   // Routing state
   const [currentView, setCurrentView] = useState('dashboard') // 'dashboard' or 'canvas'
   const [currentCanvasId, setCurrentCanvasId] = useState(null)
+  const [currentCanvasName, setCurrentCanvasName] = useState('')
+  
+  // Share modal state
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   
   // Store sessionId globally for access during sign out
   useEffect(() => {
@@ -33,8 +38,9 @@ function App() {
   )
 
   // Handle opening a canvas
-  const handleOpenCanvas = (canvasId) => {
+  const handleOpenCanvas = (canvasId, canvasName = '') => {
     setCurrentCanvasId(canvasId)
+    setCurrentCanvasName(canvasName)
     setCurrentView('canvas')
   }
 
@@ -42,6 +48,17 @@ function App() {
   const handleBackToDashboard = () => {
     setCurrentView('dashboard')
     setCurrentCanvasId(null)
+    setCurrentCanvasName('')
+  }
+  
+  // Handle opening share modal
+  const handleOpenShareModal = () => {
+    setIsShareModalOpen(true)
+  }
+  
+  // Handle closing share modal
+  const handleCloseShareModal = () => {
+    setIsShareModalOpen(false)
   }
 
   // Show loading state while checking auth
@@ -85,6 +102,16 @@ function App() {
           <h1>CollabCanvas</h1>
         </div>
         <div className="header-right">
+          <button 
+            className="btn-share" 
+            onClick={handleOpenShareModal}
+            title="Share Canvas"
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" />
+            </svg>
+            Share
+          </button>
           <div className="user-info">
             {user.photoURL && (
               <img
@@ -108,6 +135,15 @@ function App() {
           currentSessionId={sessionIdRef.current}
         />
       </main>
+      
+      {/* Share Canvas Modal */}
+      <ShareCanvasModal
+        canvasId={currentCanvasId}
+        canvasName={currentCanvasName}
+        currentUserId={user?.uid}
+        isOpen={isShareModalOpen}
+        onClose={handleCloseShareModal}
+      />
     </div>
   )
 }

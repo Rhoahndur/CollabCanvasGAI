@@ -28,7 +28,7 @@ function CanvasCard({ canvas, onOpenCanvas, onDeleteCanvas, onRenameCanvas }) {
   };
 
   const handleOpen = () => {
-    onOpenCanvas(canvas.id);
+    onOpenCanvas(canvas.id, canvas.name);
   };
 
   const handleDelete = async (e) => {

@@ -775,6 +775,33 @@ export const getUserCanvases = async (userId) => {
  * @param {string} canvasName - Canvas name (for user's canvas list)
  * @returns {Promise<void>}
  */
+/**
+ * Get user's role for a specific canvas
+ * @param {string} canvasId - Canvas ID
+ * @param {string} userId - User ID
+ * @returns {Promise<string|null>} User's role ('owner', 'editor', 'viewer') or null if no access
+ */
+export const getUserRole = async (canvasId, userId) => {
+  try {
+    // Try to get role from userCanvases first (faster)
+    const userCanvasSnapshot = await get(getUserCanvasRef(userId, canvasId));
+    if (userCanvasSnapshot.exists()) {
+      return userCanvasSnapshot.val().role;
+    }
+    
+    // Fallback: check canvas permissions
+    const permissionSnapshot = await get(ref(realtimeDb, `canvases/${canvasId}/permissions/${userId}`));
+    if (permissionSnapshot.exists()) {
+      return permissionSnapshot.val();
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error getting user role:', error);
+    return null;
+  }
+};
+
 export const addCanvasPermission = async (canvasId, userId, role, canvasName) => {
   try {
     // Add permission to canvas

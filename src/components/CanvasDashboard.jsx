@@ -61,7 +61,7 @@ function CanvasDashboard({ onOpenCanvas }) {
       await loadCanvases();
       
       // Open the new canvas
-      onOpenCanvas(canvasId);
+      onOpenCanvas(canvasId, name);
     } catch (error) {
       console.error('Error creating canvas:', error);
       throw error;
