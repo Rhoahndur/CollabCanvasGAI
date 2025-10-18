@@ -25,7 +25,7 @@ Frontend (Vite) ----HTTP----> Vercel Serverless Function (/api/chat)
 ## Files Added/Modified
 
 ### New Files
-- `api/chat.js` - Vercel serverless function for Canny AI
+- `api/chat.cjs` - Vercel serverless function for Canny AI (CommonJS)
 - `VERCEL_CANNY_DEPLOYMENT.md` - Deployment guide
 - `.env.example` - Environment variables template
 

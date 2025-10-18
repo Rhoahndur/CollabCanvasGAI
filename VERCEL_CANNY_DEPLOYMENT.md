@@ -7,7 +7,7 @@ This guide explains how to deploy the CollabCanvas application with Canny AI ass
 The application now uses **Vercel Serverless Functions** for the Canny AI backend:
 
 - **Frontend**: React app (Vite) → Deployed to Vercel's CDN
-- **Backend API**: `/api/chat.js` → Vercel Serverless Function
+- **Backend API**: `/api/chat.cjs` → Vercel Serverless Function (CommonJS)
 - **Database**: Firebase Realtime Database (unchanged)
 - **Auth**: Firebase Auth (unchanged)
 
