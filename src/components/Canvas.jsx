@@ -2003,7 +2003,16 @@ function Canvas({ sessionId, onlineUsersCount = 0 }) {
               
               let left, right, top, bottom;
               
-              if (shape.type === SHAPE_TYPES.RECTANGLE || shape.type === SHAPE_TYPES.TEXT || shape.type === SHAPE_TYPES.IMAGE) {
+              if (shape.type === SHAPE_TYPES.IMAGE) {
+                // IMAGE uses center coordinates (x, y), convert to bounds
+                const width = shape.width || 200;
+                const height = shape.height || 200;
+                left = shape.x - width / 2;
+                right = shape.x + width / 2;
+                top = shape.y - height / 2;
+                bottom = shape.y + height / 2;
+              } else if (shape.type === SHAPE_TYPES.RECTANGLE || shape.type === SHAPE_TYPES.TEXT) {
+                // RECTANGLE and TEXT use top-left coordinates (x, y)
                 left = shape.x;
                 right = shape.x + shape.width;
                 top = shape.y;

@@ -45,17 +45,17 @@ const Image = memo(function Image({
 
   const handleClick = (e) => {
     e.stopPropagation();
-    if (onClick) onClick(e, id);
+    if (onClick) onClick(id, e);
   };
 
   const handleMouseDown = (e) => {
     e.stopPropagation();
-    if (onMouseDown) onMouseDown(e, id);
+    if (onMouseDown) onMouseDown(id, e);
   };
 
   const handleDoubleClick = (e) => {
     e.stopPropagation();
-    if (onDoubleClick) onDoubleClick(e, id);
+    if (onDoubleClick) onDoubleClick(id, e);
   };
 
   return (
