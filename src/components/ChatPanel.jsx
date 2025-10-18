@@ -1,8 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { useChat } from 'ai';
+import { useChat } from 'ai/react';
 import './ChatPanel.css';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 /**
  * ChatPanel component - Slide-up chat interface for Canny AI assistant
@@ -13,8 +11,14 @@ function ChatPanel() {
   const messagesEndRef = useRef(null);
   
   // Use AI SDK's useChat hook for streaming
+  // In production (Vercel), uses /api/chat
+  // In development, uses localhost:3001/api/chat
+  const apiEndpoint = import.meta.env.PROD 
+    ? '/api/chat' 
+    : 'http://localhost:3001/api/chat';
+  
   const { messages, input, handleInputChange, handleSubmit, isLoading, error } = useChat({
-    api: `${API_URL}/api/chat`,
+    api: apiEndpoint,
     initialMessages: [
       {
         id: 'welcome',
@@ -81,8 +85,8 @@ function ChatPanel() {
               <path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01" />
             </svg>
             <h3>Canny</h3>
-            <span className="chat-status">{isLoading ? 'Thinking...' : 'Ready'}</span>
-            {error && <span className="chat-error" title={error.message}>⚠️</span>}
+            <span className="chat-status">{isLoading ? 'Thinking...' : error ? 'Error' : 'Ready'}</span>
+            {error && <span className="chat-error" title={error.message || JSON.stringify(error)}>⚠️</span>}
           </div>
           <div className="chat-header-actions">
             <button 
@@ -137,6 +141,16 @@ function ChatPanel() {
               <div className="message-content">
                 <div className="message-text typing-indicator">
                   <span></span><span></span><span></span>
+                </div>
+              </div>
+            </div>
+          )}
+          {error && (
+            <div className="chat-message system error">
+              <div className="message-avatar">⚠️</div>
+              <div className="message-content">
+                <div className="message-text" style={{ color: '#ff6b6b' }}>
+                  <strong>Error:</strong> {error.message || 'Failed to connect to Canny. Make sure the backend server is running and your OpenAI API key is configured.'}
                 </div>
               </div>
             </div>
