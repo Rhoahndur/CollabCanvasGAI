@@ -132,6 +132,23 @@
   transform: translateX(2px);
 }
 
+.action-duplicate {
+  background: rgba(100, 108, 255, 0.15);
+  border-color: rgba(100, 108, 255, 0.3);
+  color: #646cff;
+}
+
+.action-duplicate:hover:not(:disabled) {
+  background: rgba(100, 108, 255, 0.25);
+  border-color: #646cff;
+  transform: translateX(2px);
+}
+
+.action-duplicate:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .action-clear {
   background: rgba(239, 68, 68, 0.15);
   border-color: rgba(239, 68, 68, 0.3);

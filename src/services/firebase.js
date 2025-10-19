@@ -30,7 +30,7 @@ export const db = getFirestore(app);
 // Initialize Realtime Database
 export const realtimeDb = getDatabase(app);
 
-console.log('✅ Firebase Realtime Database initialized');
+// console.log('✅ Firebase Realtime Database initialized');
 
 // Enable offline persistence (async for better Safari compatibility)
 enableIndexedDbPersistence(db, {
@@ -38,7 +38,7 @@ enableIndexedDbPersistence(db, {
   forceOwnership: false
 })
   .then(() => {
-    console.log('✅ Firestore offline persistence enabled');
+    // console.log('✅ Firestore offline persistence enabled');
   })
   .catch((err) => {
     if (err.code === 'failed-precondition') {

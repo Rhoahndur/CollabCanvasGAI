@@ -45,15 +45,15 @@ export function usePresence(sessionId, userId, userName, canvasId = DEFAULT_CANV
   useEffect(() => {
     // Don't connect if no canvasId (e.g., on dashboard)
     if (!sessionId || !userId || !userName || !canvasId) {
-      console.log('⏸️ Skipping presence setup (no canvasId or missing params)');
+      // console.log('⏸️ Skipping presence setup (no canvasId or missing params)');
       return;
     }
 
-    console.log('Setting up presence for user:', userName, 'session:', sessionId, 'canvas:', canvasId);
+    // console.log('Setting up presence for user:', userName, 'session:', sessionId, 'canvas:', canvasId);
 
     // Clean up stale sessions on mount (especially helpful for Safari and duplicate sessions)
     cleanupStalePresence(canvasId).then((cleanedCount) => {
-      console.log(`🧹 Initial cleanup removed ${cleanedCount} stale sessions`);
+      // console.log(`🧹 Initial cleanup removed ${cleanedCount} stale sessions`);
       
       // Set user as online after cleanup completes
       const userColor = getUserColor(userId);
@@ -64,7 +64,7 @@ export function usePresence(sessionId, userId, userName, canvasId = DEFAULT_CANV
     const unsubscribe = subscribeToPresence(canvasId, (presenceData) => {
       setAllPresenceData(presenceData);
       const activeUsers = filterActiveUsers(presenceData);
-      console.log('Active users:', activeUsers.length);
+      // console.log('Active users:', activeUsers.length);
       setOnlineUsers(activeUsers);
     });
 

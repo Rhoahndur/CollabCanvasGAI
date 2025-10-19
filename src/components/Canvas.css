@@ -16,14 +16,29 @@
   right: 0;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 2rem;
+  justify-content: space-between;
+  gap: 1rem;
   background-color: rgba(0, 0, 0, 0.85);
   border-bottom: 1px solid #333;
   padding: 0.5rem 1rem;
   backdrop-filter: blur(10px);
   z-index: 150;
   font-size: 0.85rem;
+}
+
+.canvas-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+}
+
+.canvas-header-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+  justify-content: flex-end;
 }
 
 .canvas-header-stats {
@@ -39,6 +54,11 @@
 .canvas-header-fps {
   color: #0f0;
   font-family: 'Monaco', 'Menlo', monospace;
+  font-size: 0.8rem;
+}
+
+.btn-small {
+  padding: 0.375rem 0.75rem;
   font-size: 0.8rem;
 }
 

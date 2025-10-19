@@ -204,7 +204,7 @@ function Canvas({
   useEffect(() => {
     if (SHOW_FPS_COUNTER && user?.uid) {
       setup500Test(user.uid);
-      console.log('🧪 Performance test utilities loaded. Check window.testCanvas');
+      // console.log('🧪 Performance test utilities loaded. Check window.testCanvas');
     }
     
     // Add debug helper to inspect shapes
@@ -381,13 +381,13 @@ function Canvas({
         }
       };
       
-      console.log('🛠️ Debug helpers available:');
-      console.log('  - window.debugShapes.listAll() - List all shapes');
-      console.log('  - window.debugShapes.inspect(id) - Inspect a specific shape');
-      console.log('  - window.debugShapes.findBroken() - Find shapes with missing properties');
-      console.log('  - window.debugShapes.cleanupBroken() - Delete all broken shapes');
-      console.log('  - window.debugShapes.forceDelete(id) - Force delete a specific shape');
-      console.log('  - window.debugShapes.currentUser() - Show current user info');
+      // console.log('🛠️ Debug helpers available:');
+      // console.log('  - window.debugShapes.listAll() - List all shapes');
+      // console.log('  - window.debugShapes.inspect(id) - Inspect a specific shape');
+      // console.log('  - window.debugShapes.findBroken() - Find shapes with missing properties');
+      // console.log('  - window.debugShapes.cleanupBroken() - Delete all broken shapes');
+      // console.log('  - window.debugShapes.forceDelete(id) - Force delete a specific shape');
+      // console.log('  - window.debugShapes.currentUser() - Show current user info');
     }
   }, [user?.uid, shapes, notifyFirestoreActivity]);
   
@@ -581,7 +581,7 @@ function Canvas({
     if (!shape) return;
     
     // Can't drag if locked by another user
-    if (shape.lockedBy && rect.lockedBy !== user?.uid) {
+    if (shape.lockedBy && shape.lockedBy !== user?.uid) {
       return;
     }
     
@@ -619,7 +619,7 @@ function Canvas({
     });
     
     setDragStart(canvasPos);
-    setDragOffset({ x: rect.x, y: rect.y }); // Offset for the clicked shape
+    setDragOffset({ x: shape.x, y: shape.y }); // Offset for the clicked shape
     setDraggedShapeIds(shapesToDrag);
     setDragInitialPositions(initialPositions);
     
@@ -820,7 +820,7 @@ function Canvas({
                 y: clamp(v.y, 0, CANVAS_HEIGHT)
               }));
               
-              updateShape(undefined, id, { vertices: clampedVertices }).catch(console.error);
+              updateShape(canvasId, id, { vertices: clampedVertices }).catch(console.error);
             } else {
               let newX = initial.x + dx;
               let newY = initial.y + dy;
@@ -842,7 +842,7 @@ function Canvas({
                 newY = constrained.y;
               }
               
-              updateShape(undefined, id, { x: newX, y: newY }).catch(console.error);
+              updateShape(canvasId, id, { x: newX, y: newY }).catch(console.error);
             }
           }
         });
@@ -1203,11 +1203,11 @@ function Canvas({
                 if (shape) {
                   if (shape.type === SHAPE_TYPES.CUSTOM_POLYGON) {
                     // Custom polygons: sync vertices
-                    return updateShape(undefined, id, {
+                    return updateShape(canvasId, id, {
                       vertices: shape.vertices,
                     });
                   } else {
-                    return updateShape(undefined, id, {
+                    return updateShape(canvasId, id, {
                       x: shape.x,
                       y: shape.y,
                     });
@@ -1216,7 +1216,7 @@ function Canvas({
                 return Promise.resolve();
               })
             );
-            console.log(`${draggedShapeIds.length} shape(s) position updated in Firestore`);
+            // console.log(`${draggedShapeIds.length} shape(s) position updated in Firestore`);
           notifyFirestoreActivity(); // Notify of successful operation
         } catch (error) {
             console.error('Failed to update shape positions:', error);
@@ -1577,7 +1577,7 @@ function Canvas({
         const results = await Promise.allSettled(
           batch.map(shape => {
             console.log(`    Deleting shape ${shape.id} from Firestore...`);
-            return deleteShape(undefined, shape.id);
+            return deleteShape(canvasId, shape.id);
           })
         );
         
@@ -1624,6 +1624,63 @@ function Canvas({
     }
   }, [shapes, user, deselectShape, setSelectedShapeIds, notifyFirestoreActivity, setBatchDeleting]);
 
+  // Handle duplicating selected shapes
+  const handleDuplicate = useCallback(async () => {
+    if (!user) return;
+    if (!selectedShapeId && selectedShapeIds.length === 0) return;
+    
+    // Determine which shapes to duplicate
+    const shapesToDuplicate = selectedShapeIds.length > 0 ? selectedShapeIds : [selectedShapeId];
+    
+    try {
+      const newShapeIds = [];
+      const duplicateOffset = 20; // Offset for duplicated shapes
+      
+      // Deselect current shapes first
+      if (selectedShapeId) {
+        await deselectShape();
+      }
+      setSelectedShapeIds([]);
+      
+      // Create duplicates
+      for (const shapeId of shapesToDuplicate) {
+        const shape = shapes.find(s => s.id === shapeId);
+        if (!shape) continue;
+        
+        // Create a copy with offset position
+        const duplicatedShape = {
+          ...shape,
+          x: shape.x + duplicateOffset,
+          y: shape.y + duplicateOffset,
+          createdBy: user.uid,
+          // Remove lock-related fields
+          lockedBy: null,
+          lockedByUserName: null,
+        };
+        
+        // Remove id so a new one will be generated
+        delete duplicatedShape.id;
+        delete duplicatedShape.timestamp;
+        
+        const newId = await createShape(canvasId, duplicatedShape);
+        newShapeIds.push(newId);
+      }
+      
+      // Select the new duplicates
+      if (newShapeIds.length === 1) {
+        // Single shape - use normal selection
+        setTimeout(() => selectShape(newShapeIds[0]), 100);
+      } else {
+        // Multiple shapes - use multi-selection
+        setTimeout(() => setSelectedShapeIds(newShapeIds), 100);
+      }
+      
+      notifyFirestoreActivity();
+    } catch (error) {
+      console.error('❌ Failed to duplicate shapes:', error);
+    }
+  }, [selectedShapeId, selectedShapeIds, shapes, user, deselectShape, selectShape, canvasId, notifyFirestoreActivity, setSelectedShapeIds]);
+
   // Handle generating 10 random shapes
   const handleGenerate500 = useCallback(async () => {
     console.log('🔥 handleGenerate500 called!');
@@ -1642,7 +1699,7 @@ function Canvas({
       console.log('Current shapes in state:', shapesBefore);
       
       // Generate shapes (this will take ~500ms with delays)
-      await generateTestShapes(10, user.uid);
+      await generateTestShapes(10, user.uid, canvasId);
       
       console.log('✅ generateTestShapes completed');
       notifyFirestoreActivity();
@@ -2152,16 +2209,39 @@ function Canvas({
     const viewportBottom = viewport.offsetY + (containerSize.height / viewport.zoom) + bufferSize;
     
     // Filter shapes that intersect with viewport
-    const visible = shapes.filter(rect => {
-      const rectRight = rect.x + rect.width;
-      const rectBottom = rect.y + rect.height;
+    const visible = shapes.filter(shape => {
+      // Calculate bounding box based on shape type
+      let shapeLeft, shapeTop, shapeRight, shapeBottom;
+      
+      if (shape.type === SHAPE_TYPES.RECTANGLE || shape.type === SHAPE_TYPES.TEXT || shape.type === SHAPE_TYPES.IMAGE) {
+        shapeLeft = shape.x;
+        shapeTop = shape.y;
+        shapeRight = shape.x + (shape.width || 0);
+        shapeBottom = shape.y + (shape.height || 0);
+      } else if (shape.type === SHAPE_TYPES.CIRCLE || shape.type === SHAPE_TYPES.POLYGON) {
+        const radius = shape.radius || 0;
+        shapeLeft = shape.x - radius;
+        shapeTop = shape.y - radius;
+        shapeRight = shape.x + radius;
+        shapeBottom = shape.y + radius;
+      } else if (shape.type === SHAPE_TYPES.CUSTOM_POLYGON && shape.vertices) {
+        const xs = shape.vertices.map(v => v.x);
+        const ys = shape.vertices.map(v => v.y);
+        shapeLeft = Math.min(...xs);
+        shapeTop = Math.min(...ys);
+        shapeRight = Math.max(...xs);
+        shapeBottom = Math.max(...ys);
+      } else {
+        // Default fallback
+        return true;
+      }
       
       // Check if shape's bounding box intersects with viewport
       return !(
-        rect.x > viewportRight ||
-        rectRight < viewportLeft ||
-        rect.y > viewportBottom ||
-        rectBottom < viewportTop
+        shapeLeft > viewportRight ||
+        shapeRight < viewportLeft ||
+        shapeTop > viewportBottom ||
+        shapeBottom < viewportTop
       );
     });
     
@@ -2173,13 +2253,24 @@ function Canvas({
     <div className="canvas-container" ref={containerRef}>
       {/* Header */}
       <div className="canvas-header">
-        <span className="canvas-header-stats">
-          {shapes.length} objects • {onlineUsersCount} {onlineUsersCount === 1 ? 'user' : 'users'} online
-        </span>
+        <div className="canvas-header-left">
+          <span className="canvas-header-stats">
+            {shapes.length} objects • {onlineUsersCount} {onlineUsersCount === 1 ? 'user' : 'users'} online
+          </span>
+        </div>
         <span className="canvas-header-hint">Hold Shift/Cmd to pan • Scroll to zoom</span>
-        {SHOW_FPS_COUNTER && (
-          <span className="canvas-header-fps">{fps} FPS • {connectionStatus}</span>
-        )}
+        <div className="canvas-header-right">
+          {SHOW_FPS_COUNTER && (
+            <span className="canvas-header-fps">{fps} FPS • {connectionStatus}</span>
+          )}
+          <button
+            className="btn btn-secondary btn-small"
+            onClick={signOut}
+            title="Sign out"
+          >
+            Sign Out
+          </button>
+        </div>
       </div>
       
       {/* Shape Palette */}
@@ -2189,6 +2280,8 @@ function Canvas({
         onClearAll={handleClearAll}
         onGenerate500={handleGenerate500}
         onImageUpload={handleImageUpload}
+        onDuplicate={handleDuplicate}
+        hasSelection={selectedShapeId || selectedShapeIds.length > 0}
       />
       
       {/* Hidden file input for image uploads */}
@@ -2271,7 +2364,6 @@ function Canvas({
             };
             
             const shapeProps = {
-              key: shape.id,
               ...shape,
               isSelected: shape.id === selectedShapeId || selectedShapeIds.includes(shape.id),
               isLocked: shape.lockedBy !== null && shape.lockedBy !== user?.uid,
@@ -2283,14 +2375,15 @@ function Canvas({
             
             // Render appropriate component based on shape type
             if (shape.type === SHAPE_TYPES.CIRCLE) {
-              return <Circle {...shapeProps} />;
+              return <Circle key={shape.id} {...shapeProps} />;
             } else if (shape.type === SHAPE_TYPES.POLYGON) {
-              return <Polygon {...shapeProps} />;
+              return <Polygon key={shape.id} {...shapeProps} />;
             } else if (shape.type === SHAPE_TYPES.CUSTOM_POLYGON) {
-              return <CustomPolygon {...shapeProps} />;
+              return <CustomPolygon key={shape.id} {...shapeProps} />;
             } else if (shape.type === SHAPE_TYPES.TEXT) {
               return (
                 <TextBox 
+                  key={shape.id}
                   {...shapeProps}
                   text={shape.text || 'Double-click to edit'}
                   fontSize={shape.fontSize || 16}
@@ -2304,6 +2397,7 @@ function Canvas({
             } else if (shape.type === SHAPE_TYPES.IMAGE) {
               return (
                 <Image 
+                  key={shape.id}
                   {...shapeProps}
                   imageUrl={shape.imageUrl}
                   width={shape.width || 200}
@@ -2312,7 +2406,7 @@ function Canvas({
               );
             } else {
               // Default to rectangle (including legacy shapes without type field)
-              return <Rectangle {...shapeProps} />;
+              return <Rectangle key={shape.id} {...shapeProps} />;
             }
           })}
           
@@ -2778,7 +2872,7 @@ function Canvas({
                 ));
               
               if (hasChanges) {
-                updateShape(undefined, editingTextId, updates);
+                updateShape(canvasId, editingTextId, updates);
               }
             }
             setEditingTextId(null);

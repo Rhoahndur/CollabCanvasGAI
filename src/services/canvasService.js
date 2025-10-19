@@ -45,7 +45,7 @@ export const monitorConnection = (callback) => {
   
   const unsubscribe = onValue(connectedRef, (snapshot) => {
     const connected = snapshot.val() === true;
-    console.log(connected ? '🟢 Connected to Realtime Database' : '🔴 Disconnected from Realtime Database');
+    // console.log(connected ? '🟢 Connected to Realtime Database' : '🔴 Disconnected from Realtime Database');
     callback(connected);
   });
   
@@ -86,7 +86,7 @@ export const createShape = async (canvasId = DEFAULT_CANVAS_ID, shapeData) => {
       timestamp: Date.now(),
     });
     
-    console.log('Shape created:', shapeData.type, objectId);
+    // console.log('Shape created:', shapeData.type, objectId);
     return objectId;
   } catch (error) {
     console.error('Error creating shape:', error);
@@ -106,7 +106,7 @@ export const updateShape = async (canvasId = DEFAULT_CANVAS_ID, shapeId, updates
   try {
     const objectRef = getObjectRef(canvasId, shapeId);
     await update(objectRef, updates);
-    console.log('Shape updated:', shapeId);
+    // console.log('Shape updated:', shapeId);
   } catch (error) {
     console.error('Error updating shape:', error);
     throw error;
@@ -123,7 +123,7 @@ export const deleteShape = async (canvasId = DEFAULT_CANVAS_ID, shapeId) => {
   try {
     const objectRef = getObjectRef(canvasId, shapeId);
     await remove(objectRef);
-    console.log('Shape deleted:', shapeId);
+    // console.log('Shape deleted:', shapeId);
   } catch (error) {
     console.error('Error deleting shape:', error);
     throw error;
@@ -145,7 +145,7 @@ export const lockObject = async (canvasId = DEFAULT_CANVAS_ID, objectId, userId,
       lockedBy: userId,
       lockedByUserName: userName,
     });
-    console.log('Object locked:', objectId, 'by', userName);
+    // console.log('Object locked:', objectId, 'by', userName);
   } catch (error) {
     console.error('Error locking object:', error);
     throw error;
@@ -165,7 +165,7 @@ export const unlockObject = async (canvasId = DEFAULT_CANVAS_ID, objectId) => {
       lockedBy: null,
       lockedByUserName: null,
     });
-    console.log('Object unlocked:', objectId);
+    // console.log('Object unlocked:', objectId);
   } catch (error) {
     console.error('Error unlocking object:', error);
     throw error;
@@ -305,11 +305,11 @@ export const removeCursor = async (canvasId = DEFAULT_CANVAS_ID, sessionId) => {
   try {
     const cursorRef = getCursorRef(canvasId, sessionId);
     await remove(cursorRef);
-    console.log('Cursor removed:', sessionId);
+    // console.log('Cursor removed:', sessionId);
   } catch (error) {
     // Silently ignore if cursor doesn't exist or permission denied (already cleaned up)
     if (error.code === 'PERMISSION_DENIED' || error.code === 'permission-denied') {
-      console.log('Cursor already removed or not found:', sessionId);
+      // console.log('Cursor already removed or not found:', sessionId);
     } else {
       console.error('Error removing cursor:', error);
     }
@@ -344,7 +344,7 @@ export const setUserPresence = async (
     
     // Set up automatic cleanup on disconnect
     await onDisconnect(presenceRef).remove();
-    console.log('🔌 Auto-cleanup configured for presence:', userName);
+    // console.log('🔌 Auto-cleanup configured for presence:', userName);
     
     // Set the presence data
     await set(presenceRef, {
@@ -356,7 +356,7 @@ export const setUserPresence = async (
       isActive,
       lastSeen: Date.now(),
     });
-    console.log('Presence updated:', userName, isOnline ? 'online' : 'offline', isActive ? '(active)' : '(away)');
+    // console.log('Presence updated:', userName, isOnline ? 'online' : 'offline', isActive ? '(active)' : '(away)');
   } catch (error) {
     console.error('Error setting presence:', error);
     throw error;
@@ -428,11 +428,11 @@ export const removePresence = async (canvasId = DEFAULT_CANVAS_ID, sessionId) =>
   try {
     const presenceRef = getPresenceSessionRef(canvasId, sessionId);
     await remove(presenceRef);
-    console.log('Presence removed:', sessionId);
+    // console.log('Presence removed:', sessionId);
   } catch (error) {
     // Silently ignore if presence doesn't exist or permission denied
     if (error.code === 'PERMISSION_DENIED' || error.code === 'permission-denied') {
-      console.log('Presence already removed or not found:', sessionId);
+      // console.log('Presence already removed or not found:', sessionId);
     } else {
       console.error('Error removing presence:', error);
     }
@@ -470,7 +470,7 @@ export const cleanupStalePresence = async (canvasId = DEFAULT_CANVAS_ID) => {
         updates[sessionId] = null; // Setting to null deletes in Realtime Database
       });
       await update(presenceRef, updates);
-      console.log(`🧹 Cleaned up ${staleSessionIds.length} stale presence sessions`);
+      // console.log(`🧹 Cleaned up ${staleSessionIds.length} stale presence sessions`);
     }
     
     return staleSessionIds.length;
@@ -498,7 +498,7 @@ export const testFirestoreConnection = async () => {
     // Try to get a reference to verify the connection
     const testRef = getObjectsRef(DEFAULT_CANVAS_ID);
     if (testRef) {
-      console.log('✅ Realtime Database connection test successful!');
+      // console.log('✅ Realtime Database connection test successful!');
       return true;
     }
     
@@ -536,12 +536,12 @@ export const createCanvas = async (userId, canvasName, template = 'blank') => {
     const canvasId = generateCanvasId(userId);
     const now = Date.now();
     
-    console.log('🎨 Creating canvas:', canvasId, canvasName, template);
+    // console.log('🎨 Creating canvas:', canvasId, canvasName, template);
     
     // IMPORTANT: Set permissions FIRST before writing any other data
     // Security rules require permissions to exist before writing metadata/objects
     await set(ref(realtimeDb, `canvases/${canvasId}/permissions/${userId}`), 'owner');
-    console.log('✅ Permissions set');
+    // console.log('✅ Permissions set');
     
     // Canvas metadata
     const metadata = {
@@ -554,7 +554,7 @@ export const createCanvas = async (userId, canvasName, template = 'blank') => {
     
     // Set canvas metadata (now permissions exist, so this will work)
     await set(getCanvasMetadataRef(canvasId), metadata);
-    console.log('✅ Metadata set');
+    // console.log('✅ Metadata set');
     
     // Add canvas to user's canvas list
     await set(getUserCanvasRef(userId, canvasId), {
@@ -563,7 +563,7 @@ export const createCanvas = async (userId, canvasName, template = 'blank') => {
       lastAccessed: now,
       starred: false,
     });
-    console.log('✅ User canvas index updated');
+    // console.log('✅ User canvas index updated');
     
     // Initialize template shapes if not blank
     if (template !== 'blank') {
@@ -581,7 +581,7 @@ export const createCanvas = async (userId, canvasName, template = 'blank') => {
       }
     }
     
-    console.log('✅ Canvas created:', canvasId, canvasName);
+    // console.log('✅ Canvas created:', canvasId, canvasName);
     return canvasId;
   } catch (error) {
     console.error('❌ Error creating canvas:', error);
@@ -740,7 +740,7 @@ export const duplicateCanvas = async (sourceCanvasId, userId, newName) => {
       starred: false,
     });
     
-    console.log('✅ Canvas duplicated:', sourceCanvasId, '→', newCanvasId);
+    // console.log('✅ Canvas duplicated:', sourceCanvasId, '→', newCanvasId);
     return newCanvasId;
   } catch (error) {
     console.error('❌ Error duplicating canvas:', error);
@@ -760,7 +760,7 @@ export const updateCanvasMetadata = async (canvasId, updates) => {
       ...updates,
       lastModified: Date.now(),
     });
-    console.log('✅ Canvas metadata updated:', canvasId);
+    // console.log('✅ Canvas metadata updated:', canvasId);
   } catch (error) {
     console.error('❌ Error updating canvas metadata:', error);
     throw error;
@@ -796,7 +796,7 @@ export const deleteCanvas = async (canvasId, userId) => {
       }
     }
     
-    console.log('✅ Canvas deleted:', canvasId);
+    // console.log('✅ Canvas deleted:', canvasId);
   } catch (error) {
     console.error('❌ Error deleting canvas:', error);
     throw error;
@@ -817,12 +817,43 @@ export const getUserCanvases = async (userId) => {
     
     const canvasesData = snapshot.val();
     const canvases = [];
+    const orphanedCanvases = [];
     
     for (const [canvasId, canvasInfo] of Object.entries(canvasesData)) {
-      canvases.push({
-        id: canvasId,
-        ...canvasInfo,
-      });
+      try {
+        // Verify canvas exists and user has permission
+        const canvasRef = ref(realtimeDb, `canvases/${canvasId}/metadata`);
+        const canvasSnapshot = await get(canvasRef);
+        
+        if (!canvasSnapshot.exists()) {
+          // console.warn(`⚠️ Canvas ${canvasId} metadata not found, marking as orphaned`);
+          orphanedCanvases.push(canvasId);
+          continue;
+        }
+        
+        // Canvas exists, add to list
+        canvases.push({
+          id: canvasId,
+          ...canvasInfo,
+        });
+      } catch (err) {
+        // If permission denied or other error, skip this canvas
+        // console.warn(`⚠️ Cannot access canvas ${canvasId}:`, err.message);
+        orphanedCanvases.push(canvasId);
+      }
+    }
+    
+    // Clean up orphaned canvas references
+    if (orphanedCanvases.length > 0) {
+      // console.log(`🧹 Cleaning up ${orphanedCanvases.length} orphaned canvas references`);
+      for (const canvasId of orphanedCanvases) {
+        try {
+          await remove(getUserCanvasRef(userId, canvasId));
+          // console.log(`✅ Removed orphaned canvas reference: ${canvasId}`);
+        } catch (cleanupErr) {
+          console.error(`❌ Failed to clean up ${canvasId}:`, cleanupErr);
+        }
+      }
     }
     
     // Sort by lastAccessed (most recent first)
@@ -865,7 +896,7 @@ export const toggleCanvasStarred = async (canvasId, userId) => {
       starred: newStarred,
     });
     
-    console.log('⭐ Canvas starred status toggled:', canvasId, newStarred);
+    // console.log('⭐ Canvas starred status toggled:', canvasId, newStarred);
     return newStarred;
   } catch (error) {
     console.error('❌ Error toggling starred status:', error);
@@ -913,7 +944,7 @@ export const addCanvasPermission = async (canvasId, userId, role, canvasName) =>
       starred: false,
     });
     
-    console.log('✅ Canvas permission added:', canvasId, userId, role);
+    // console.log('✅ Canvas permission added:', canvasId, userId, role);
   } catch (error) {
     console.error('❌ Error adding canvas permission:', error);
     throw error;
@@ -934,7 +965,7 @@ export const removeCanvasPermission = async (canvasId, userId) => {
     // Remove canvas from user's canvas list
     await remove(getUserCanvasRef(userId, canvasId));
     
-    console.log('✅ Canvas permission removed:', canvasId, userId);
+    // console.log('✅ Canvas permission removed:', canvasId, userId);
   } catch (error) {
     console.error('❌ Error removing canvas permission:', error);
     throw error;
@@ -954,6 +985,6 @@ export const updateCanvasAccess = async (userId, canvasId) => {
     });
   } catch (error) {
     // Silently fail - not critical
-    console.warn('Warning: Could not update canvas access time:', error);
+    // console.warn('Warning: Could not update canvas access time:', error);
   }
 };

@@ -228,6 +228,12 @@ function CanvasDashboard({ onOpenCanvas }) {
         </div>
         
         <div className="dashboard-actions">
+          {user && (
+            <div className="user-display">
+              <span className="user-name">{user.displayName || user.email}</span>
+            </div>
+          )}
+          
           <button 
             className="btn btn-primary"
             onClick={() => setShowCreateModal(true)}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { TEXT_COLORS, FONT_SIZES, DEFAULT_FONT_SIZE, DEFAULT_TEXT_COLOR } from '../utils/constants';
+import { FONT_SIZES, DEFAULT_FONT_SIZE, DEFAULT_TEXT_COLOR } from '../utils/constants';
+import ColorPicker from './ColorPicker';
 import './InlineTextEditor.css';
 
 /**
@@ -166,24 +167,12 @@ function InlineTextEditor({ shape, text, onTextChange, onFinish, viewport, conta
             <em>I</em>
           </button>
 
-          {/* Text Color Palette */}
-          <div className="toolbar-group toolbar-colors">
-            <label className="toolbar-label">Color:</label>
-            <div className="color-palette">
-              {TEXT_COLORS.map(color => (
-                <button
-                  key={color}
-                  className={`color-swatch ${textColor === color ? 'active' : ''}`}
-                  style={{ backgroundColor: color }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setTextColor(color);
-                  }}
-                  title={color}
-                />
-              ))}
-            </div>
-          </div>
+          {/* Text Color Picker */}
+          <ColorPicker
+            value={textColor}
+            onChange={setTextColor}
+            label="Color"
+          />
         </div>
 
         {/* Text Area */}

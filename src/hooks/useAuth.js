@@ -21,13 +21,13 @@ export function useAuth() {
         const storedGithubUsername = localStorage.getItem('github_username');
         
         // Debug: Log available user data to find GitHub username
-        console.log('🔍 Auth user data:', {
-          storedGithubUsername,
-          displayName: currentUser.displayName,
-          email: currentUser.email,
-          reloadUserInfo: currentUser.reloadUserInfo,
-          providerData: currentUser.providerData,
-        });
+        // console.log('🔍 Auth user data:', {
+        //   storedGithubUsername,
+        //   displayName: currentUser.displayName,
+        //   email: currentUser.email,
+        //   reloadUserInfo: currentUser.reloadUserInfo,
+        //   providerData: currentUser.providerData,
+        // });
         
         // Extract GitHub username (handle) from provider data
         let githubUsername = null;
@@ -51,7 +51,7 @@ export function useAuth() {
           currentUser.email?.split('@')[0] || 
           'Anonymous User';
         
-        console.log('✅ Using display name:', displayName);
+        // console.log('✅ Using display name:', displayName);
 
         setUser({
           uid: currentUser.uid,
@@ -79,7 +79,7 @@ export function useAuth() {
         if (currentUser) {
           // Force token refresh
           await currentUser.getIdToken(true);
-          console.log('🔄 Auth token refreshed successfully');
+          // console.log('🔄 Auth token refreshed successfully');
         }
       } catch (error) {
         console.error('❌ Failed to refresh auth token:', error);

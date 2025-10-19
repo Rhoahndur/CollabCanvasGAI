@@ -25,12 +25,12 @@ export function useCursors(currentSessionId, canvasId = DEFAULT_CANVAS_ID) {
   useEffect(() => {
     if (!currentSessionId) return;
     
-    console.log('Setting up cursor subscription for canvas:', canvasId);
+    // console.log('Setting up cursor subscription for canvas:', canvasId);
     
     const unsubscribe = subscribeToCursors(canvasId, (allCursors) => {
       setAllCursorsData(allCursors);
       const activeCursors = filterActiveCursors(allCursors, currentSessionId);
-      console.log('Active cursors from Firestore:', activeCursors.length);
+      // console.log('Active cursors from Firestore:', activeCursors.length);
       setCursors(activeCursors);
     });
 

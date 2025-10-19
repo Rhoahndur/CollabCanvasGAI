@@ -280,9 +280,9 @@ export function setup500Test(userId) {
     generateGrid: (rows, cols) => generateGridRectangles(rows, cols, userId),
   };
   
-  console.log('🧪 Test functions available:');
-  console.log('  - window.testCanvas.generate500() - Generate 500 random shapes');
-  console.log('  - window.testCanvas.generate1000() - Generate 1000 random shapes');
-  console.log('  - window.testCanvas.generateGrid(rows, cols) - Generate grid of shapes');
+  // console.log('🧪 Test functions available:');
+  // console.log('  - window.testCanvas.generate500() - Generate 500 random shapes');
+  // console.log('  - window.testCanvas.generate1000() - Generate 1000 random shapes');
+  // console.log('  - window.testCanvas.generateGrid(rows, cols) - Generate grid of shapes');
 }
 

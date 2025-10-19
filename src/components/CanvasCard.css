@@ -111,6 +111,17 @@
   pointer-events: none; /* Allow clicks to pass through container */
 }
 
+/* In list view, actions are not absolutely positioned */
+.canvas-list .canvas-actions {
+  position: static;
+  pointer-events: auto; /* Allow all actions to be clickable in list view */
+}
+
+/* In grid view, ensure actions container doesn't block card clicks */
+.canvas-grid .canvas-actions {
+  pointer-events: none; /* Allow clicks to pass through to card */
+}
+
 .canvas-star-btn {
   background-color: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
