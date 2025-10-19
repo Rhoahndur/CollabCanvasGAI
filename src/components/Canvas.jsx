@@ -3073,6 +3073,7 @@ function Canvas({
           centerX: viewport.offsetX + (containerSize.width / 2) / viewport.zoom,
           centerY: viewport.offsetY + (containerSize.height / 2) / viewport.zoom
         }}
+        svgRef={svgRef}
       />
       
       {/* Inline Text Editor */}

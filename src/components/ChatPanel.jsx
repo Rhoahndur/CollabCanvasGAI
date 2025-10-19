@@ -3,6 +3,7 @@ import { useChat } from 'ai/react';
 import { ref, push, onValue, query, orderByChild, limitToLast } from 'firebase/database';
 import { realtimeDb } from '../services/firebase';
 import { executeCanvasTool } from '../utils/canvasTools';
+import { captureCanvasImage, shouldUseVision, getVisionReason } from '../utils/canvasCapture';
 import './ChatPanel.css';
 
 // Track executed tool calls to prevent infinite loops
@@ -24,12 +25,15 @@ function ChatPanel({
   deleteShape,
   selectShape,
   deselectShape,
-  viewport = { offsetX: 0, offsetY: 0, zoom: 1, centerX: 0, centerY: 0 }
+  viewport = { offsetX: 0, offsetY: 0, zoom: 1, centerX: 0, centerY: 0 },
+  svgRef // SVG element reference for canvas capture
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('canvas'); // 'canvas' or 'canny'
   const [canvasMessages, setCanvasMessages] = useState([]);
   const [canvasInput, setCanvasInput] = useState('');
+  const [isCapturingCanvas, setIsCapturingCanvas] = useState(false);
+  const [visionReason, setVisionReason] = useState(null);
   const messagesEndRef = useRef(null);
   const cannyMessagesEndRef = useRef(null);
   
@@ -40,13 +44,13 @@ function ChatPanel({
     ? '/api/chat' 
     : 'http://localhost:3001/api/chat';
   
-  const { messages, input, handleInputChange, handleSubmit, isLoading, error } = useChat({
+  const { messages, input, handleInputChange, handleSubmit, isLoading, error, append } = useChat({
     api: apiEndpoint,
     initialMessages: [
       {
         id: 'welcome',
         role: 'assistant',
-        content: '👋 Hi! I\'m Canny, your CollabCanvas assistant! I can now manipulate the canvas for you! Try asking me to "create 5 blue rectangles" or "arrange shapes in a grid"! 🎨✨',
+        content: '👋 Hi! I\'m Canny, your CollabCanvas assistant! I can manipulate the canvas for you and even SEE what\'s on it! Try "create rectangles around the blue circle" or "what colors am I using?" 🎨👁️✨',
       }
     ],
     // Handle tool calls from Canny
@@ -75,6 +79,60 @@ function ChatPanel({
       return result;
     }
   });
+
+  // Custom submit handler that captures canvas when vision is needed
+  const handleCannySubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!input.trim()) return;
+    
+    // Check if vision should be used
+    const useVision = shouldUseVision(input);
+    
+    if (useVision && svgRef?.current) {
+      try {
+        setIsCapturingCanvas(true);
+        setVisionReason(getVisionReason(input));
+        
+        console.log('👁️ Vision detected! Capturing canvas...');
+        
+        // Capture canvas as image
+        const canvasImage = await captureCanvasImage(svgRef.current);
+        
+        console.log('✅ Canvas captured, sending with vision...');
+        
+        // Send message with image using append()
+        await append({
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: input
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: canvasImage
+              }
+            }
+          ]
+        });
+        
+        setIsCapturingCanvas(false);
+        setVisionReason(null);
+      } catch (error) {
+        console.error('Failed to capture canvas:', error);
+        setIsCapturingCanvas(false);
+        setVisionReason(null);
+        
+        // Fallback: send without vision
+        handleSubmit(e);
+      }
+    } else {
+      // No vision needed, use regular submit
+      handleSubmit(e);
+    }
+  };
 
   const handleToggle = () => {
     setIsOpen(!isOpen);
@@ -426,10 +484,20 @@ function ChatPanel({
               return null;
             }
             
-            // Clean content to remove our tool call marker
-            let cleanContent = message.content || '';
-            if (typeof cleanContent === 'string') {
-              cleanContent = cleanContent.replace(/__TOOL_CALLS__.+?__END_TOOL_CALLS__/g, '').trim();
+            // Extract text content from message (handle both string and multimodal array formats)
+            let cleanContent = '';
+            
+            if (typeof message.content === 'string') {
+              // Simple string content
+              cleanContent = message.content.replace(/__TOOL_CALLS__.+?__END_TOOL_CALLS__/g, '').trim();
+            } else if (Array.isArray(message.content)) {
+              // Multimodal content (text + image) - extract text parts only
+              cleanContent = message.content
+                .filter(part => part.type === 'text')
+                .map(part => part.text)
+                .join(' ')
+                .replace(/__TOOL_CALLS__.+?__END_TOOL_CALLS__/g, '')
+                .trim();
             }
             
             // Skip if message is now empty after removing marker
@@ -480,14 +548,22 @@ function ChatPanel({
           <div ref={cannyMessagesEndRef} />
             </div>
 
-            <form className="chat-input-form" onSubmit={handleSubmit}>
+            {/* Vision indicator */}
+            {(isCapturingCanvas || visionReason) && (
+              <div className="vision-indicator">
+                <span className="vision-icon">👁️</span>
+                <span className="vision-text">{visionReason || 'Capturing canvas...'}</span>
+              </div>
+            )}
+
+            <form className="chat-input-form" onSubmit={handleCannySubmit}>
               <input
                 type="text"
                 className="chat-input"
-                placeholder="Ask Canny..."
+                placeholder="Ask Canny... (I can see the canvas! 👁️)"
                 value={input}
                 onChange={handleInputChange}
-                disabled={isLoading}
+                disabled={isLoading || isCapturingCanvas}
                 aria-label="Chat message input"
               />
               <button 

@@ -447,6 +447,46 @@
   opacity: 0.8;
 }
 
+/* Vision indicator */
+.vision-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: linear-gradient(90deg, rgba(100, 108, 255, 0.1), rgba(139, 92, 246, 0.1));
+  border-bottom: 1px solid rgba(100, 108, 255, 0.3);
+  font-size: 13px;
+  color: #646cff;
+  animation: visionPulse 2s ease-in-out infinite;
+}
+
+.vision-icon {
+  font-size: 16px;
+  animation: visionBlink 1.5s ease-in-out infinite;
+}
+
+.vision-text {
+  font-weight: 500;
+}
+
+@keyframes visionPulse {
+  0%, 100% {
+    background: linear-gradient(90deg, rgba(100, 108, 255, 0.1), rgba(139, 92, 246, 0.1));
+  }
+  50% {
+    background: linear-gradient(90deg, rgba(100, 108, 255, 0.15), rgba(139, 92, 246, 0.15));
+  }
+}
+
+@keyframes visionBlink {
+  0%, 90%, 100% {
+    opacity: 1;
+  }
+  95% {
+    opacity: 0.3;
+  }
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .chat-panel {

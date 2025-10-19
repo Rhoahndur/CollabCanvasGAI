@@ -196,13 +196,15 @@ Examples:
       }
     ];
 
-    // Call OpenAI API with streaming and tools
+    // Call OpenAI API with streaming, tools, and vision support
+    // Note: gpt-4o supports both vision and function calling
     const stream = await openai.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
+      model: 'gpt-4o',  // Changed from gpt-4-turbo-preview to support vision
       messages: [systemMessage, ...messages],
       tools: tools,
       tool_choice: 'auto',
       stream: true,
+      max_tokens: 4096,  // Increased for vision processing
     });
 
     console.log('✅ Stream created, sending response...');

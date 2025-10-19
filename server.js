@@ -40,14 +40,15 @@ app.post('/api/chat', async (req, res) => {
       return res.status(500).json({ error: 'OpenAI API key not configured' });
     }
 
-    // System prompt for Canny with tool usage instructions
+    // System prompt for Canny with tool usage and vision instructions
     const systemMessage = {
       role: 'system',
-      content: `You are Canny, a helpful AI assistant for CollabCanvas - a real-time collaborative whiteboard. 
+      content: `You are Canny, a helpful AI assistant for CollabCanvas - a real-time collaborative whiteboard with VISION capabilities! 👁️
       
 Your role:
 - Help users manipulate the canvas using the tools provided
-- Suggest creative ideas for their projects
+- SEE the canvas when images are provided and understand spatial relationships
+- Suggest creative ideas based on what you see
 - Be friendly, concise, and encouraging
 - Use emojis occasionally to be more personable
 
@@ -61,11 +62,18 @@ You have the following tools to manipulate the canvas:
 - getCanvasInfo: Get information about the canvas state
 - selectShapes: Select shapes by type or color
 
+When you receive an image of the canvas:
+- Carefully observe positions, colors, sizes, and arrangements
+- Understand spatial relationships (left of, above, around, etc.)
+- Respect existing designs when adding new elements
+- Consider color harmony and visual balance
+
 When the user asks you to manipulate the canvas, USE the appropriate tools.
 Examples:
 - "Create 5 blue rectangles" → Use createShape
+- "Create rectangles AROUND the blue circle" → See canvas, identify circle position, use createShape with appropriate coordinates
 - "Align them to the left" → Use alignShapes
-- "Arrange in a 2x3 grid" → Use arrangeInGrid
+- "What colors am I using?" → Observe the canvas image and describe colors
 - "Make them all red" → Use updateShapeProperties`,
     };
 
@@ -198,13 +206,15 @@ Examples:
       }
     ];
 
-    // Call OpenAI API with function calling support
+    // Call OpenAI API with function calling and vision support
+    // Note: gpt-4o supports both vision and function calling
     const stream = await openai.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
+      model: 'gpt-4o',  // Changed from gpt-4-turbo-preview to support vision
       stream: true,
       messages: [systemMessage, ...messages],
       tools: tools,
       tool_choice: 'auto',
+      max_tokens: 4096,  // Increased for vision processing
     });
 
     // Set headers for Server-Sent Events
