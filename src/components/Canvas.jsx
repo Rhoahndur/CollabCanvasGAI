@@ -36,6 +36,7 @@ import {
 } from '../utils/canvasUtils';
 import { testFirestoreConnection, createShape, updateShape, deleteShape, updateCursor, removeCursor, updatePresenceHeartbeat } from '../services/canvasService';
 import { uploadImage, handlePasteEvent } from '../services/imageService';
+import { startLockCleanup } from '../services/lockCleanupService';
 import { useCanvas } from '../hooks/useCanvas';
 import { useCursors } from '../hooks/useCursors';
 import { useAuth } from '../hooks/useAuth';
@@ -199,6 +200,20 @@ function Canvas({
     };
     testConnection();
   }, []);
+  
+  // Start automatic lock cleanup service
+  useEffect(() => {
+    if (!canvasId) return;
+    
+    console.log('🔧 Starting automatic lock cleanup service...');
+    const stopCleanup = startLockCleanup(canvasId);
+    
+    // Cleanup on unmount
+    return () => {
+      console.log('🛑 Stopping lock cleanup service');
+      stopCleanup();
+    };
+  }, [canvasId]);
   
   // Setup test utilities in dev mode
   useEffect(() => {
