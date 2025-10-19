@@ -37,6 +37,39 @@ function App() {
   
   const { user, loading, signIn } = useAuth()
   
+  // Handle URL-based canvas routing (for shared links)
+  useEffect(() => {
+    if (!user) return; // Wait for user to be loaded
+    
+    const handleURLChange = () => {
+      const path = window.location.pathname;
+      const canvasMatch = path.match(/^\/canvas\/(.+)$/);
+      
+      if (canvasMatch) {
+        const canvasId = canvasMatch[1];
+        // Open the canvas from the URL
+        setCurrentCanvasId(canvasId);
+        setCurrentCanvasName('Shared Canvas');
+        setCurrentView('canvas');
+      } else if (path === '/') {
+        // Navigate to dashboard
+        setCurrentView('dashboard');
+        setCurrentCanvasId(null);
+        setCurrentCanvasName('');
+      }
+    };
+    
+    // Handle initial URL
+    handleURLChange();
+    
+    // Handle browser back/forward buttons
+    window.addEventListener('popstate', handleURLChange);
+    
+    return () => {
+      window.removeEventListener('popstate', handleURLChange);
+    };
+  }, [user])
+  
   // Only use presence when on a canvas (not on dashboard)
   const { onlineUsers } = usePresence(
     sessionIdRef.current, 
@@ -50,6 +83,8 @@ function App() {
     setCurrentCanvasId(canvasId)
     setCurrentCanvasName(canvasName)
     setCurrentView('canvas')
+    // Update URL to reflect current canvas
+    window.history.pushState({}, '', `/canvas/${canvasId}`)
   }
 
   // Handle going back to dashboard
@@ -57,6 +92,8 @@ function App() {
     setCurrentView('dashboard')
     setCurrentCanvasId(null)
     setCurrentCanvasName('')
+    // Update URL to reflect dashboard
+    window.history.pushState({}, '', '/')
   }
   
   // Handle opening share modal
