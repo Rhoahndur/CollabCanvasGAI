@@ -90,9 +90,13 @@ function ChatPanel({
   const [visionReason, setVisionReason] = useState(null);
   const [lastRequestTime, setLastRequestTime] = useState(0);
   const [showExamples, setShowExamples] = useState(true);
+  const [panelWidth, setPanelWidth] = useState(400); // Default width
+  const [isResizing, setIsResizing] = useState(false);
   const messagesEndRef = useRef(null);
   const cannyMessagesEndRef = useRef(null);
   const abortControllerRef = useRef(null);
+  const resizeStartX = useRef(0);
+  const resizeStartWidth = useRef(0);
   
   // Use AI SDK's useChat hook for streaming with tool support
   // In production (Vercel), uses /api/chat
@@ -245,6 +249,36 @@ function ChatPanel({
   const handleToggle = () => {
     setIsOpen(!isOpen);
   };
+
+  // Resize handlers
+  const handleResizeStart = (e) => {
+    e.preventDefault();
+    setIsResizing(true);
+    resizeStartX.current = e.clientX;
+    resizeStartWidth.current = panelWidth;
+  };
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleResizeMove = (e) => {
+      const delta = resizeStartX.current - e.clientX; // Drag left = bigger
+      const newWidth = Math.max(320, Math.min(1000, resizeStartWidth.current + delta));
+      setPanelWidth(newWidth);
+    };
+
+    const handleResizeEnd = () => {
+      setIsResizing(false);
+    };
+
+    document.addEventListener('mousemove', handleResizeMove);
+    document.addEventListener('mouseup', handleResizeEnd);
+
+    return () => {
+      document.removeEventListener('mousemove', handleResizeMove);
+      document.removeEventListener('mouseup', handleResizeEnd);
+    };
+  }, [isResizing]);
 
   const handleClear = () => {
     // Reload page to clear chat (simpler than managing SDK state)
@@ -431,7 +465,19 @@ function ChatPanel({
   };
 
   return (
-    <div className={`chat-panel ${isOpen ? 'open' : 'closed'}`}>
+    <div 
+      className={`chat-panel ${isOpen ? 'open' : 'closed'} ${isResizing ? 'resizing' : ''}`}
+      style={{ width: isOpen ? `${panelWidth}px` : undefined }}
+    >
+      {/* Resize handle */}
+      {isOpen && (
+        <div 
+          className="chat-resize-handle"
+          onMouseDown={handleResizeStart}
+          title="Drag to resize"
+        />
+      )}
+      
       {/* Toggle button */}
       <button 
         className="chat-toggle"

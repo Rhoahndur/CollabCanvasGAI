@@ -5,23 +5,17 @@
   box-sizing: border-box;
 }
 
-:root {
+body {
+  margin: 0;
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-body {
-  margin: 0;
   display: flex;
   place-items: center;
   min-width: 320px;
@@ -43,18 +37,19 @@ body {
 
 .app-header {
   padding: 1rem 2rem;
-  background-color: #1a1a1a;
-  border-bottom: 1px solid #333;
+  background-color: var(--header-bg);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .app-header h1 {
   font-size: 2rem;
   font-weight: 600;
   margin-bottom: 0.5rem;
+  color: var(--text-primary);
 }
 
 .app-header p {
-  color: #888;
+  color: var(--text-tertiary);
   font-size: 0.9rem;
 }
 
@@ -76,23 +71,26 @@ body {
 
 button {
   border-radius: 8px;
-  border: 1px solid transparent;
+  border: 1px solid var(--border-color);
   padding: 0.6em 1.2em;
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: var(--bg-button);
+  color: var(--text-primary);
   cursor: pointer;
-  transition: border-color 0.25s;
+  transition: all 0.2s ease;
 }
 
 button:hover {
-  border-color: #646cff;
+  border-color: var(--accent-color);
+  background-color: var(--bg-button-hover);
 }
 
 button:focus,
 button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
 }
 
 /* Loading State */
@@ -127,17 +125,17 @@ button:focus-visible {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  background: var(--bg-primary);
 }
 
 .login-container {
-  background-color: #1e1e1e;
+  background-color: var(--modal-bg);
   border-radius: 16px;
-  border: 1px solid #333;
+  border: 1px solid var(--border-color);
   padding: 3rem;
   max-width: 440px;
   width: 100%;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-lg);
 }
 
 .login-header {
@@ -156,7 +154,7 @@ button:focus-visible {
 }
 
 .login-subtitle {
-  color: #888;
+  color: var(--text-tertiary);
   font-size: 0.95rem;
 }
 
@@ -168,10 +166,11 @@ button:focus-visible {
   font-size: 1.5rem;
   font-weight: 600;
   margin-bottom: 0.5rem;
+  color: var(--text-primary);
 }
 
 .login-description {
-  color: #aaa;
+  color: var(--text-secondary);
   font-size: 0.95rem;
   line-height: 1.6;
   margin-bottom: 2rem;
@@ -265,11 +264,11 @@ button:focus-visible {
 .login-footer {
   text-align: center;
   padding-top: 1.5rem;
-  border-top: 1px solid #333;
+  border-top: 1px solid var(--border-color);
 }
 
 .login-footer-text {
-  color: #666;
+  color: var(--text-tertiary);
   font-size: 0.85rem;
   line-height: 1.5;
 }
@@ -280,8 +279,8 @@ button:focus-visible {
   align-items: center;
   justify-content: space-between;
   padding: 1rem 2rem;
-  background-color: #1a1a1a;
-  border-bottom: 1px solid #333;
+  background-color: var(--header-bg);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .header-left {
@@ -293,12 +292,13 @@ button:focus-visible {
 .header-left h1 {
   font-size: 1.5rem;
   font-weight: 600;
+  color: var(--text-primary);
 }
 
 .btn-back {
   background-color: transparent;
-  border: 1px solid #444;
-  color: #aaa;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
   padding: 0.5rem 1rem;
   cursor: pointer;
   transition: all 0.2s;
@@ -309,15 +309,15 @@ button:focus-visible {
 }
 
 .btn-back:hover {
-  background-color: #2a2a2a;
-  border-color: #646cff;
-  color: #fff;
+  background-color: var(--bg-hover);
+  border-color: var(--accent-color);
+  color: var(--text-primary);
 }
 
 .btn-settings {
   background-color: transparent;
-  border: 1px solid #444;
-  color: #aaa;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
   padding: 0.5rem 1rem;
   cursor: pointer;
   transition: all 0.2s;
@@ -329,9 +329,9 @@ button:focus-visible {
 }
 
 .btn-settings:hover {
-  background-color: #2a2a2a;
-  border-color: #646cff;
-  color: #fff;
+  background-color: var(--bg-hover);
+  border-color: var(--accent-color);
+  color: var(--text-primary);
 }
 
 .btn-settings svg {
@@ -339,9 +339,9 @@ button:focus-visible {
 }
 
 .btn-share {
-  background-color: #646cff;
+  background-color: var(--accent-color);
   border: none;
-  color: #fff;
+  color: var(--text-on-accent);
   padding: 0.5rem 1rem;
   cursor: pointer;
   transition: all 0.2s;
@@ -353,7 +353,7 @@ button:focus-visible {
 }
 
 .btn-share:hover {
-  background-color: #535bf2;
+  background-color: var(--accent-hover);
   transform: translateY(-1px);
 }
 
@@ -382,13 +382,13 @@ button:focus-visible {
 
 .user-name {
   font-weight: 500;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .btn-signout {
-  background-color: #2a2a2a;
-  color: #fff;
-  border: 1px solid #444;
+  background-color: var(--bg-button);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
   padding: 0.6rem 1.2rem;
   border-radius: 6px;
   font-size: 0.9rem;
@@ -398,8 +398,8 @@ button:focus-visible {
 }
 
 .btn-signout:hover {
-  background-color: #3a3a3a;
-  border-color: #555;
+  background-color: var(--bg-button-hover);
+  border-color: var(--border-hover);
 }
 
 .btn-signout:active {
@@ -408,44 +408,11 @@ button:focus-visible {
 
 .welcome-message {
   font-size: 1.2rem;
-  color: #aaa;
+  color: var(--text-secondary);
   margin-top: 1rem;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  
-  button {
-    background-color: #f9f9f9;
-  }
-  
-  .login-page {
-    background: linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%);
-  }
-  
-  .login-container {
-    background-color: #ffffff;
-    border-color: #ddd;
-  }
-  
-  .login-subtitle,
-  .login-description,
-  .login-footer-text {
-    color: #666;
-  }
-  
-  .app-header {
-    background-color: #ffffff;
-    border-bottom-color: #e0e0e0;
-  }
-  
-  .user-name {
-    color: #213547;
-  }
-}
+/* Theme styles now handled by data-theme attribute in themes.css */
 
 /* Error Boundary Styles */
 .error-boundary {
@@ -454,18 +421,18 @@ button:focus-visible {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #1a1a1a 0%, #2d1a1a 100%);
+  background: var(--bg-primary);
   padding: 2rem;
 }
 
 .error-boundary-content {
-  background: rgba(40, 20, 20, 0.95);
-  border: 2px solid #d32f2f;
+  background: var(--modal-bg);
+  border: 2px solid var(--error-color);
   border-radius: 16px;
   padding: 3rem;
   max-width: 600px;
   text-align: center;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-lg);
 }
 
 .error-boundary .error-icon {
@@ -487,7 +454,7 @@ button:focus-visible {
 }
 
 .error-message {
-  color: #ccc;
+  color: var(--text-secondary);
   font-size: 1.1rem;
   line-height: 1.6;
   margin: 0 0 2rem 0;
@@ -496,14 +463,14 @@ button:focus-visible {
 .error-details {
   text-align: left;
   margin: 2rem 0;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid #666;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 1rem;
 }
 
 .error-details summary {
-  color: #ff9800;
+  color: var(--warning-color);
   cursor: pointer;
   font-weight: 600;
   margin-bottom: 1rem;
@@ -545,8 +512,8 @@ button:focus-visible {
 
 .error-boundary .btn-secondary {
   background: transparent;
-  color: #aaa;
-  border: 2px solid #666;
+  color: var(--text-secondary);
+  border: 2px solid var(--border-color);
   padding: 0.75rem 2rem;
   border-radius: 8px;
   font-size: 1rem;
@@ -556,13 +523,13 @@ button:focus-visible {
 }
 
 .error-boundary .btn-secondary:hover {
-  border-color: #888;
-  color: #fff;
+  border-color: var(--border-hover);
+  color: var(--text-primary);
   transform: translateY(-2px);
 }
 
 .error-hint {
-  color: #888;
+  color: var(--text-tertiary);
   font-size: 0.9rem;
   margin-top: 2rem;
 }

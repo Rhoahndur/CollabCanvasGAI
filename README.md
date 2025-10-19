@@ -106,6 +106,45 @@ CollabCanvas is a multiplayer drawing application where multiple users can creat
 
 ---
 
+## 📚 Documentation
+
+Comprehensive documentation is available in the `docs/` directory:
+
+- **[SETUP.md](./docs/SETUP.md)** - Complete setup and deployment guide
+  - Firebase configuration
+  - SendGrid email setup
+  - Canny AI setup
+  - Local development
+  - Vercel deployment
+  
+- **[FEATURES.md](./docs/FEATURES.md)** - Feature documentation
+  - Drawing tools
+  - Multi-canvas system
+  - Canny AI assistant (tools + vision)
+  - Collaboration features
+  - User interface
+  
+- **[TECHNICAL.md](./docs/TECHNICAL.md)** - Technical details
+  - Architecture overview
+  - Database structure
+  - Security & permissions
+  - Real-time systems
+  - Performance optimizations
+  - AI integration
+  
+- **[CHANGELOG.md](./docs/CHANGELOG.md)** - Implementation history
+  - Feature timeline
+  - Phase completions
+  - Bug fixes
+  - Performance improvements
+
+**Quick Links:**
+- [PRD.md](./PRD.md) - Product Requirements Document
+- [architecture.md](./architecture.md) - System Architecture
+- [tasks.md](./tasks.md) - Task Tracking
+
+---
+
 ## 📖 User Guide
 
 ### Creating Rectangles
