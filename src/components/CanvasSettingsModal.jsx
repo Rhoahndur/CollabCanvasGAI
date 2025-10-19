@@ -73,7 +73,16 @@ function CanvasSettingsModal({ canvasId, canvasName, isOpen, onClose, onSettings
       }, 1500);
     } catch (err) {
       console.error('Failed to save settings:', err);
-      setError('Failed to save settings. Please try again.');
+      console.error('Error code:', err.code);
+      console.error('Error message:', err.message);
+      
+      // Provide more specific error messages
+      let errorMessage = 'Failed to save settings. Please try again.';
+      if (err.code === 'PERMISSION_DENIED' || err.message?.includes('permission')) {
+        errorMessage = 'Permission denied. You need owner or editor access to change canvas settings.';
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

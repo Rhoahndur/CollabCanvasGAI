@@ -89,7 +89,7 @@ function ChatPanel({
   const [isCapturingCanvas, setIsCapturingCanvas] = useState(false);
   const [visionReason, setVisionReason] = useState(null);
   const [lastRequestTime, setLastRequestTime] = useState(0);
-  const [showExamples, setShowExamples] = useState(true);
+  const [showExamples, setShowExamples] = useState(false); // Start hidden, toggle with button
   const [panelWidth, setPanelWidth] = useState(400); // Default width
   const [isResizing, setIsResizing] = useState(false);
   const messagesEndRef = useRef(null);
@@ -632,8 +632,8 @@ function ChatPanel({
         {activeTab === 'canny' && (
           <>
             <div className="chat-messages">
-          {/* Example Prompts - Show when no messages yet */}
-          {showExamples && messages.length <= 1 && (
+          {/* Example Prompts - Toggle with button */}
+          {showExamples && (
             <div className="example-prompts">
               <div className="example-header">
                 <span className="example-icon">💡</span>
@@ -747,6 +747,19 @@ function ChatPanel({
                 disabled={isLoading || isCapturingCanvas}
                 aria-label="Chat message input"
               />
+              
+              {/* Template/Examples button - always visible */}
+              <button
+                type="button"
+                className={`chat-templates-btn ${showExamples ? 'active' : ''}`}
+                onClick={() => setShowExamples(!showExamples)}
+                aria-label="Toggle example prompts"
+                title={showExamples ? "Hide example prompts" : "Show example prompts"}
+              >
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                </svg>
+              </button>
               
               {/* Stop button - visible during loading */}
               {(isLoading || isCapturingCanvas) && (

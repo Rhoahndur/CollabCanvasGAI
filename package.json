@@ -15,6 +15,7 @@
     "deploy": "npm run build && firebase deploy",
     "deploy:hosting": "npm run build && firebase deploy --only hosting",
     "deploy:rules": "firebase deploy --only firestore:rules",
+    "deploy:database:rules": "firebase deploy --only database",
     "deploy:vercel": "vercel --prod"
   },
   "dependencies": {

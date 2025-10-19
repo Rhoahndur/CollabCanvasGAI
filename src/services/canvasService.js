@@ -808,15 +808,35 @@ export const duplicateCanvas = async (sourceCanvasId, userId, newName) => {
 /**
  * Update canvas metadata
  * @param {string} canvasId - Canvas ID
- * @param {Object} updates - Fields to update
+ * @param {Object} updates - Fields to update (supports nested updates)
  * @returns {Promise<void>}
  */
 export const updateCanvasMetadata = async (canvasId, updates) => {
   try {
-    await update(getCanvasMetadataRef(canvasId), {
-      ...updates,
-      lastModified: Date.now(),
-    });
+    // Handle nested updates (e.g., settings.backgroundColor)
+    // Convert nested objects to flattened paths for proper merging
+    const flattenedUpdates = {};
+    
+    const flatten = (obj, prefix = '') => {
+      for (const key in obj) {
+        const value = obj[key];
+        const newKey = prefix ? `${prefix}/${key}` : key;
+        
+        if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+          flatten(value, newKey);
+        } else {
+          flattenedUpdates[newKey] = value;
+        }
+      }
+    };
+    
+    flatten(updates);
+    flattenedUpdates.lastModified = Date.now();
+    
+    // Use update with flattened paths for proper nested merging
+    const metadataRef = getCanvasMetadataRef(canvasId);
+    await update(metadataRef, flattenedUpdates);
+    
     // console.log('✅ Canvas metadata updated:', canvasId);
   } catch (error) {
     console.error('❌ Error updating canvas metadata:', error);

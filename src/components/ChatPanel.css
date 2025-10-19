@@ -429,6 +429,43 @@
   color: var(--text-on-accent);
 }
 
+/* Templates Button */
+.chat-templates-btn {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.chat-templates-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+  transform: scale(1.05);
+}
+
+.chat-templates-btn:active {
+  transform: scale(0.95);
+}
+
+.chat-templates-btn.active {
+  background: var(--accent-bg);
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.chat-templates-btn.active svg {
+  fill: var(--accent-color);
+}
+
 /* Typing indicator */
 .typing-indicator {
   display: flex;
@@ -498,7 +535,7 @@
   margin: 0;
   font-size: 14px;
   font-weight: 600;
-  color: #e0e0e0;
+  color: var(--text-primary);
 }
 
 .example-category {
@@ -512,7 +549,7 @@
 .category-title {
   font-size: 12px;
   font-weight: 600;
-  color: #a0a0a0;
+  color: var(--text-secondary);
   margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -526,10 +563,10 @@
 
 .example-prompt-btn {
   padding: 6px 12px;
-  background: rgba(100, 108, 255, 0.1);
-  border: 1px solid rgba(100, 108, 255, 0.3);
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
   border-radius: 16px;
-  color: #a0b0ff;
+  color: var(--accent-color);
   font-size: 12px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -537,9 +574,9 @@
 }
 
 .example-prompt-btn:hover:not(:disabled) {
-  background: rgba(100, 108, 255, 0.2);
-  border-color: rgba(100, 108, 255, 0.5);
-  color: #c0d0ff;
+  background: var(--accent-bg);
+  border-color: var(--accent-color);
+  color: var(--accent-color);
   transform: translateY(-1px);
 }
 
