@@ -658,7 +658,7 @@ export const getCanvasMetadata = async (canvasId) => {
  * @param {string} userName - User display name
  * @returns {Promise<Object>} { success: boolean, role: string, canvasName: string }
  */
-export const requestCanvasAccess = async (canvasId, userId, userName) => {
+export const requestCanvasAccess = async (canvasId, userId, userName, requestedRole = 'viewer') => {
   try {
     // Check if user already has access
     const userCanvasRef = getUserCanvasRef(userId, canvasId);
@@ -681,8 +681,8 @@ export const requestCanvasAccess = async (canvasId, userId, userName) => {
       return { success: false, error: 'Canvas not found' };
     }
     
-    // Grant viewer access to the user
-    const role = 'viewer';
+    // Validate and grant the requested role (viewer or editor, never owner via link)
+    const role = ['viewer', 'editor'].includes(requestedRole) ? requestedRole : 'viewer';
     await addCanvasPermission(canvasId, userId, role, canvasMetadata.name);
     
     return { 

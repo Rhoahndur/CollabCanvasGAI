@@ -13,6 +13,7 @@ import './ShareCanvasModal.css';
  */
 function ShareCanvasModal({ canvasId, canvasName, currentUserId, isOpen, onClose }) {
   const [shareLink, setShareLink] = useState('');
+  const [shareLinkRole, setShareLinkRole] = useState(CANVAS_ROLE.VIEWER); // Role for share link
   const [inviteEmail, setInviteEmail] = useState('');
   const [selectedRole, setSelectedRole] = useState(CANVAS_ROLE.EDITOR);
   const [collaborators, setCollaborators] = useState([]);
@@ -47,12 +48,17 @@ function ShareCanvasModal({ canvasId, canvasName, currentUserId, isOpen, onClose
     }
   };
 
-  // Copy shareable link to clipboard
+  // Copy shareable link to clipboard with role parameter
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(shareLink)
+    const linkWithRole = `${shareLink}?role=${shareLinkRole}`;
+    navigator.clipboard.writeText(linkWithRole)
       .then(() => {
         setCopySuccess(true);
-        setTimeout(() => setCopySuccess(false), 2000);
+        setSuccessMessage(`${shareLinkRole === 'editor' ? 'Editor' : 'Viewer'} link copied!`);
+        setTimeout(() => {
+          setCopySuccess(false);
+          setSuccessMessage('');
+        }, 2000);
       })
       .catch(err => {
         console.error('Failed to copy link:', err);
@@ -157,12 +163,35 @@ function ShareCanvasModal({ canvasId, canvasName, currentUserId, isOpen, onClose
           <div className="share-section">
             <h3>Shareable Link</h3>
             <p className="share-section-description">
-              Anyone with this link can view the canvas
+              Choose the access level for people who use this link
             </p>
+            
+            {/* Role selector for share link */}
+            <div className="share-link-role-selector">
+              <button
+                type="button"
+                className={`share-link-role-btn ${shareLinkRole === CANVAS_ROLE.VIEWER ? 'active' : ''}`}
+                onClick={() => setShareLinkRole(CANVAS_ROLE.VIEWER)}
+              >
+                <span className="role-icon">👁️</span>
+                <span className="role-label">Viewer</span>
+                <span className="role-desc">Can view only</span>
+              </button>
+              <button
+                type="button"
+                className={`share-link-role-btn ${shareLinkRole === CANVAS_ROLE.EDITOR ? 'active' : ''}`}
+                onClick={() => setShareLinkRole(CANVAS_ROLE.EDITOR)}
+              >
+                <span className="role-icon">✏️</span>
+                <span className="role-label">Editor</span>
+                <span className="role-desc">Can view & edit</span>
+              </button>
+            </div>
+            
             <div className="share-link-container">
               <input
                 type="text"
-                value={shareLink}
+                value={`${shareLink}?role=${shareLinkRole}`}
                 readOnly
                 className="share-link-input"
               />

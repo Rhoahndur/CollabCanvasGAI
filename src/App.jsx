@@ -49,11 +49,16 @@ function App() {
       if (canvasMatch) {
         const canvasId = canvasMatch[1];
         
-        // Request access to the canvas (grants viewer access if needed)
+        // Parse query parameters to get requested role
+        const urlParams = new URLSearchParams(window.location.search);
+        const requestedRole = urlParams.get('role') || 'viewer';
+        
+        // Request access to the canvas (grants specified role if needed)
         const accessResult = await requestCanvasAccess(
           canvasId, 
           user.uid, 
-          user.displayName || user.email
+          user.displayName || user.email,
+          requestedRole
         );
         
         if (accessResult.success) {
