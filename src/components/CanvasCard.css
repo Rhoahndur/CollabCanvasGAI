@@ -6,6 +6,7 @@
   cursor: pointer;
   transition: all 0.2s;
   position: relative;
+  pointer-events: auto; /* Ensure card is always clickable */
 }
 
 .canvas-card:hover {
@@ -120,6 +121,11 @@
 /* In grid view, ensure actions container doesn't block card clicks */
 .canvas-grid .canvas-actions {
   pointer-events: none; /* Allow clicks to pass through to card */
+}
+
+/* Explicitly ensure grid cards are clickable */
+.canvas-grid .canvas-card {
+  pointer-events: auto;
 }
 
 .canvas-star-btn {
