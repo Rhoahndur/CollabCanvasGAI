@@ -11,7 +11,7 @@ import './CanvasSettingsModal.css';
  */
 function CanvasSettingsModal({ canvasId, canvasName, isOpen, onClose, onSettingsChange }) {
   const [backgroundColor, setBackgroundColor] = useState('#1a1a1a');
-  const [gridVisible, setGridVisible] = useState(true);
+  const [gridVisible, setGridVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -40,7 +40,7 @@ function CanvasSettingsModal({ canvasId, canvasName, isOpen, onClose, onSettings
       const metadata = await getCanvasMetadata(canvasId);
       if (metadata?.settings) {
         setBackgroundColor(metadata.settings.backgroundColor || '#1a1a1a');
-        setGridVisible(metadata.settings.gridVisible !== false);
+        setGridVisible(metadata.settings.gridVisible === true);
       }
     } catch (err) {
       console.error('Failed to load canvas settings:', err);

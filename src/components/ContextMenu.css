@@ -1,0 +1,69 @@
+.context-menu {
+  position: fixed;
+  background: rgba(30, 30, 30, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5),
+              0 0 0 1px rgba(255, 255, 255, 0.05);
+  padding: 6px;
+  min-width: 200px;
+  z-index: 10000;
+  backdrop-filter: blur(10px);
+  animation: contextMenuFadeIn 0.15s ease-out;
+}
+
+@keyframes contextMenuFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.context-menu-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 1);
+}
+
+.context-menu-item:active {
+  background: rgba(255, 255, 255, 0.15);
+  transform: scale(0.98);
+}
+
+.context-menu-icon {
+  font-size: 16px;
+  width: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.context-menu-count {
+  margin-left: auto;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+}
+
+/* Separator (if needed in future) */
+.context-menu-separator {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 4px 8px;
+}
+

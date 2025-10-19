@@ -2,14 +2,27 @@ import { useState, useRef, useEffect } from 'react';
 import { useChat } from 'ai/react';
 import { ref, push, onValue, query, orderByChild, limitToLast } from 'firebase/database';
 import { realtimeDb } from '../services/firebase';
+import { executeCanvasTool } from '../utils/canvasTools';
 import './ChatPanel.css';
 
 /**
  * ChatPanel component - Tabbed chat interface with Canvas Chat and Canny AI
  * - Canvas Chat: Real-time chat for users on the same canvas
- * - Canny: AI assistant for help and suggestions
+ * - Canny: AI assistant for help and suggestions with canvas manipulation tools
  */
-function ChatPanel({ canvasId, user }) {
+function ChatPanel({ 
+  canvasId, 
+  user,
+  // Canvas operations for Canny
+  shapes = [],
+  selectedShapeIds = [],
+  createShape,
+  updateShape,
+  deleteShape,
+  selectShape,
+  deselectShape,
+  viewport = { offsetX: 0, offsetY: 0, zoom: 1, centerX: 0, centerY: 0 }
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('canvas'); // 'canvas' or 'canny'
   const [canvasMessages, setCanvasMessages] = useState([]);
@@ -17,7 +30,7 @@ function ChatPanel({ canvasId, user }) {
   const messagesEndRef = useRef(null);
   const cannyMessagesEndRef = useRef(null);
   
-  // Use AI SDK's useChat hook for streaming
+  // Use AI SDK's useChat hook for streaming with tool support
   // In production (Vercel), uses /api/chat
   // In development, uses localhost:3001/api/chat
   const apiEndpoint = import.meta.env.PROD 
@@ -30,9 +43,34 @@ function ChatPanel({ canvasId, user }) {
       {
         id: 'welcome',
         role: 'assistant',
-        content: '👋 Hi! I\'m Canny, your CollabCanvas assistant! Ask me anything about using the canvas, collaboration features, or get creative suggestions! 🎨',
+        content: '👋 Hi! I\'m Canny, your CollabCanvas assistant! I can now manipulate the canvas for you! Try asking me to "create 5 blue rectangles" or "arrange shapes in a grid"! 🎨✨',
       }
     ],
+    // Handle tool calls from Canny
+    experimental_onToolCall: async (toolCall) => {
+      console.log('🔧 Canny is calling tool:', toolCall.toolName, 'with args:', toolCall.args);
+      
+      // Execute the tool
+      const context = {
+        shapes,
+        selectedShapeIds,
+        createShape,
+        updateShape,
+        deleteShape,
+        selectShape,
+        deselectShape,
+        viewport,
+        canvasId,
+        userId: user?.uid
+      };
+      
+      const result = executeCanvasTool(toolCall.toolName, toolCall.args, context);
+      
+      console.log('✅ Tool execution result:', result);
+      
+      // Return result to Canny
+      return result;
+    }
   });
 
   const handleToggle = () => {
@@ -147,8 +185,8 @@ function ChatPanel({ canvasId, user }) {
       <button 
         className="chat-toggle"
         onClick={handleToggle}
-        title={isOpen ? 'Close Canny' : 'Open Canny'}
-        aria-label={isOpen ? 'Close Canny' : 'Open Canny'}
+        title={isOpen ? 'Close Chat' : 'Open Chat'}
+        aria-label={isOpen ? 'Close Chat' : 'Open Chat'}
       >
         {isOpen ? (
           <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -160,7 +198,7 @@ function ChatPanel({ canvasId, user }) {
               <circle cx="12" cy="12" r="10" />
               <path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01" />
             </svg>
-            <span className="chat-badge">Canny</span>
+            <span className="chat-badge">Chat</span>
           </>
         )}
       </button>
@@ -177,7 +215,7 @@ function ChatPanel({ canvasId, user }) {
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
-              Canvas Chat
+              Users
             </button>
             <button
               className={`chat-tab ${activeTab === 'canny' ? 'active' : ''}`}

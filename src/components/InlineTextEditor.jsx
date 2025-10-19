@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { FONT_SIZES, DEFAULT_FONT_SIZE, DEFAULT_TEXT_COLOR } from '../utils/constants';
+import { FONT_SIZES, DEFAULT_FONT_SIZE, DEFAULT_TEXT_COLOR, DEFAULT_TEXT_BACKGROUND_COLOR } from '../utils/constants';
 import ColorPicker from './ColorPicker';
 import './InlineTextEditor.css';
 
@@ -20,6 +20,7 @@ function InlineTextEditor({ shape, text, onTextChange, onFinish, viewport, conta
   const [isBold, setIsBold] = useState(shape.fontWeight === 'bold' || false);
   const [isItalic, setIsItalic] = useState(shape.fontStyle === 'italic' || false);
   const [textColor, setTextColor] = useState(shape.textColor || shape.color || DEFAULT_TEXT_COLOR);
+  const [backgroundColor, setBackgroundColor] = useState(shape.backgroundColor || DEFAULT_TEXT_BACKGROUND_COLOR);
 
   // Focus the textarea when component mounts
   useEffect(() => {
@@ -43,6 +44,7 @@ function InlineTextEditor({ shape, text, onTextChange, onFinish, viewport, conta
           fontWeight: isBold ? 'bold' : 'normal',
           fontStyle: isItalic ? 'italic' : 'normal',
           textColor,
+          backgroundColor,
         };
         onFinish(true, updates); // Save with formatting
       } else if (e.key === 'b' && (e.metaKey || e.ctrlKey)) {
@@ -56,7 +58,7 @@ function InlineTextEditor({ shape, text, onTextChange, onFinish, viewport, conta
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onFinish, fontSize, isBold, isItalic, textColor]);
+  }, [onFinish, fontSize, isBold, isItalic, textColor, backgroundColor]);
 
   // Calculate position on screen based on shape position and viewport
   const getScreenPosition = () => {
@@ -103,6 +105,7 @@ function InlineTextEditor({ shape, text, onTextChange, onFinish, viewport, conta
       fontWeight: isBold ? 'bold' : 'normal',
       fontStyle: isItalic ? 'italic' : 'normal',
       textColor,
+      backgroundColor,
     };
     onFinish(true, updates);
   };
@@ -172,6 +175,14 @@ function InlineTextEditor({ shape, text, onTextChange, onFinish, viewport, conta
             value={textColor}
             onChange={setTextColor}
             label="Color"
+          />
+
+          {/* Background Color Picker */}
+          <ColorPicker
+            value={backgroundColor}
+            onChange={setBackgroundColor}
+            label="BG"
+            allowTransparent={true}
           />
         </div>
 

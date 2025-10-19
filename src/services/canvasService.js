@@ -741,7 +741,7 @@ export const duplicateCanvas = async (sourceCanvasId, userId, newName) => {
         template: sourceData.metadata?.template || 'blank',
         settings: {
           backgroundColor: sourceData.metadata?.settings?.backgroundColor || '#1a1a1a',
-          gridVisible: sourceData.metadata?.settings?.gridVisible !== false,
+          gridVisible: sourceData.metadata?.settings?.gridVisible === true,
           ...sourceData.metadata?.settings,
         },
       },

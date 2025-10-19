@@ -6,8 +6,9 @@ import './ColorPicker.css';
  * @param {string} value - Current color value
  * @param {function} onChange - Callback when color changes
  * @param {string} label - Label for the picker
+ * @param {boolean} allowTransparent - Whether to allow transparent color option
  */
-function ColorPicker({ value, onChange, label = 'Color' }) {
+function ColorPicker({ value, onChange, label = 'Color', allowTransparent = false }) {
   const [showPicker, setShowPicker] = useState(false);
   const [recentColors, setRecentColors] = useState(() => {
     // Load recent colors from localStorage
@@ -119,15 +120,33 @@ function ColorPicker({ value, onChange, label = 'Color' }) {
         }}
         title="Click to change color"
       >
-        <div 
-          className="color-preview" 
-          style={{ backgroundColor: value }}
-        />
+        {value === 'transparent' ? (
+          <div className="color-preview transparent-pattern" />
+        ) : (
+          <div 
+            className="color-preview" 
+            style={{ backgroundColor: value }}
+          />
+        )}
       </button>
 
       {/* Color Picker Dropdown */}
       {showPicker && (
         <div className="color-picker-dropdown" onClick={(e) => e.stopPropagation()}>
+          {/* Transparent Option */}
+          {allowTransparent && (
+            <div className="color-section">
+              <button
+                className={`transparent-button ${value === 'transparent' ? 'active' : ''}`}
+                onClick={() => handleColorSelect('transparent')}
+                title="Transparent background"
+              >
+                <div className="transparent-pattern"></div>
+                <span>Transparent</span>
+              </button>
+            </div>
+          )}
+
           {/* Color Wheel */}
           <div className="color-wheel-section">
             <canvas

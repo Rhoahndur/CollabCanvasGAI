@@ -66,6 +66,7 @@ function wrapText(text, maxWidth, fontSize, fontWeight) {
  * @param {string} text - Text content
  * @param {string} color - Border color
  * @param {string} textColor - Text color (defaults to color if not specified)
+ * @param {string} backgroundColor - Background color (defaults to transparent)
  * @param {number} rotation - Rotation in degrees
  * @param {number} fontSize - Font size
  * @param {string} fontWeight - Font weight ('normal' or 'bold')
@@ -87,6 +88,7 @@ const TextBox = memo(function TextBox({
   text = 'Double-click to edit',
   color,
   textColor,
+  backgroundColor = 'transparent',
   rotation = 0,
   fontSize = 16,
   fontWeight = 'normal',
@@ -158,7 +160,8 @@ const TextBox = memo(function TextBox({
         y={y}
         width={width}
         height={height}
-        fill="white"
+        fill={backgroundColor === 'transparent' ? 'none' : backgroundColor}
+        fillOpacity={backgroundColor === 'transparent' ? 0 : 1}
         stroke={color}
         strokeWidth={2}
         rx={4}

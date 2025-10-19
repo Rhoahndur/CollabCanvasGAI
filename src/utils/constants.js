@@ -70,6 +70,7 @@ export const TEXT_COLORS = [
 export const DEFAULT_FONT_SIZE = 16;
 export const FONT_SIZES = [12, 14, 16, 18, 20, 24, 28, 32, 36, 40, 48];
 export const DEFAULT_TEXT_COLOR = '#ffffff';
+export const DEFAULT_TEXT_BACKGROUND_COLOR = 'transparent'; // Transparent background by default
 
 // Grid configuration
 export const GRID_SIZE = 50;

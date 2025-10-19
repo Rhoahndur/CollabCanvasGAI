@@ -34,7 +34,7 @@ import {
   constrainRectangle,
   constrainCircle,
 } from '../utils/canvasUtils';
-import { testFirestoreConnection, createShape, updateShape, deleteShape, updateCursor, removeCursor, updatePresenceHeartbeat } from '../services/canvasService';
+import { testFirestoreConnection, createShape, updateShape, deleteShape, updateCursor, removeCursor, updatePresenceHeartbeat, getUserRole } from '../services/canvasService';
 import { uploadImage, handlePasteEvent } from '../services/imageService';
 import { startLockCleanup } from '../services/lockCleanupService';
 import { useCanvas } from '../hooks/useCanvas';
@@ -55,6 +55,7 @@ import SelectionBox from './SelectionBox';
 import ZoomControls from './ZoomControls';
 import ChatPanel from './ChatPanel';
 import InlineTextEditor from './InlineTextEditor';
+import ContextMenu from './ContextMenu';
 import './Canvas.css';
 
 /**
@@ -65,7 +66,7 @@ function Canvas({
   onlineUsersCount = 0, 
   canvasId = DEFAULT_CANVAS_ID,
   backgroundColor = '#1a1a1a',
-  gridVisible = true,
+  gridVisible = false,
 }) {
   const svgRef = useRef(null);
   const containerRef = useRef(null);
@@ -87,6 +88,9 @@ function Canvas({
   } = useCanvas(user?.uid, user?.displayName, canvasId);
   const { cursors } = useCursors(sessionId, canvasId);
   const { recordAction, popUndo, popRedo, canUndo, canRedo } = useHistory();
+  
+  // User role for permission checks
+  const [userRole, setUserRole] = useState(null);
   
   // Viewport state (pan and zoom)
   const [viewport, setViewport] = useState({
@@ -137,6 +141,9 @@ function Canvas({
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectStart, setSelectStart] = useState({ x: 0, y: 0 });
   const [selectCurrent, setSelectCurrent] = useState({ x: 0, y: 0 });
+  
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState(null); // { x, y, shapeIds }
   
   // Custom polygon drawing state (for click-to-add-vertex mode)
   const [isDrawingCustomPolygon, setIsDrawingCustomPolygon] = useState(false);
@@ -191,6 +198,23 @@ function Canvas({
     
     return () => clearInterval(intervalId);
   }, [user, signOut]);
+  
+  // Get user role for this canvas
+  useEffect(() => {
+    if (!user?.uid || !canvasId) return;
+    
+    const fetchRole = async () => {
+      const role = await getUserRole(canvasId, user.uid);
+      setUserRole(role);
+      console.log(`👤 User role on this canvas: ${role}`);
+    };
+    
+    fetchRole();
+  }, [user?.uid, canvasId]);
+  
+  // Check if user can edit (owner or editor)
+  const canEdit = userRole === 'owner' || userRole === 'editor';
+  const isViewer = userRole === 'viewer';
   
   // Test Firestore connection on mount
   useEffect(() => {
@@ -480,6 +504,11 @@ function Canvas({
     
     if (!svgRef.current) return;
     
+    // Close context menu if open
+    if (contextMenu) {
+      setContextMenu(null);
+    }
+    
     // Track activity for presence
     trackActivity();
     
@@ -495,6 +524,12 @@ function Canvas({
       setPanStart({ x: e.clientX, y: e.clientY });
       setPanOffset({ x: viewport.offsetX, y: viewport.offsetY });
     } else if (selectedTool === TOOL_TYPES.CUSTOM_POLYGON) {
+      // ⛔ Viewers can't create shapes
+      if (userRole === 'viewer') {
+        console.log('👁️ Viewer mode: Cannot create shapes');
+        return;
+      }
+      
       // Custom polygon: add vertex on click (don't start dragging)
       e.preventDefault();
       
@@ -531,6 +566,12 @@ function Canvas({
       setSelectStart(canvasPos);
       setSelectCurrent(canvasPos);
     } else {
+      // ⛔ Viewers can't create shapes
+      if (userRole === 'viewer') {
+        console.log('👁️ Viewer mode: Cannot create shapes');
+        return;
+      }
+      
       // Start drawing shape (deselect any selected)
       deselectShape();
       setSelectedShapeIds([]);
@@ -541,7 +582,7 @@ function Canvas({
     
     // Prevent text selection while dragging
     e.preventDefault();
-  }, [viewport, selectedTool, deselectShape, isDrawingCustomPolygon, customPolygonVertices, trackActivity]);
+  }, [viewport, selectedTool, deselectShape, isDrawingCustomPolygon, customPolygonVertices, trackActivity, userRole, contextMenu]);
   
   // Handle finishing custom polygon creation
   const handleFinishCustomPolygon = useCallback(async () => {
@@ -595,6 +636,12 @@ function Canvas({
     const shape = shapes.find(s => s.id === shapeId);
     if (!shape) return;
     
+    // ⛔ Viewers can't edit - block all interactions
+    if (userRole === 'viewer') {
+      console.log('👁️ Viewer mode: Editing disabled');
+      return;
+    }
+    
     // Can't drag if locked by another user
     if (shape.lockedBy && shape.lockedBy !== user?.uid) {
       return;
@@ -646,11 +693,17 @@ function Canvas({
     setIsDraggingLocal(true); // Tell hook we're dragging
     
     e.preventDefault();
-  }, [shapes, user, selectedShapeId, selectedShapeIds, selectShape, viewport, setIsDraggingLocal]);
+  }, [shapes, user, selectedShapeId, selectedShapeIds, selectShape, viewport, setIsDraggingLocal, userRole]);
   
   // Handle resize start
   const handleResizeStart = useCallback((handle, e) => {
     if (!svgRef.current || !selectedShapeId) return;
+    
+    // ⛔ Viewers can't resize
+    if (userRole === 'viewer') {
+      console.log('👁️ Viewer mode: Resizing disabled');
+      return;
+    }
     
     const shape = shapes.find(s => s.id === selectedShapeId);
     if (!shape) return;
@@ -665,11 +718,17 @@ function Canvas({
     setIsDraggingLocal(true); // Prevent Firestore updates during resize
     
     e.preventDefault();
-  }, [selectedShapeId, shapes, viewport, setIsDraggingLocal]);
+  }, [selectedShapeId, shapes, viewport, setIsDraggingLocal, userRole]);
   
   // Handle rotation start
   const handleRotateStart = useCallback((e) => {
     if (!svgRef.current || !selectedShapeId) return;
+    
+    // ⛔ Viewers can't rotate
+    if (userRole === 'viewer') {
+      console.log('👁️ Viewer mode: Rotation disabled');
+      return;
+    }
     
     const shape = shapes.find(s => s.id === selectedShapeId);
     if (!shape) return;
@@ -683,7 +742,7 @@ function Canvas({
     setIsDraggingLocal(true); // Prevent Firestore updates during rotation
     
     e.preventDefault();
-  }, [selectedShapeId, shapes, viewport, setIsDraggingLocal]);
+  }, [selectedShapeId, shapes, viewport, setIsDraggingLocal, userRole]);
   
   // Handle mouse move for panning, drawing, dragging, and cursor tracking
   const handleMouseMove = useCallback((e) => {
@@ -980,10 +1039,28 @@ function Canvas({
       
       // Calculate center of shape
       let centerX, centerY;
-      if (shape.type === SHAPE_TYPES.RECTANGLE) {
-        centerX = shape.x + shape.width / 2;
-        centerY = shape.y + shape.height / 2;
+      if (shape.type === SHAPE_TYPES.RECTANGLE || shape.type === SHAPE_TYPES.TEXT) {
+        // Rectangles and text boxes: center is at x + width/2, y + height/2
+        centerX = shape.x + (shape.width || 0) / 2;
+        centerY = shape.y + (shape.height || 0) / 2;
+      } else if (shape.type === SHAPE_TYPES.IMAGE) {
+        // Images: x,y IS the center
+        centerX = shape.x;
+        centerY = shape.y;
+      } else if (shape.type === SHAPE_TYPES.CIRCLE || shape.type === SHAPE_TYPES.POLYGON) {
+        // Circles and polygons: x,y IS the center
+        centerX = shape.x;
+        centerY = shape.y;
+      } else if (shape.type === SHAPE_TYPES.CUSTOM_POLYGON && shape.vertices) {
+        // Custom polygons: calculate center from vertices
+        const minX = Math.min(...shape.vertices.map(v => v.x));
+        const maxX = Math.max(...shape.vertices.map(v => v.x));
+        const minY = Math.min(...shape.vertices.map(v => v.y));
+        const maxY = Math.max(...shape.vertices.map(v => v.y));
+        centerX = (minX + maxX) / 2;
+        centerY = (minY + maxY) / 2;
       } else {
+        // Fallback: assume x,y is center
         centerX = shape.x;
         centerY = shape.y;
       }
@@ -1164,6 +1241,7 @@ function Canvas({
               ...constrained,
               text: 'Double-click to edit',
               fontSize: 16,
+              backgroundColor: 'transparent',
               rotation: 0,
               zIndex: Date.now()
             };
@@ -1523,6 +1601,44 @@ function Canvas({
     });
   }, [containerSize]);
 
+  // Handle send to front (z-order)
+  const handleSendToFront = useCallback(async () => {
+    if (!user || (!selectedShapeId && selectedShapeIds.length === 0)) return;
+    
+    const shapesToBringForward = selectedShapeIds.length > 0 ? selectedShapeIds : [selectedShapeId];
+    const maxZIndex = shapes.length > 0 ? Math.max(...shapes.map(s => s.zIndex || 0)) : 0;
+    const newZIndex = maxZIndex + 1;
+    
+    try {
+      for (const shapeId of shapesToBringForward) {
+        await updateShape(canvasId, shapeId, { zIndex: newZIndex });
+      }
+      console.log('✅ Brought shapes to front');
+      notifyFirestoreActivity();
+    } catch (error) {
+      console.error('❌ Failed to bring shapes to front:', error);
+    }
+  }, [user, selectedShapeId, selectedShapeIds, shapes, canvasId, notifyFirestoreActivity]);
+
+  // Handle send to back (z-order)
+  const handleSendToBack = useCallback(async () => {
+    if (!user || (!selectedShapeId && selectedShapeIds.length === 0)) return;
+    
+    const shapesToSendBack = selectedShapeIds.length > 0 ? selectedShapeIds : [selectedShapeId];
+    const minZIndex = shapes.length > 0 ? Math.min(...shapes.map(s => s.zIndex || 0)) : 0;
+    const newZIndex = minZIndex - 1;
+    
+    try {
+      for (const shapeId of shapesToSendBack) {
+        await updateShape(canvasId, shapeId, { zIndex: newZIndex });
+      }
+      console.log('✅ Sent shapes to back');
+      notifyFirestoreActivity();
+    } catch (error) {
+      console.error('❌ Failed to send shapes to back:', error);
+    }
+  }, [user, selectedShapeId, selectedShapeIds, shapes, canvasId, notifyFirestoreActivity]);
+
   // Handle clearing all shapes
   const handleClearAll = useCallback(async () => {
     if (!user) return;
@@ -1644,6 +1760,12 @@ function Canvas({
     if (!user) return;
     if (!selectedShapeId && selectedShapeIds.length === 0) return;
     
+    // ⛔ Viewers can't duplicate
+    if (userRole === 'viewer') {
+      console.log('👁️ Viewer mode: Cannot duplicate shapes');
+      return;
+    }
+    
     // Determine which shapes to duplicate
     const shapesToDuplicate = selectedShapeIds.length > 0 ? selectedShapeIds : [selectedShapeId];
     
@@ -1694,7 +1816,67 @@ function Canvas({
     } catch (error) {
       console.error('❌ Failed to duplicate shapes:', error);
     }
-  }, [selectedShapeId, selectedShapeIds, shapes, user, deselectShape, selectShape, canvasId, notifyFirestoreActivity, setSelectedShapeIds]);
+  }, [selectedShapeId, selectedShapeIds, shapes, user, deselectShape, selectShape, canvasId, notifyFirestoreActivity, setSelectedShapeIds, userRole]);
+
+  // ===== Canny AI Tool Wrappers =====
+  // These functions wrap canvas operations for use by Canny AI
+  
+  /**
+   * Create a shape for Canny
+   * Returns the created shape data
+   */
+  const handleCreateShapeForCanny = useCallback((shapeData) => {
+    if (!user || !canvasId) return null;
+    
+    try {
+      const shape = {
+        ...shapeData,
+        id: `${user.uid}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        createdBy: user.uid,
+        timestamp: Date.now(),
+        rotation: shapeData.rotation || 0,
+        zIndex: Date.now()
+      };
+      
+      // Add to Firebase
+      createShape(canvasId, shape);
+      
+      return shape;
+    } catch (error) {
+      console.error('Failed to create shape for Canny:', error);
+      return null;
+    }
+  }, [user, canvasId, createShape]);
+  
+  /**
+   * Update a shape for Canny
+   */
+  const handleUpdateShapeForCanny = useCallback((shapeId, updates) => {
+    if (!canvasId) return false;
+    
+    try {
+      updateShape(canvasId, shapeId, updates);
+      return true;
+    } catch (error) {
+      console.error('Failed to update shape for Canny:', error);
+      return false;
+    }
+  }, [canvasId, updateShape]);
+  
+  /**
+   * Delete a shape for Canny
+   */
+  const handleDeleteShapeForCanny = useCallback((shapeId) => {
+    if (!canvasId) return false;
+    
+    try {
+      deleteShape(canvasId, shapeId);
+      return true;
+    } catch (error) {
+      console.error('Failed to delete shape for Canny:', error);
+      return false;
+    }
+  }, [canvasId, deleteShape]);
 
   // Handle generating 10 random shapes
   const handleGenerate500 = useCallback(async () => {
@@ -1970,6 +2152,12 @@ function Canvas({
       if ((e.key === 'Delete' || e.key === 'Backspace') && (selectedShapeId || selectedShapeIds.length > 0) && !isDrawing && !isDragging && !isResizing && !isRotating && !isSelecting) {
         e.preventDefault(); // Prevent browser back navigation on Backspace
         
+        // ⛔ Viewers can't delete
+        if (userRole === 'viewer') {
+          console.log('👁️ Viewer mode: Cannot delete shapes');
+          return;
+        }
+        
         console.log('🗑️ DELETE KEY PRESSED');
         console.log('  selectedShapeId:', selectedShapeId);
         console.log('  selectedShapeIds:', selectedShapeIds);
@@ -2045,45 +2233,17 @@ function Canvas({
         return;
       }
       
-      // Bring to front (Ctrl/Cmd + ])
+      // Bring to front (Cmd/Ctrl + ])
       if ((e.ctrlKey || e.metaKey) && e.key === ']' && (selectedShapeId || selectedShapeIds.length > 0) && !isDrawing && !isDragging && !isResizing && !isRotating && !isSelecting) {
         e.preventDefault();
-        
-        const shapesToBringForward = selectedShapeIds.length > 0 ? selectedShapeIds : [selectedShapeId];
-        const maxZIndex = Math.max(...shapes.map(r => s.zIndex || 0));
-        const newZIndex = maxZIndex + 1;
-        
-        try {
-          for (const shapeId of shapesToBringForward) {
-            await updateShape(canvasId, shapeId, { zIndex: newZIndex });
-          }
-          console.log('✅ Brought shapes to front');
-          notifyFirestoreActivity();
-        } catch (error) {
-          console.error('❌ Failed to bring shapes to front:', error);
-        }
-        
+        handleSendToFront();
         return;
       }
       
       // Send to back (Ctrl/Cmd + [)
       if ((e.ctrlKey || e.metaKey) && e.key === '[' && (selectedShapeId || selectedShapeIds.length > 0) && !isDrawing && !isDragging && !isResizing && !isRotating && !isSelecting) {
         e.preventDefault();
-        
-        const shapesToSendBack = selectedShapeIds.length > 0 ? selectedShapeIds : [selectedShapeId];
-        const minZIndex = Math.min(...shapes.map(r => s.zIndex || 0));
-        const newZIndex = minZIndex - 1;
-        
-        try {
-          for (const shapeId of shapesToSendBack) {
-            await updateShape(canvasId, shapeId, { zIndex: newZIndex });
-          }
-          console.log('✅ Sent shapes to back');
-          notifyFirestoreActivity();
-        } catch (error) {
-          console.error('❌ Failed to send shapes to back:', error);
-        }
-        
+        handleSendToBack();
         return;
       }
       
@@ -2155,7 +2315,7 @@ function Canvas({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [selectedShapeId, selectedShapeIds, shapes, user, isDrawing, isDragging, isResizing, isRotating, isSelecting, isDrawingCustomPolygon, customPolygonVertices, deselectShape, selectShape, notifyFirestoreActivity, handleZoomIn, handleZoomOut, handleZoomReset, handleFinishCustomPolygon, trackActivity]);
+  }, [selectedShapeId, selectedShapeIds, shapes, user, isDrawing, isDragging, isResizing, isRotating, isSelecting, isDrawingCustomPolygon, customPolygonVertices, deselectShape, selectShape, notifyFirestoreActivity, handleZoomIn, handleZoomOut, handleZoomReset, handleFinishCustomPolygon, trackActivity, userRole]);
   
   // Calculate viewBox for SVG (memoized)
   const viewBox = useMemo(() => 
@@ -2370,12 +2530,48 @@ function Canvas({
           {visibleShapes.map((shape) => {
             const handleShapeDoubleClick = (e) => {
               e.stopPropagation();
+              
+              // ⛔ Viewers can't edit text
+              if (userRole === 'viewer') {
+                console.log('👁️ Viewer mode: Cannot edit text');
+                return;
+              }
+              
               if (!shape.lockedBy || shape.lockedBy === user?.uid) {
                 selectShape(shape.id);
                 // Start inline editing
                 setEditingTextId(shape.id);
                 setEditingText(shape.text || '');
               }
+            };
+            
+            const handleShapeContextMenu = (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              
+              // ⛔ Viewers can't manipulate z-order
+              if (userRole === 'viewer') {
+                console.log('👁️ Viewer mode: Cannot change z-order');
+                return;
+              }
+              
+              // Don't show context menu if shape is locked by another user
+              if (shape.lockedBy && shape.lockedBy !== user?.uid) {
+                console.log('🔒 Cannot show context menu - shape locked by another user');
+                return;
+              }
+              
+              // If shape is not selected, select it first
+              if (!selectedShapeIds.includes(shape.id) && shape.id !== selectedShapeId) {
+                selectShape(shape.id);
+              }
+              
+              // Show context menu at mouse position
+              setContextMenu({
+                x: e.clientX,
+                y: e.clientY,
+                shapeIds: selectedShapeIds.length > 0 ? selectedShapeIds : [shape.id],
+              });
             };
             
             const shapeProps = {
@@ -2386,6 +2582,7 @@ function Canvas({
               onClick: handleShapeClick,
               onMouseDown: handleShapeMouseDown,
               onDoubleClick: handleShapeDoubleClick,
+              onContextMenu: handleShapeContextMenu,
             };
             
             // Render appropriate component based on shape type
@@ -2405,6 +2602,7 @@ function Canvas({
                   fontWeight={shape.fontWeight || 'normal'}
                   fontStyle={shape.fontStyle || 'normal'}
                   textColor={shape.textColor}
+                  backgroundColor={shape.backgroundColor || 'transparent'}
                   width={shape.width || 200}
                   height={shape.height || 60}
                 />
@@ -2858,7 +3056,24 @@ function Canvas({
       />
       
       {/* Chat Panel (Canvas Chat + Canny AI) */}
-      <ChatPanel canvasId={canvasId} user={user} />
+      <ChatPanel 
+        canvasId={canvasId} 
+        user={user}
+        shapes={shapes}
+        selectedShapeIds={selectedShapeIds}
+        createShape={handleCreateShapeForCanny}
+        updateShape={handleUpdateShapeForCanny}
+        deleteShape={handleDeleteShapeForCanny}
+        selectShape={selectShape}
+        deselectShape={deselectShape}
+        viewport={{
+          offsetX,
+          offsetY,
+          zoom,
+          centerX: offsetX + (window.innerWidth / 2) / zoom,
+          centerY: offsetY + (window.innerHeight / 2) / zoom
+        }}
+      />
       
       {/* Inline Text Editor */}
       {editingTextId && (
@@ -2883,7 +3098,8 @@ function Canvas({
                   formattingUpdates.fontSize !== currentShape?.fontSize ||
                   formattingUpdates.fontWeight !== currentShape?.fontWeight ||
                   formattingUpdates.fontStyle !== currentShape?.fontStyle ||
-                  formattingUpdates.textColor !== currentShape?.textColor
+                  formattingUpdates.textColor !== currentShape?.textColor ||
+                  formattingUpdates.backgroundColor !== currentShape?.backgroundColor
                 ));
               
               if (hasChanges) {
@@ -2896,6 +3112,18 @@ function Canvas({
           }}
           viewport={viewport}
           containerSize={containerSize}
+        />
+      )}
+      
+      {/* Context Menu */}
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          selectedCount={contextMenu.shapeIds?.length || 1}
+          onSendToFront={handleSendToFront}
+          onSendToBack={handleSendToBack}
+          onClose={() => setContextMenu(null)}
         />
       )}
     </div>

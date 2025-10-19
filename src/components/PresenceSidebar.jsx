@@ -56,14 +56,15 @@ function PresenceSidebar({ onlineUsers, currentSessionId }) {
                 <div 
                   className="user-indicator"
                   style={{ backgroundColor: userColor }}
+                  title={user.userName || 'Anonymous'}
                 >
-                  {user.userName.charAt(0).toUpperCase()}
+                  {(user.userName || 'A').charAt(0).toUpperCase()}
                 </div>
                 
                 {/* User info */}
                 <div className="user-info">
                   <div className="user-name">
-                    {user.userName}
+                    {user.userName || 'Anonymous'}
                     {isCurrentUser && <span className="you-label">(you)</span>}
                   </div>
                   <div className="user-status">

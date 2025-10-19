@@ -26,7 +26,7 @@ function App() {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
   const [canvasSettings, setCanvasSettings] = useState({
     backgroundColor: '#1a1a1a',
-    gridVisible: true,
+    gridVisible: false,
   })
   
   // Store sessionId globally for access during sign out
