@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useTheme } from '../hooks/useTheme';
 import { 
   getUserCanvases, 
   createCanvas, 
@@ -11,6 +12,7 @@ import {
 import { autoMigrate } from '../services/canvasMigration';
 import CanvasCard from './CanvasCard';
 import CreateCanvasModal from './CreateCanvasModal';
+import UserSettingsModal from './UserSettingsModal';
 import './CanvasDashboard.css';
 
 // Canvas limit per user
@@ -21,11 +23,13 @@ const CANVAS_LIMIT = 2;
  */
 function CanvasDashboard({ onOpenCanvas }) {
   const { user, signOut } = useAuth();
+  const { theme, setTheme } = useTheme();
   const [canvases, setCanvases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showLimitModal, setShowLimitModal] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
   const [sortBy, setSortBy] = useState('lastAccessed'); // 'lastAccessed', 'name', 'created'
@@ -243,6 +247,18 @@ function CanvasDashboard({ onOpenCanvas }) {
           
           <button
             className="btn btn-secondary"
+            onClick={() => setIsSettingsOpen(true)}
+            title="Settings"
+            aria-label="Open settings"
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6m-1.36-6.36l-4.24 4.24m-4.24 4.24l-4.24 4.24" />
+            </svg>
+          </button>
+          
+          <button
+            className="btn btn-secondary"
             onClick={signOut}
             title="Sign out"
           >
@@ -385,6 +401,14 @@ function CanvasDashboard({ onOpenCanvas }) {
           </div>
         </div>
       )}
+      
+      {/* User Settings Modal */}
+      <UserSettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        theme={theme}
+        onThemeChange={setTheme}
+      />
     </div>
   );
 }

@@ -41,6 +41,7 @@ import { useCanvas } from '../hooks/useCanvas';
 import { useCursors } from '../hooks/useCursors';
 import { useAuth } from '../hooks/useAuth';
 import { useHistory } from '../hooks/useHistory';
+import { useTheme } from '../hooks/useTheme';
 import { getRandomColor, getGridColor } from '../utils/colorUtils';
 import { setup500Test, generateTestShapes } from '../utils/testData';
 import Rectangle from './Rectangle';
@@ -56,6 +57,7 @@ import ZoomControls from './ZoomControls';
 import ChatPanel from './ChatPanel';
 import InlineTextEditor from './InlineTextEditor';
 import ContextMenu from './ContextMenu';
+import UserSettingsModal from './UserSettingsModal';
 import './Canvas.css';
 
 /**
@@ -88,9 +90,13 @@ function Canvas({
   } = useCanvas(user?.uid, user?.displayName, canvasId);
   const { cursors } = useCursors(sessionId, canvasId);
   const { recordAction, popUndo, popRedo, canUndo, canRedo } = useHistory();
+  const { theme, setTheme } = useTheme();
   
   // User role for permission checks
   const [userRole, setUserRole] = useState(null);
+  
+  // Settings modal state
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
   // Viewport state (pan and zoom)
   const [viewport, setViewport] = useState({
@@ -2440,6 +2446,17 @@ function Canvas({
           )}
           <button
             className="btn btn-secondary btn-small"
+            onClick={() => setIsSettingsOpen(true)}
+            title="Settings"
+            aria-label="Open settings"
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6m-1.36-6.36l-4.24 4.24m-4.24 4.24l-4.24 4.24" />
+            </svg>
+          </button>
+          <button
+            className="btn btn-secondary btn-small"
             onClick={signOut}
             title="Sign out"
           >
@@ -3127,6 +3144,14 @@ function Canvas({
           onClose={() => setContextMenu(null)}
         />
       )}
+      
+      {/* User Settings Modal */}
+      <UserSettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        theme={theme}
+        onThemeChange={setTheme}
+      />
     </div>
   );
 }
