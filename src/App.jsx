@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from 'react'
 import { useAuth } from './hooks/useAuth'
 import { usePresence } from './hooks/usePresence'
+import { requestCanvasAccess } from './services/canvasService'
 import LoginPage from './components/LoginPage'
 import CanvasDashboard from './components/CanvasDashboard'
 import Canvas from './components/Canvas'
@@ -41,16 +42,39 @@ function App() {
   useEffect(() => {
     if (!user) return; // Wait for user to be loaded
     
-    const handleURLChange = () => {
+    const handleURLChange = async () => {
       const path = window.location.pathname;
       const canvasMatch = path.match(/^\/canvas\/(.+)$/);
       
       if (canvasMatch) {
         const canvasId = canvasMatch[1];
-        // Open the canvas from the URL
-        setCurrentCanvasId(canvasId);
-        setCurrentCanvasName('Shared Canvas');
-        setCurrentView('canvas');
+        
+        // Request access to the canvas (grants viewer access if needed)
+        const accessResult = await requestCanvasAccess(
+          canvasId, 
+          user.uid, 
+          user.displayName || user.email
+        );
+        
+        if (accessResult.success) {
+          // Open the canvas from the URL
+          setCurrentCanvasId(canvasId);
+          setCurrentCanvasName(accessResult.canvasName || 'Shared Canvas');
+          setCurrentView('canvas');
+          
+          if (!accessResult.alreadyHadAccess) {
+            console.log(`✅ Granted viewer access to canvas: ${accessResult.canvasName}`);
+          }
+        } else {
+          // Canvas not found or error
+          console.error('Failed to access canvas:', accessResult.error);
+          alert(`Cannot open canvas: ${accessResult.error}`);
+          // Navigate back to dashboard
+          setCurrentView('dashboard');
+          setCurrentCanvasId(null);
+          setCurrentCanvasName('');
+          window.history.pushState({}, '', '/');
+        }
       } else if (path === '/') {
         // Navigate to dashboard
         setCurrentView('dashboard');

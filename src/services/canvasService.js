@@ -651,6 +651,53 @@ export const getCanvasMetadata = async (canvasId) => {
 };
 
 /**
+ * Request access to a canvas via shared link
+ * Automatically grants viewer access if canvas exists
+ * @param {string} canvasId - Canvas ID
+ * @param {string} userId - User ID requesting access
+ * @param {string} userName - User display name
+ * @returns {Promise<Object>} { success: boolean, role: string, canvasName: string }
+ */
+export const requestCanvasAccess = async (canvasId, userId, userName) => {
+  try {
+    // Check if user already has access
+    const userCanvasRef = getUserCanvasRef(userId, canvasId);
+    const userCanvasSnapshot = await get(userCanvasRef);
+    
+    if (userCanvasSnapshot.exists()) {
+      // User already has access
+      const canvasData = userCanvasSnapshot.val();
+      return { 
+        success: true, 
+        role: canvasData.role,
+        canvasName: canvasData.name,
+        alreadyHadAccess: true
+      };
+    }
+    
+    // Check if canvas exists
+    const canvasMetadata = await getCanvasMetadata(canvasId);
+    if (!canvasMetadata) {
+      return { success: false, error: 'Canvas not found' };
+    }
+    
+    // Grant viewer access to the user
+    const role = 'viewer';
+    await addCanvasPermission(canvasId, userId, role, canvasMetadata.name);
+    
+    return { 
+      success: true, 
+      role,
+      canvasName: canvasMetadata.name,
+      alreadyHadAccess: false
+    };
+  } catch (error) {
+    console.error('❌ Error requesting canvas access:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
  * Duplicate a canvas
  * @param {string} sourceCanvasId - Canvas ID to duplicate
  * @param {string} userId - User ID (must be owner)
