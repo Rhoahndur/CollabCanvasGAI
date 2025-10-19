@@ -26,6 +26,7 @@ const Circle = memo(function Circle({
   onClick,
   onMouseDown,
   onDoubleClick,
+  onContextMenu,
 }) {
   const handleClick = (e) => {
     e.stopPropagation();
@@ -47,6 +48,13 @@ const Circle = memo(function Circle({
       onDoubleClick(e);
     }
   };
+  
+  const handleContextMenu = (e) => {
+    e.stopPropagation();
+    if (onContextMenu) {
+      onContextMenu(e);
+    }
+  };
 
   // Rotation transform (circles don't visually rotate, but we keep it for consistency)
   const transform = rotation ? `rotate(${rotation} ${x} ${y})` : undefined;
@@ -66,6 +74,7 @@ const Circle = memo(function Circle({
         onClick={handleClick}
         onMouseDown={handleMouseDown}
         onDoubleClick={handleDoubleClick}
+        onContextMenu={handleContextMenu}
       />
       
       {/* Text content (centered) */}

@@ -27,6 +27,7 @@ const Polygon = memo(function Polygon({
   onClick,
   onMouseDown,
   onDoubleClick,
+  onContextMenu,
 }) {
   // Calculate polygon points
   const calculatePoints = (cx, cy, r, numSides) => {
@@ -66,6 +67,13 @@ const Polygon = memo(function Polygon({
       onDoubleClick(e);
     }
   };
+  
+  const handleContextMenu = (e) => {
+    e.stopPropagation();
+    if (onContextMenu) {
+      onContextMenu(e);
+    }
+  };
 
   // Rotation transform around center
   const transform = rotation ? `rotate(${rotation} ${x} ${y})` : undefined;
@@ -83,6 +91,7 @@ const Polygon = memo(function Polygon({
         onClick={handleClick}
         onMouseDown={handleMouseDown}
         onDoubleClick={handleDoubleClick}
+        onContextMenu={handleContextMenu}
       />
       
       {/* Text content (centered) */}

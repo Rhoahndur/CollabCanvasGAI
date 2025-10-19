@@ -27,6 +27,7 @@ const Rectangle = memo(function Rectangle({
   onClick,
   onMouseDown,
   onDoubleClick,
+  onContextMenu,
 }) {
   const handleClick = (e) => {
     e.stopPropagation();
@@ -46,6 +47,13 @@ const Rectangle = memo(function Rectangle({
     e.stopPropagation();
     if (onDoubleClick) {
       onDoubleClick(e);
+    }
+  };
+  
+  const handleContextMenu = (e) => {
+    e.stopPropagation();
+    if (onContextMenu) {
+      onContextMenu(e);
     }
   };
 
@@ -70,6 +78,7 @@ const Rectangle = memo(function Rectangle({
         onClick={handleClick}
         onMouseDown={handleMouseDown}
         onDoubleClick={handleDoubleClick}
+        onContextMenu={handleContextMenu}
       />
       
       {/* Text content (centered) */}

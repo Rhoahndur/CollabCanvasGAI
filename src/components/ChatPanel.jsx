@@ -5,6 +5,9 @@ import { realtimeDb } from '../services/firebase';
 import { executeCanvasTool } from '../utils/canvasTools';
 import './ChatPanel.css';
 
+// Track executed tool calls to prevent infinite loops
+const executedToolCalls = new Set();
+
 /**
  * ChatPanel component - Tabbed chat interface with Canvas Chat and Canny AI
  * - Canvas Chat: Real-time chat for users on the same canvas
@@ -104,6 +107,88 @@ function ChatPanel({
 
     return () => unsubscribe();
   }, [canvasId]);
+
+  // Handle tool calls manually (detects both standard format and our custom marker format)
+  // IMPORTANT: Only depends on `messages` to avoid infinite loops!
+  useEffect(() => {
+    const lastMessage = messages[messages.length - 1];
+    
+    if (!lastMessage) return;
+    
+    // Create a unique ID for this message to track if we've processed it
+    const messageId = lastMessage.id || `msg_${messages.length - 1}`;
+    
+    let toolCallsToExecute = [];
+    
+    // Method 1: Check if message has tool_calls property (standard format)
+    if (lastMessage?.tool_calls && Array.isArray(lastMessage.tool_calls)) {
+      console.log('🔧 Detected tool calls in message (standard format):', lastMessage.tool_calls);
+      toolCallsToExecute = lastMessage.tool_calls;
+    }
+    
+    // Method 2: Check if message content contains our special marker
+    if (lastMessage?.content && typeof lastMessage.content === 'string') {
+      const markerMatch = lastMessage.content.match(/__TOOL_CALLS__(.+?)__END_TOOL_CALLS__/);
+      if (markerMatch) {
+        try {
+          const parsedToolCalls = JSON.parse(markerMatch[1]);
+          console.log('🔧 Detected tool calls in message (marker format):', parsedToolCalls);
+          toolCallsToExecute = parsedToolCalls;
+        } catch (e) {
+          console.error('Failed to parse tool calls from marker:', e);
+        }
+      }
+    }
+    
+    // Execute any detected tool calls (but only once per message!)
+    if (toolCallsToExecute.length > 0) {
+      for (const toolCall of toolCallsToExecute) {
+        // Create unique ID for this tool call
+        const toolCallId = `${messageId}_${toolCall.id || toolCall.function?.name}`;
+        
+        // Skip if already executed
+        if (executedToolCalls.has(toolCallId)) {
+          console.log(`⏭️ Skipping already executed tool call: ${toolCallId}`);
+          continue;
+        }
+        
+        // Mark as executed BEFORE running to prevent race conditions
+        executedToolCalls.add(toolCallId);
+        
+        if (toolCall.type === 'function' && toolCall.function) {
+          const toolName = toolCall.function.name;
+          let args;
+          
+          try {
+            args = JSON.parse(toolCall.function.arguments);
+          } catch (e) {
+            console.error('Failed to parse tool arguments:', e);
+            continue;
+          }
+          
+          console.log(`🛠️ Executing tool (${toolCallId}): ${toolName}`, args);
+          
+          // Build context (use latest values from closure)
+          const context = {
+            shapes,
+            selectedShapeIds,
+            createShape,
+            updateShape,
+            deleteShape,
+            selectShape,
+            deselectShape,
+            viewport,
+            canvasId,
+            userId: user?.uid
+          };
+          
+          // Execute the tool
+          const result = executeCanvasTool(toolName, args, context);
+          console.log('✅ Tool result:', result);
+        }
+      }
+    }
+  }, [messages]); // CRITICAL: Only depend on messages, NOT shapes!
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -336,6 +421,22 @@ function ChatPanel({
           <>
             <div className="chat-messages">
           {messages.map((message, index) => {
+            // Skip rendering messages that only contain tool calls (no text content)
+            if (message.tool_calls && !message.content) {
+              return null;
+            }
+            
+            // Clean content to remove our tool call marker
+            let cleanContent = message.content || '';
+            if (typeof cleanContent === 'string') {
+              cleanContent = cleanContent.replace(/__TOOL_CALLS__.+?__END_TOOL_CALLS__/g, '').trim();
+            }
+            
+            // Skip if message is now empty after removing marker
+            if (!cleanContent && !message.tool_calls) {
+              return null;
+            }
+            
             const messageType = getMessageType(message.role);
             return (
               <div key={message.id || index} className={`chat-message ${messageType}`}>
@@ -343,7 +444,7 @@ function ChatPanel({
                   {messageType === 'user' ? '👤' : messageType === 'assistant' ? '🤖' : 'ℹ️'}
                 </div>
                 <div className="message-content">
-                  <div className="message-text">{message.content}</div>
+                  <div className="message-text">{cleanContent}</div>
                   {message.createdAt && (
                     <div className="message-time">
                       {new Date(message.createdAt).toLocaleTimeString([], { 

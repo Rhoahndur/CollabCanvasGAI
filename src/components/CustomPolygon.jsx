@@ -24,6 +24,7 @@ const CustomPolygon = memo(function CustomPolygon({
   onClick,
   onMouseDown,
   onDoubleClick,
+  onContextMenu,
 }) {
   if (!vertices || vertices.length < 3) {
     return null; // Need at least 3 vertices to draw a polygon
@@ -56,6 +57,13 @@ const CustomPolygon = memo(function CustomPolygon({
       onDoubleClick(e);
     }
   };
+  
+  const handleContextMenu = (e) => {
+    e.stopPropagation();
+    if (onContextMenu) {
+      onContextMenu(e);
+    }
+  };
 
   // Rotation transform around centroid
   const transform = rotation ? `rotate(${rotation} ${centroidX} ${centroidY})` : undefined;
@@ -73,6 +81,7 @@ const CustomPolygon = memo(function CustomPolygon({
         onClick={handleClick}
         onMouseDown={handleMouseDown}
         onDoubleClick={handleDoubleClick}
+        onContextMenu={handleContextMenu}
       />
       
       {/* Text content (centered at centroid) */}

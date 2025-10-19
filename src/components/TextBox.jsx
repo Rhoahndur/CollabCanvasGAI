@@ -100,6 +100,7 @@ const TextBox = memo(function TextBox({
   onClick,
   onMouseDown,
   onDoubleClick,
+  onContextMenu,
 }) {
   // Calculate center for rotation
   const centerX = x + width / 2;
@@ -146,6 +147,13 @@ const TextBox = memo(function TextBox({
       onDoubleClick(e);
     }
   };
+  
+  const handleContextMenu = (e) => {
+    e.stopPropagation();
+    if (onContextMenu) {
+      onContextMenu(e);
+    }
+  };
 
   return (
     <g
@@ -168,6 +176,7 @@ const TextBox = memo(function TextBox({
         onClick={handleClick}
         onMouseDown={handleMouseDown}
         onDoubleClick={handleDoubleClick}
+        onContextMenu={handleContextMenu}
         style={{ 
           cursor: isLocked ? 'not-allowed' : 'pointer',
         }}

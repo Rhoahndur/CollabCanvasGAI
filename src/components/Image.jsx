@@ -34,6 +34,7 @@ const Image = memo(function Image({
   onClick,
   onMouseDown,
   onDoubleClick,
+  onContextMenu,
 }) {
   // Calculate center for rotation
   const centerX = x;
@@ -57,6 +58,11 @@ const Image = memo(function Image({
     e.stopPropagation();
     if (onDoubleClick) onDoubleClick(id, e);
   };
+  
+  const handleContextMenu = (e) => {
+    e.stopPropagation();
+    if (onContextMenu) onContextMenu(e);
+  };
 
   return (
     <g
@@ -77,6 +83,7 @@ const Image = memo(function Image({
         onClick={handleClick}
         onMouseDown={handleMouseDown}
         onDoubleClick={handleDoubleClick}
+        onContextMenu={handleContextMenu}
         style={{ 
           cursor: isLocked ? 'not-allowed' : 'pointer',
         }}

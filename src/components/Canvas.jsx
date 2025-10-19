@@ -3067,11 +3067,11 @@ function Canvas({
         selectShape={selectShape}
         deselectShape={deselectShape}
         viewport={{
-          offsetX,
-          offsetY,
-          zoom,
-          centerX: offsetX + (window.innerWidth / 2) / zoom,
-          centerY: offsetY + (window.innerHeight / 2) / zoom
+          offsetX: viewport.offsetX,
+          offsetY: viewport.offsetY,
+          zoom: viewport.zoom,
+          centerX: viewport.offsetX + (containerSize.width / 2) / viewport.zoom,
+          centerY: viewport.offsetY + (containerSize.height / 2) / viewport.zoom
         }}
       />
       

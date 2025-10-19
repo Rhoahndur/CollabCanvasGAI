@@ -7,6 +7,10 @@
 
 import { SHAPE_TYPES } from './constants';
 
+// Safety limits to prevent accidental mass creation
+const MAX_SHAPES_PER_CALL = 50; // Maximum shapes to create in one tool call
+const MAX_TOTAL_SHAPES = 1000;   // Maximum total shapes on canvas
+
 /**
  * OpenAI Function Calling Tool Definitions
  * These define what Canny can do with the canvas
@@ -289,7 +293,7 @@ export function executeCanvasTool(toolName, args, context) {
  * Create one or more shapes
  */
 function handleCreateShape(args, context) {
-  const { createShape, viewport, userId } = context;
+  const { createShape, viewport, userId, shapes } = context;
   const {
     shapeType,
     x = viewport.centerX,
@@ -301,6 +305,23 @@ function handleCreateShape(args, context) {
     text = 'Text',
     count = 1
   } = args;
+
+  // Safety check: Limit shapes per call
+  if (count > MAX_SHAPES_PER_CALL) {
+    return {
+      success: false,
+      message: `Cannot create ${count} shapes. Maximum is ${MAX_SHAPES_PER_CALL} per request for safety. Try smaller batches!`
+    };
+  }
+
+  // Safety check: Don't exceed total canvas limit
+  const currentShapeCount = shapes?.length || 0;
+  if (currentShapeCount + count > MAX_TOTAL_SHAPES) {
+    return {
+      success: false,
+      message: `Cannot create ${count} shapes. Canvas has ${currentShapeCount} shapes and limit is ${MAX_TOTAL_SHAPES}. Please delete some shapes first.`
+    };
+  }
 
   const createdShapes = [];
   const spacing = 120; // Space between multiple shapes
@@ -339,7 +360,7 @@ function handleCreateShape(args, context) {
 
     return {
       success: true,
-      message: `Created ${count} ${shapeType}${count > 1 ? 's' : ''}`,
+      message: `Created ${createdShapes.length} ${shapeType}${createdShapes.length > 1 ? 's' : ''}`,
       data: { count: createdShapes.length, shapes: createdShapes }
     };
   } catch (error) {
