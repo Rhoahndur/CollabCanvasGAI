@@ -151,18 +151,16 @@ const ZoomControls = memo(function ZoomControls({
       </div>
       
       {/* Fit Canvas button */}
-      <div className="zoom-presets">
-        <button
-          className="zoom-preset fit-canvas-btn"
-          onClick={handleFitCanvas}
-          title="Fit entire canvas in view"
-        >
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16">
-            <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          Fit Canvas
-        </button>
-      </div>
+      <button
+        className="zoom-btn zoom-fit"
+        onClick={handleFitCanvas}
+        title="Fit entire canvas in view"
+        aria-label="Fit canvas to view"
+      >
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
     </div>
   );
 });

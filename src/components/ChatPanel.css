@@ -447,6 +447,112 @@
   opacity: 0.8;
 }
 
+/* Example Prompts */
+.example-prompts {
+  padding: 16px;
+  background: rgba(100, 108, 255, 0.05);
+  border-radius: 8px;
+  margin: 12px;
+}
+
+.example-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.example-icon {
+  font-size: 20px;
+}
+
+.example-header h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #e0e0e0;
+}
+
+.example-category {
+  margin-bottom: 16px;
+}
+
+.example-category:last-child {
+  margin-bottom: 0;
+}
+
+.category-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #a0a0a0;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.category-prompts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.example-prompt-btn {
+  padding: 6px 12px;
+  background: rgba(100, 108, 255, 0.1);
+  border: 1px solid rgba(100, 108, 255, 0.3);
+  border-radius: 16px;
+  color: #a0b0ff;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.example-prompt-btn:hover:not(:disabled) {
+  background: rgba(100, 108, 255, 0.2);
+  border-color: rgba(100, 108, 255, 0.5);
+  color: #c0d0ff;
+  transform: translateY(-1px);
+}
+
+.example-prompt-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Stop Button */
+.chat-stop-btn {
+  padding: 8px;
+  background: #ef4444;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  animation: stopPulse 1.5s ease-in-out infinite;
+}
+
+.chat-stop-btn:hover {
+  background: #dc2626;
+  transform: scale(1.05);
+}
+
+.chat-stop-btn svg {
+  display: block;
+}
+
+@keyframes stopPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0);
+  }
+}
+
 /* Vision indicator */
 .vision-indicator {
   display: flex;

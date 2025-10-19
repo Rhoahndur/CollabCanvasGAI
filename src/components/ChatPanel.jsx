@@ -9,6 +9,60 @@ import './ChatPanel.css';
 // Track executed tool calls to prevent infinite loops
 const executedToolCalls = new Set();
 
+// Guardrails
+const MAX_MESSAGE_LENGTH = 2000; // ~500 tokens
+const REQUEST_COOLDOWN = 2000; // 2 seconds between requests
+const MAX_CONTEXT_MESSAGES = 15; // Only send last 15 messages for context
+
+// Example prompts for users
+const EXAMPLE_PROMPTS = [
+  {
+    category: '🎨 Create',
+    prompts: [
+      'Create 5 blue rectangles',
+      'Add 3 red circles in a row',
+      'Make a grid of 3x3 squares',
+      'Create a text box that says "Hello"'
+    ]
+  },
+  {
+    category: '📐 Arrange',
+    prompts: [
+      'Align these shapes to the left',
+      'Distribute them horizontally',
+      'Arrange in a 2x3 grid',
+      'Center everything on the canvas'
+    ]
+  },
+  {
+    category: '👁️ Vision',
+    prompts: [
+      'What colors am I using?',
+      'Create rectangles around the blue circle',
+      'Fill the empty space on the right',
+      'Match the pattern on the left'
+    ]
+  },
+  {
+    category: '✨ Transform',
+    prompts: [
+      'Make them all green',
+      'Rotate selected shapes 45 degrees',
+      'Make all circles bigger',
+      'Change the layout to be symmetric'
+    ]
+  },
+  {
+    category: '❓ Ask',
+    prompts: [
+      'How many shapes are there?',
+      'Describe the current layout',
+      'What would make this balanced?',
+      'Suggest improvements'
+    ]
+  }
+];
+
 /**
  * ChatPanel component - Tabbed chat interface with Canvas Chat and Canny AI
  * - Canvas Chat: Real-time chat for users on the same canvas
@@ -34,8 +88,11 @@ function ChatPanel({
   const [canvasInput, setCanvasInput] = useState('');
   const [isCapturingCanvas, setIsCapturingCanvas] = useState(false);
   const [visionReason, setVisionReason] = useState(null);
+  const [lastRequestTime, setLastRequestTime] = useState(0);
+  const [showExamples, setShowExamples] = useState(true);
   const messagesEndRef = useRef(null);
   const cannyMessagesEndRef = useRef(null);
+  const abortControllerRef = useRef(null);
   
   // Use AI SDK's useChat hook for streaming with tool support
   // In production (Vercel), uses /api/chat
@@ -80,19 +137,52 @@ function ChatPanel({
     }
   });
 
-  // Custom submit handler that captures canvas when vision is needed
+  // Stop current request
+  const handleStop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+      console.log('🛑 Request stopped by user');
+    }
+    setIsCapturingCanvas(false);
+    setVisionReason(null);
+  };
+
+  // Custom submit handler with guardrails
   const handleCannySubmit = async (e) => {
     e.preventDefault();
     
-    if (!input.trim()) return;
+    const trimmedInput = input.trim();
+    if (!trimmedInput) return;
+    
+    // Guardrail 1: Message length limit
+    if (trimmedInput.length > MAX_MESSAGE_LENGTH) {
+      alert(`Message too long! Please keep it under ${MAX_MESSAGE_LENGTH} characters (currently ${trimmedInput.length}).`);
+      return;
+    }
+    
+    // Guardrail 2: Rate limiting (cooldown between requests)
+    const now = Date.now();
+    const timeSinceLastRequest = now - lastRequestTime;
+    if (timeSinceLastRequest < REQUEST_COOLDOWN && lastRequestTime > 0) {
+      const waitTime = Math.ceil((REQUEST_COOLDOWN - timeSinceLastRequest) / 1000);
+      alert(`Please wait ${waitTime} second${waitTime > 1 ? 's' : ''} before sending another message.`);
+      return;
+    }
+    
+    setLastRequestTime(now);
+    setShowExamples(false); // Hide examples after first message
     
     // Check if vision should be used
-    const useVision = shouldUseVision(input);
+    const useVision = shouldUseVision(trimmedInput);
+    
+    // Create abort controller for this request
+    abortControllerRef.current = new AbortController();
     
     if (useVision && svgRef?.current) {
       try {
         setIsCapturingCanvas(true);
-        setVisionReason(getVisionReason(input));
+        setVisionReason(getVisionReason(trimmedInput));
         
         console.log('👁️ Vision detected! Capturing canvas...');
         
@@ -107,7 +197,7 @@ function ChatPanel({
           content: [
             {
               type: 'text',
-              text: input
+              text: trimmedInput
             },
             {
               type: 'image_url',
@@ -126,12 +216,30 @@ function ChatPanel({
         setVisionReason(null);
         
         // Fallback: send without vision
-        handleSubmit(e);
+        if (error.name !== 'AbortError') {
+          handleSubmit(e);
+        }
       }
     } else {
       // No vision needed, use regular submit
-      handleSubmit(e);
+      try {
+        await handleSubmit(e);
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          console.error('Failed to send message:', error);
+        }
+      }
     }
+  };
+
+  // Handle example prompt click
+  const handleExampleClick = (prompt) => {
+    handleInputChange({ target: { value: prompt } });
+    // Auto-submit after short delay so user can see what was filled in
+    setTimeout(() => {
+      const fakeEvent = { preventDefault: () => {} };
+      handleCannySubmit(fakeEvent);
+    }, 500);
   };
 
   const handleToggle = () => {
@@ -478,6 +586,33 @@ function ChatPanel({
         {activeTab === 'canny' && (
           <>
             <div className="chat-messages">
+          {/* Example Prompts - Show when no messages yet */}
+          {showExamples && messages.length <= 1 && (
+            <div className="example-prompts">
+              <div className="example-header">
+                <span className="example-icon">💡</span>
+                <h4>Try asking Canny...</h4>
+              </div>
+              {EXAMPLE_PROMPTS.map((category, catIndex) => (
+                <div key={catIndex} className="example-category">
+                  <div className="category-title">{category.category}</div>
+                  <div className="category-prompts">
+                    {category.prompts.map((prompt, promptIndex) => (
+                      <button
+                        key={promptIndex}
+                        className="example-prompt-btn"
+                        onClick={() => handleExampleClick(prompt)}
+                        disabled={isLoading || isCapturingCanvas}
+                      >
+                        {prompt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          
           {messages.map((message, index) => {
             // Skip rendering messages that only contain tool calls (no text content)
             if (message.tool_calls && !message.content) {
@@ -566,16 +701,35 @@ function ChatPanel({
                 disabled={isLoading || isCapturingCanvas}
                 aria-label="Chat message input"
               />
-              <button 
-                type="submit" 
-                className="chat-send-btn"
-                disabled={!input.trim() || isLoading}
-                aria-label="Send message"
-              >
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-                </svg>
-              </button>
+              
+              {/* Stop button - visible during loading */}
+              {(isLoading || isCapturingCanvas) && (
+                <button
+                  type="button"
+                  className="chat-stop-btn"
+                  onClick={handleStop}
+                  aria-label="Stop generation"
+                  title="Stop current request"
+                >
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                    <rect x="6" y="6" width="12" height="12" rx="2" />
+                  </svg>
+                </button>
+              )}
+              
+              {/* Send button - visible when not loading */}
+              {!(isLoading || isCapturingCanvas) && (
+                <button 
+                  type="submit" 
+                  className="chat-send-btn"
+                  disabled={!input.trim()}
+                  aria-label="Send message"
+                >
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                  </svg>
+                </button>
+              )}
             </form>
           </>
         )}

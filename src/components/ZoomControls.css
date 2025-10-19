@@ -1,14 +1,14 @@
 .zoom-controls {
   position: fixed;
-  bottom: 2rem;
-  right: 2rem;
+  bottom: 1.5rem;
+  right: 1.5rem;
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 0.5rem;
   background-color: rgba(30, 30, 30, 0.95);
   border: 1px solid #444;
   border-radius: 6px;
-  padding: 0.5rem;
+  padding: 0.4rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(10px);
   z-index: 100;
@@ -18,6 +18,8 @@
   display: flex;
   align-items: center;
   gap: 0.25rem;
+  padding-right: 0.4rem;
+  border-right: 1px solid #444;
 }
 
 .zoom-btn {
@@ -98,57 +100,13 @@
   flex-shrink: 0;
 }
 
-.zoom-presets {
-  display: flex;
-  gap: 0.25rem;
-  flex-wrap: wrap;
-  padding-top: 0.25rem;
-  border-top: 1px solid #444;
-}
-
-.zoom-preset {
-  flex: 1;
-  min-width: 36px;
-  height: 24px;
+.zoom-fit {
   background-color: #2a2a2a;
-  color: #aaa;
-  border: 1px solid #444;
-  border-radius: 3px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 0.7rem;
-  font-weight: 500;
-  padding: 0 0.35rem;
-  white-space: nowrap;
 }
 
-.zoom-preset:hover {
+.zoom-fit:hover:not(:disabled) {
   background-color: #3a3a3a;
-  color: #fff;
-  border-color: #646cff;
-}
-
-.zoom-preset.active {
-  background-color: #646cff;
-  color: #fff;
-  border-color: #646cff;
-}
-
-.zoom-preset:active {
-  transform: scale(0.95);
-}
-
-.fit-canvas-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  min-width: auto;
-  flex: none;
-  padding: 0 0.6rem;
-}
-
-.fit-canvas-btn svg {
-  flex-shrink: 0;
+  border-color: #10b981;
 }
 
 /* Responsive adjustments for smaller screens */
@@ -156,12 +114,13 @@
   .zoom-controls {
     bottom: 1rem;
     right: 1rem;
-    padding: 0.4rem;
-    gap: 0.4rem;
+    padding: 0.35rem;
+    gap: 0.35rem;
   }
 
   .zoom-controls-main {
     gap: 0.2rem;
+    padding-right: 0.35rem;
   }
 
   .zoom-btn {
@@ -187,12 +146,6 @@
   .zoom-percent-sign {
     font-size: 0.7rem;
   }
-
-  .zoom-preset {
-    height: 22px;
-    font-size: 0.65rem;
-    min-width: 34px;
-  }
 }
 
 /* Light mode support */
@@ -202,9 +155,12 @@
     border-color: #ddd;
   }
 
+  .zoom-controls-main {
+    border-right-color: #ddd;
+  }
+
   .zoom-btn,
-  .zoom-input-container,
-  .zoom-preset {
+  .zoom-input-container {
     background-color: #f5f5f5;
     border-color: #ddd;
   }
@@ -221,23 +177,17 @@
     color: #666;
   }
 
-  .zoom-preset {
-    color: #666;
-  }
-
-  .zoom-btn:hover:not(:disabled),
-  .zoom-preset:hover {
+  .zoom-btn:hover:not(:disabled) {
     background-color: #e8e8e8;
     color: #333;
   }
 
-  .zoom-preset.active {
-    background-color: #646cff;
-    color: #fff;
+  .zoom-fit {
+    background-color: #f5f5f5;
   }
 
-  .zoom-presets {
-    border-top-color: #ddd;
+  .zoom-fit:hover:not(:disabled) {
+    background-color: #e8e8e8;
   }
 }
 
