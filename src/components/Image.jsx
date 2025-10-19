@@ -85,7 +85,7 @@ const Image = memo(function Image({
         onDoubleClick={handleDoubleClick}
         onContextMenu={handleContextMenu}
         style={{ 
-          cursor: isLocked ? 'not-allowed' : 'pointer',
+          cursor: isLocked && !isSelected ? 'not-allowed' : 'pointer',
         }}
       />
       
@@ -102,50 +102,7 @@ const Image = memo(function Image({
         style={{ pointerEvents: 'none' }}
       />
       
-      {/* Locked indicator */}
-      {isLocked && (
-        <g style={{ pointerEvents: 'none' }}>
-          {/* Semi-transparent overlay */}
-          <rect
-            x={topLeftX}
-            y={topLeftY}
-            width={width}
-            height={height}
-            fill="rgba(0, 0, 0, 0.3)"
-          />
-          
-          {/* Lock icon */}
-          <g transform={`translate(${x}, ${y})`}>
-            <circle cx="0" cy="0" r="16" fill="rgba(255, 255, 255, 0.9)" />
-            <g transform="translate(-8, -8)">
-              <rect x="6" y="9" width="4" height="5" fill="#666" />
-              <path
-                d="M 8 9 C 8 7.3 6.7 6 5 6 C 3.3 6 2 7.3 2 9 L 2 10 L 3 10 L 3 9 C 3 7.9 3.9 7 5 7 C 6.1 7 7 7.9 7 9 L 7 10 L 8 10 Z"
-                transform="translate(3, 0)"
-                fill="#666"
-              />
-            </g>
-          </g>
-          
-          {/* Locked by text */}
-          {lockedByUserName && (
-            <text
-              x={x}
-              y={y + 35}
-              textAnchor="middle"
-              fontSize="11"
-              fill="white"
-              fontWeight="600"
-              style={{
-                textShadow: '0 1px 3px rgba(0,0,0,0.5)',
-                userSelect: 'none',
-              }}
-            >
-              {lockedByUserName}
-            </text>
-          )}
-        </g>
-      )}
+      {/* Note: No locked indicator for images - they always appear at full color */}
     </g>
   );
 });

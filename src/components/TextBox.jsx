@@ -178,7 +178,7 @@ const TextBox = memo(function TextBox({
         onDoubleClick={handleDoubleClick}
         onContextMenu={handleContextMenu}
         style={{ 
-          cursor: isLocked ? 'not-allowed' : 'pointer',
+          cursor: isLocked && !isSelected ? 'not-allowed' : 'pointer',
         }}
       />
       
