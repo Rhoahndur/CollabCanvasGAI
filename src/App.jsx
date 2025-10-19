@@ -248,13 +248,14 @@ function App() {
       />
       
       {/* Share Canvas Modal */}
-      <ShareCanvasModal
-        canvasId={currentCanvasId}
-        canvasName={currentCanvasName}
-        currentUserId={user?.uid}
-        isOpen={isShareModalOpen}
-        onClose={handleCloseShareModal}
-      />
+        <ShareCanvasModal
+          canvasId={currentCanvasId}
+          canvasName={currentCanvasName}
+          currentUserId={user?.uid}
+          currentUserName={user?.displayName || user?.email}
+          isOpen={isShareModalOpen}
+          onClose={handleCloseShareModal}
+        />
     </div>
   )
 }

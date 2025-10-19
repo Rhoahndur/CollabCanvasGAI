@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { addCanvasPermission, removeCanvasPermission, getCanvasMetadata } from '../services/canvasService';
+import { realtimeDb } from '../services/firebase';
+import { ref, set } from 'firebase/database';
 import { CANVAS_ROLE } from '../utils/constants';
 import './ShareCanvasModal.css';
 
@@ -11,7 +13,7 @@ import './ShareCanvasModal.css';
  * - Manage collaborators
  * - Set role permissions (Editor/Viewer)
  */
-function ShareCanvasModal({ canvasId, canvasName, currentUserId, isOpen, onClose }) {
+function ShareCanvasModal({ canvasId, canvasName, currentUserId, currentUserName, isOpen, onClose }) {
   const [shareLink, setShareLink] = useState('');
   const [shareLinkRole, setShareLinkRole] = useState(CANVAS_ROLE.VIEWER); // Role for share link
   const [inviteEmail, setInviteEmail] = useState('');
@@ -66,12 +68,21 @@ function ShareCanvasModal({ canvasId, canvasName, currentUserId, isOpen, onClose
       });
   };
 
-  // Invite user by email/ID
+  // Invite user by email
   const handleInvite = async (e) => {
     e.preventDefault();
     
-    if (!inviteEmail.trim()) {
-      setError('Please enter an email or user ID');
+    const email = inviteEmail.trim();
+    
+    if (!email) {
+      setError('Please enter an email address');
+      return;
+    }
+    
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('Please enter a valid email address');
       return;
     }
 
@@ -81,25 +92,42 @@ function ShareCanvasModal({ canvasId, canvasName, currentUserId, isOpen, onClose
 
     try {
       // Sanitize email for use as Firebase key (replace . and @ with _ and _at_)
-      const sanitizedEmail = inviteEmail.trim()
+      const sanitizedEmail = email
         .toLowerCase()
         .replace(/\./g, '_')
         .replace(/@/g, '_at_');
       
-      // Add as pending invitation with email stored in metadata
+      // Create invitation in database (triggers Cloud Function to send email)
+      const invitationRef = ref(
+        realtimeDb,
+        `canvases/${canvasId}/invitations/${sanitizedEmail}`
+      );
+      
+      await set(invitationRef, {
+        email: email,
+        role: selectedRole,
+        canvasName: canvasName,
+        inviterName: currentUserName || 'A collaborator',
+        canvasId: canvasId,
+        createdAt: Date.now(),
+        sent: false,
+      });
+      
+      // Also add permission immediately (so they can access via link)
       await addCanvasPermission(canvasId, sanitizedEmail, selectedRole, canvasName);
       
       setSuccessMessage(
-        `Added ${inviteEmail} as ${selectedRole}. ` +
-        `They'll get access when they sign in with this email or use the shareable link above.`
+        `✉️ Invitation sent to ${email}! ` +
+        `They'll receive an email with a link to access the canvas as ${selectedRole}.`
       );
       setInviteEmail('');
+      setSelectedRole(CANVAS_ROLE.EDITOR);
       loadCollaborators();
       
       setTimeout(() => setSuccessMessage(''), 5000);
     } catch (err) {
-      console.error('Failed to invite user:', err);
-      setError(`Failed to add invitation: ${err.message}`);
+      console.error('Failed to send invitation:', err);
+      setError(`Failed to send invitation: ${err.message}`);
     } finally {
       setLoading(false);
     }
