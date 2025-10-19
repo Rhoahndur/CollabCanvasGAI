@@ -340,6 +340,13 @@ export const setUserPresence = async (
   isActive = true
 ) => {
   try {
+    // Validate that userName is not empty
+    // This prevents "Anonymous" users from appearing in the presence list
+    if (!userName || userName.trim() === '' || userName === 'Anonymous User') {
+      console.error('❌ Cannot set presence: userName is required and must not be empty');
+      throw new Error('userName is required for presence');
+    }
+    
     const presenceRef = getPresenceSessionRef(canvasId, sessionId);
     
     // Set up automatic cleanup on disconnect
@@ -457,7 +464,16 @@ export const cleanupStalePresence = async (canvasId = DEFAULT_CANVAS_ID) => {
       const data = snapshot.val();
       Object.keys(data).forEach((sessionId) => {
         const session = data[sessionId];
-        if (!session.isOnline || session.lastSeen < thirtySecondsAgo) {
+        // Remove sessions that are:
+        // 1. Not online
+        // 2. Haven't been seen in 30+ seconds
+        // 3. Have empty/invalid usernames (to clean up legacy anonymous users)
+        const hasInvalidUsername = !session.userName || 
+                                   session.userName.trim() === '' || 
+                                   session.userName === 'Anonymous User' ||
+                                   session.userName === 'Anonymous';
+        
+        if (!session.isOnline || session.lastSeen < thirtySecondsAgo || hasInvalidUsername) {
           staleSessionIds.push(sessionId);
         }
       });
@@ -470,7 +486,7 @@ export const cleanupStalePresence = async (canvasId = DEFAULT_CANVAS_ID) => {
         updates[sessionId] = null; // Setting to null deletes in Realtime Database
       });
       await update(presenceRef, updates);
-      // console.log(`🧹 Cleaned up ${staleSessionIds.length} stale presence sessions`);
+      console.log(`🧹 Cleaned up ${staleSessionIds.length} stale presence sessions`);
     }
     
     return staleSessionIds.length;

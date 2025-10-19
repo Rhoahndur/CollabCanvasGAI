@@ -43,13 +43,22 @@ export function useAuth() {
         
         // Fallback chain: Stored GitHub username > reloadUserInfo.screenName > provider displayName > user displayName > email
         // Works for both GitHub and Google OAuth
+        // Note: We MUST have a valid displayName (not anonymous) for presence to work
         const displayName = 
           storedGithubUsername ||
           currentUser.reloadUserInfo?.screenName || 
           githubUsername ||
           currentUser.displayName || 
-          currentUser.email?.split('@')[0] || 
-          'Anonymous User';
+          currentUser.email?.split('@')[0];
+        
+        // Safety check: If displayName is still empty/undefined, don't set user
+        // This prevents anonymous users from accessing the app
+        if (!displayName || displayName.trim() === '') {
+          console.error('❌ Cannot authenticate user without a valid display name');
+          setUser(null);
+          setLoading(false);
+          return;
+        }
         
         // console.log('✅ Using display name:', displayName);
 

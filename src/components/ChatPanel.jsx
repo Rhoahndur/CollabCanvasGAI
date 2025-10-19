@@ -95,6 +95,7 @@ function ChatPanel({
   const messagesEndRef = useRef(null);
   const cannyMessagesEndRef = useRef(null);
   const abortControllerRef = useRef(null);
+  const examplesDropdownRef = useRef(null);
   const resizeStartX = useRef(0);
   const resizeStartWidth = useRef(0);
   
@@ -238,6 +239,7 @@ function ChatPanel({
 
   // Handle example prompt click
   const handleExampleClick = (prompt) => {
+    setShowExamples(false); // Close dropdown
     handleInputChange({ target: { value: prompt } });
     // Auto-submit after short delay so user can see what was filled in
     setTimeout(() => {
@@ -279,6 +281,20 @@ function ChatPanel({
       document.removeEventListener('mouseup', handleResizeEnd);
     };
   }, [isResizing]);
+
+  // Click outside to close examples dropdown
+  useEffect(() => {
+    if (!showExamples) return;
+
+    const handleClickOutside = (e) => {
+      if (examplesDropdownRef.current && !examplesDropdownRef.current.contains(e.target)) {
+        setShowExamples(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showExamples]);
 
   const handleClear = () => {
     // Reload page to clear chat (simpler than managing SDK state)
@@ -632,32 +648,6 @@ function ChatPanel({
         {activeTab === 'canny' && (
           <>
             <div className="chat-messages">
-          {/* Example Prompts - Toggle with button */}
-          {showExamples && (
-            <div className="example-prompts">
-              <div className="example-header">
-                <span className="example-icon">💡</span>
-                <h4>Try asking Canny...</h4>
-              </div>
-              {EXAMPLE_PROMPTS.map((category, catIndex) => (
-                <div key={catIndex} className="example-category">
-                  <div className="category-title">{category.category}</div>
-                  <div className="category-prompts">
-                    {category.prompts.map((prompt, promptIndex) => (
-                      <button
-                        key={promptIndex}
-                        className="example-prompt-btn"
-                        onClick={() => handleExampleClick(prompt)}
-                        disabled={isLoading || isCapturingCanvas}
-                      >
-                        {prompt}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
           
           {messages.map((message, index) => {
             // Skip rendering messages that only contain tool calls (no text content)
@@ -737,6 +727,49 @@ function ChatPanel({
               </div>
             )}
 
+            {/* Example Prompts Dropdown */}
+            <div className="example-prompts-container" ref={examplesDropdownRef}>
+              <button
+                type="button"
+                className={`example-prompts-trigger ${showExamples ? 'open' : ''}`}
+                onClick={() => setShowExamples(!showExamples)}
+                aria-label="Toggle example prompts"
+              >
+                💡 Example Prompts
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+
+              {showExamples && (
+                <div className="example-prompts-dropdown">
+                  <div className="example-prompts">
+                    <div className="example-header">
+                      <span className="example-icon">💡</span>
+                      <h4>Try asking Canny...</h4>
+                    </div>
+                    {EXAMPLE_PROMPTS.map((category, catIndex) => (
+                      <div key={catIndex} className="example-category">
+                        <div className="category-title">{category.category}</div>
+                        <div className="category-prompts">
+                          {category.prompts.map((prompt, promptIndex) => (
+                            <button
+                              key={promptIndex}
+                              className="example-prompt-btn"
+                              onClick={() => handleExampleClick(prompt)}
+                              disabled={isLoading || isCapturingCanvas}
+                            >
+                              {prompt}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <form className="chat-input-form" onSubmit={handleCannySubmit}>
               <input
                 type="text"
@@ -747,19 +780,6 @@ function ChatPanel({
                 disabled={isLoading || isCapturingCanvas}
                 aria-label="Chat message input"
               />
-              
-              {/* Template/Examples button - always visible */}
-              <button
-                type="button"
-                className={`chat-templates-btn ${showExamples ? 'active' : ''}`}
-                onClick={() => setShowExamples(!showExamples)}
-                aria-label="Toggle example prompts"
-                title={showExamples ? "Hide example prompts" : "Show example prompts"}
-              >
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                </svg>
-              </button>
               
               {/* Stop button - visible during loading */}
               {(isLoading || isCapturingCanvas) && (

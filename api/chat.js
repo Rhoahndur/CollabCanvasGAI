@@ -278,18 +278,15 @@ Examples:
       }
     }
 
-    // If there were tool calls, send them as a special message
+    // If there were tool calls, send them using the custom marker format
+    // (The AI SDK's data format is incompatible with our setup, so we use the marker approach)
     if (toolCalls.length > 0) {
       console.log(`✅ Stream complete. Tool calls detected: ${toolCalls.length}`);
       
-      // Send tool calls in AI SDK format
-      const toolCallMessage = {
-        role: 'assistant',
-        content: '',
-        tool_calls: toolCalls
-      };
-      
-      res.write(`2:${JSON.stringify(toolCallMessage)}\n`);
+      // Send tool calls as a hidden text message with special marker
+      // This matches the format in server.js and is parsed by the frontend
+      const toolCallsMarker = `__TOOL_CALLS__${JSON.stringify(toolCalls)}__END_TOOL_CALLS__`;
+      res.write(`0:${JSON.stringify(toolCallsMarker)}\n`);
     } else {
       console.log(`✅ Stream complete. Sent ${chunkCount} text chunks`);
     }

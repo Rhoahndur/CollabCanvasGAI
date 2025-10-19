@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState } from 'react'
 import { useAuth } from './hooks/useAuth'
 import { usePresence } from './hooks/usePresence'
-import { requestCanvasAccess } from './services/canvasService'
+import { requestCanvasAccess, cleanupStalePresence } from './services/canvasService'
 import LoginPage from './components/LoginPage'
 import CanvasDashboard from './components/CanvasDashboard'
 import Canvas from './components/Canvas'
@@ -35,6 +35,29 @@ function App() {
       window.__currentSessionId = sessionIdRef.current;
     }
   }, []);
+  
+  // Expose debug utilities for manual cleanup
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.__debugCleanup = async (canvasId = null) => {
+        const targetCanvasId = canvasId || currentCanvasId;
+        if (!targetCanvasId) {
+          console.warn('⚠️ No canvas ID provided and no canvas currently open. Please provide a canvas ID: window.__debugCleanup("canvasId")');
+          return 0;
+        }
+        console.log(`🧹 Manually cleaning up stale presence for canvas: ${targetCanvasId}`);
+        const cleaned = await cleanupStalePresence(targetCanvasId);
+        console.log(`✅ Cleaned up ${cleaned} stale sessions`);
+        return cleaned;
+      };
+    }
+    
+    return () => {
+      if (typeof window !== 'undefined') {
+        delete window.__debugCleanup;
+      }
+    };
+  }, [currentCanvasId]);
   
   const { user, loading, signIn } = useAuth()
   
