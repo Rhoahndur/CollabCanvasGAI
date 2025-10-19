@@ -2842,8 +2842,8 @@ function Canvas({
         maxZoom={MAX_ZOOM}
       />
       
-      {/* AI Chat Panel */}
-      <ChatPanel />
+      {/* Chat Panel (Canvas Chat + Canny AI) */}
+      <ChatPanel canvasId={canvasId} user={user} />
       
       {/* Inline Text Editor */}
       {editingTextId && (

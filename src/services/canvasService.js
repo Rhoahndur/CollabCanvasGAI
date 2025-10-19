@@ -712,6 +712,16 @@ export const duplicateCanvas = async (sourceCanvasId, userId, newName) => {
       const offsetY = 20;
       
       Object.entries(sourceData.objects).forEach(([oldId, obj]) => {
+        // Skip objects with invalid data
+        if (!obj || typeof obj !== 'object') {
+          console.warn(`Skipping invalid object during duplication: ${oldId}`);
+          return;
+        }
+        
+        // Ensure x and y are valid numbers
+        const objX = typeof obj.x === 'number' && !isNaN(obj.x) ? obj.x : 0;
+        const objY = typeof obj.y === 'number' && !isNaN(obj.y) ? obj.y : 0;
+        
         // Generate new ID for duplicated object
         const newId = generateObjectId(userId);
         
@@ -719,8 +729,8 @@ export const duplicateCanvas = async (sourceCanvasId, userId, newName) => {
         newCanvasData.objects[newId] = {
           ...obj,
           id: newId,
-          x: obj.x + offsetX,
-          y: obj.y + offsetY,
+          x: objX + offsetX,
+          y: objY + offsetY,
           createdBy: userId,
           lockedBy: null,
           lockedByUserName: null,
