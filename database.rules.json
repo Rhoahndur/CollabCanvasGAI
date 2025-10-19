@@ -11,7 +11,7 @@
         "permissions": {
           ".read": "auth != null",
           "$userId": {
-            ".write": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'owner' || (auth.uid == $userId && !root.child('canvases').child($canvasId).child('permissions').exists()))"
+            ".write": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'owner' || auth.uid == $userId)"
           }
         },
         "objects": {

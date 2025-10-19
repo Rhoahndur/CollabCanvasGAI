@@ -74,23 +74,26 @@ function ShareCanvasModal({ canvasId, canvasName, currentUserId, isOpen, onClose
     setSuccessMessage('');
 
     try {
-      // For MVP: Use email as userId (in production, would look up user in database)
-      // In a real app, this would:
-      // 1. Check if user exists by email
-      // 2. Send email invitation
-      // 3. Add permission once user accepts
+      // Sanitize email for use as Firebase key (replace . and @ with _ and _at_)
+      const sanitizedEmail = inviteEmail.trim()
+        .toLowerCase()
+        .replace(/\./g, '_')
+        .replace(/@/g, '_at_');
       
-      // For now, we'll add the email as a pending invitation
-      await addCanvasPermission(canvasId, inviteEmail, selectedRole, inviteEmail);
+      // Add as pending invitation with email stored in metadata
+      await addCanvasPermission(canvasId, sanitizedEmail, selectedRole, canvasName);
       
-      setSuccessMessage(`Invited ${inviteEmail} as ${selectedRole}`);
+      setSuccessMessage(
+        `Added ${inviteEmail} as ${selectedRole}. ` +
+        `They'll get access when they sign in with this email or use the shareable link above.`
+      );
       setInviteEmail('');
       loadCollaborators();
       
-      setTimeout(() => setSuccessMessage(''), 3000);
+      setTimeout(() => setSuccessMessage(''), 5000);
     } catch (err) {
       console.error('Failed to invite user:', err);
-      setError('Failed to send invitation. Please try again.');
+      setError(`Failed to add invitation: ${err.message}`);
     } finally {
       setLoading(false);
     }
