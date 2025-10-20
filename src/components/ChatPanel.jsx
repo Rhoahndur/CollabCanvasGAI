@@ -98,6 +98,7 @@ function ChatPanel({
   const examplesDropdownRef = useRef(null);
   const resizeStartX = useRef(0);
   const resizeStartWidth = useRef(0);
+  const exampleSubmitTimeoutRef = useRef(null);
   
   // Use AI SDK's useChat hook for streaming with tool support
   // In production (Vercel), uses /api/chat
@@ -108,6 +109,7 @@ function ChatPanel({
   
   const { messages, input, handleInputChange, handleSubmit, isLoading, error, append } = useChat({
     api: apiEndpoint,
+    maxToolRoundtrips: 5, // Allow automatic tool execution
     initialMessages: [
       {
         id: 'welcome',
@@ -117,7 +119,19 @@ function ChatPanel({
     ],
     // Handle tool calls from Canny
     experimental_onToolCall: async (toolCall) => {
-      console.log('🔧 Canny is calling tool:', toolCall.toolName, 'with args:', toolCall.args);
+      console.log('🔧 Canny is calling tool:', toolCall.toolName, 'with args:', toolCall.args, 'TOOL CALL EVENT FIRED!');
+      
+      // Emit debug event for tool call
+      window.dispatchEvent(new CustomEvent('canny-debug', {
+        detail: {
+          type: 'tool-call',
+          data: {
+            toolName: toolCall.toolName,
+            arguments: toolCall.args
+          },
+          timestamp: Date.now()
+        }
+      }));
       
       // Execute the tool
       const context = {
@@ -137,10 +151,61 @@ function ChatPanel({
       
       console.log('✅ Tool execution result:', result);
       
+      // Emit debug event for tool result
+      window.dispatchEvent(new CustomEvent('canny-debug', {
+        detail: {
+          type: 'tool-result',
+          data: {
+            toolName: toolCall.toolName,
+            result: result
+          },
+          timestamp: Date.now()
+        }
+      }));
+      
       // Return result to Canny
       return result;
+    },
+    // Log errors
+    onError: (error) => {
+      console.error('❌ Chat error:', error);
+      window.dispatchEvent(new CustomEvent('canny-debug', {
+        detail: {
+          type: 'error',
+          data: {
+            message: error.message,
+            stack: error.stack
+          },
+          timestamp: Date.now()
+        }
+      }));
+    },
+    // Log when response is received
+    onFinish: (message) => {
+      console.log('✅ Response finished:', message);
+      window.dispatchEvent(new CustomEvent('canny-debug', {
+        detail: {
+          type: 'response',
+          data: {
+            role: message.role,
+            content: message.content,
+            toolCalls: message.tool_calls
+          },
+          timestamp: Date.now()
+        }
+      }));
     }
   });
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      // Clear any pending auto-submit timeout
+      if (exampleSubmitTimeoutRef.current) {
+        clearTimeout(exampleSubmitTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Stop current request
   const handleStop = () => {
@@ -154,10 +219,18 @@ function ChatPanel({
   };
 
   // Custom submit handler with guardrails
-  const handleCannySubmit = async (e) => {
+  const handleCannySubmit = async (e, overrideInput = null) => {
     e.preventDefault();
     
-    const trimmedInput = input.trim();
+    // Clear any pending auto-submit from example prompts
+    if (exampleSubmitTimeoutRef.current) {
+      clearTimeout(exampleSubmitTimeoutRef.current);
+      exampleSubmitTimeoutRef.current = null;
+    }
+    
+    // Use override input if provided (for example prompts), otherwise use current input state
+    const inputToSubmit = overrideInput !== null ? overrideInput : input;
+    const trimmedInput = inputToSubmit.trim();
     if (!trimmedInput) return;
     
     // Guardrail 1: Message length limit
@@ -196,6 +269,19 @@ function ChatPanel({
         
         console.log('✅ Canvas captured, sending with vision...');
         
+        // Emit debug event for request with vision
+        window.dispatchEvent(new CustomEvent('canny-debug', {
+          detail: {
+            type: 'request',
+            data: {
+              message: trimmedInput,
+              withVision: true,
+              imageSize: `${canvasImage.length} bytes`
+            },
+            timestamp: Date.now()
+          }
+        }));
+        
         // Send message with image using append()
         await append({
           role: 'user',
@@ -213,6 +299,11 @@ function ChatPanel({
           ]
         });
         
+        // Clear input after sending if we used override
+        if (overrideInput !== null) {
+          handleInputChange({ target: { value: '' } });
+        }
+        
         setIsCapturingCanvas(false);
         setVisionReason(null);
       } catch (error) {
@@ -228,7 +319,30 @@ function ChatPanel({
     } else {
       // No vision needed, use regular submit
       try {
-        await handleSubmit(e);
+        // Emit debug event for regular request
+        window.dispatchEvent(new CustomEvent('canny-debug', {
+          detail: {
+            type: 'request',
+            data: {
+              message: trimmedInput,
+              withVision: false
+            },
+            timestamp: Date.now()
+          }
+        }));
+        
+        // If we have an override input, use append() to send directly
+        // This ensures we send the correct message even if input state changed
+        if (overrideInput !== null) {
+          await append({
+            role: 'user',
+            content: trimmedInput
+          });
+          // Clear input after sending
+          handleInputChange({ target: { value: '' } });
+        } else {
+          await handleSubmit(e);
+        }
       } catch (error) {
         if (error.name !== 'AbortError') {
           console.error('Failed to send message:', error);
@@ -239,12 +353,21 @@ function ChatPanel({
 
   // Handle example prompt click
   const handleExampleClick = (prompt) => {
+    // Clear any pending auto-submit from previous prompt click
+    if (exampleSubmitTimeoutRef.current) {
+      clearTimeout(exampleSubmitTimeoutRef.current);
+      exampleSubmitTimeoutRef.current = null;
+    }
+    
     setShowExamples(false); // Close dropdown
     handleInputChange({ target: { value: prompt } });
+    
     // Auto-submit after short delay so user can see what was filled in
-    setTimeout(() => {
+    // Pass the prompt directly to avoid race conditions with state updates
+    exampleSubmitTimeoutRef.current = setTimeout(() => {
       const fakeEvent = { preventDefault: () => {} };
-      handleCannySubmit(fakeEvent);
+      handleCannySubmit(fakeEvent, prompt);
+      exampleSubmitTimeoutRef.current = null;
     }, 500);
   };
 

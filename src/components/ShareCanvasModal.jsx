@@ -1,23 +1,17 @@
 import { useState, useEffect } from 'react';
-import { addCanvasPermission, removeCanvasPermission, getCanvasMetadata } from '../services/canvasService';
-import { realtimeDb } from '../services/firebase';
-import { ref, set } from 'firebase/database';
+import { removeCanvasPermission, getCanvasMetadata } from '../services/canvasService';
 import { CANVAS_ROLE } from '../utils/constants';
 import './ShareCanvasModal.css';
 
 /**
  * ShareCanvasModal component - Share canvas with other users
  * Allows owners to:
- * - Generate shareable links
- * - Invite users by email/user ID
+ * - Generate shareable links with role permissions (Editor/Viewer)
  * - Manage collaborators
- * - Set role permissions (Editor/Viewer)
  */
-function ShareCanvasModal({ canvasId, canvasName, currentUserId, currentUserName, isOpen, onClose }) {
+function ShareCanvasModal({ canvasId, canvasName, currentUserId, isOpen, onClose }) {
   const [shareLink, setShareLink] = useState('');
   const [shareLinkRole, setShareLinkRole] = useState(CANVAS_ROLE.VIEWER); // Role for share link
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [selectedRole, setSelectedRole] = useState(CANVAS_ROLE.EDITOR);
   const [collaborators, setCollaborators] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -68,71 +62,6 @@ function ShareCanvasModal({ canvasId, canvasName, currentUserId, currentUserName
       });
   };
 
-  // Invite user by email
-  const handleInvite = async (e) => {
-    e.preventDefault();
-    
-    const email = inviteEmail.trim();
-    
-    if (!email) {
-      setError('Please enter an email address');
-      return;
-    }
-    
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setError('Please enter a valid email address');
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-    setSuccessMessage('');
-
-    try {
-      // Sanitize email for use as Firebase key (replace . and @ with _ and _at_)
-      const sanitizedEmail = email
-        .toLowerCase()
-        .replace(/\./g, '_')
-        .replace(/@/g, '_at_');
-      
-      // Create invitation in database (triggers Cloud Function to send email)
-      const invitationRef = ref(
-        realtimeDb,
-        `canvases/${canvasId}/invitations/${sanitizedEmail}`
-      );
-      
-      await set(invitationRef, {
-        email: email,
-        role: selectedRole,
-        canvasName: canvasName,
-        inviterName: currentUserName || 'A collaborator',
-        canvasId: canvasId,
-        createdAt: Date.now(),
-        sent: false,
-      });
-      
-      // Also add permission immediately (so they can access via link)
-      await addCanvasPermission(canvasId, sanitizedEmail, selectedRole, canvasName);
-      
-      setSuccessMessage(
-        `✉️ Invitation sent to ${email}! ` +
-        `They'll receive an email with a link to access the canvas as ${selectedRole}.`
-      );
-      setInviteEmail('');
-      setSelectedRole(CANVAS_ROLE.EDITOR);
-      loadCollaborators();
-      
-      setTimeout(() => setSuccessMessage(''), 5000);
-    } catch (err) {
-      console.error('Failed to send invitation:', err);
-      setError(`Failed to send invitation: ${err.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Remove collaborator
   const handleRemoveCollaborator = async (userId) => {
     if (userId === currentUserId) {
@@ -164,7 +93,6 @@ function ShareCanvasModal({ canvasId, canvasName, currentUserId, currentUserName
   const handleClose = () => {
     setError('');
     setSuccessMessage('');
-    setInviteEmail('');
     onClose();
   };
 
@@ -232,44 +160,11 @@ function ShareCanvasModal({ canvasId, canvasName, currentUserId, currentUserName
             </div>
           </div>
 
-          {/* Invite User Section */}
-          <div className="share-section">
-            <h3>Invite Collaborator</h3>
-            <form onSubmit={handleInvite} className="share-invite-form">
-              <div className="share-invite-inputs">
-                <input
-                  type="text"
-                  placeholder="Enter email or user ID"
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                  className="share-invite-input"
-                  disabled={loading}
-                />
-                <select
-                  value={selectedRole}
-                  onChange={(e) => setSelectedRole(e.target.value)}
-                  className="share-role-select"
-                  disabled={loading}
-                >
-                  <option value={CANVAS_ROLE.EDITOR}>Editor</option>
-                  <option value={CANVAS_ROLE.VIEWER}>Viewer</option>
-                </select>
-              </div>
-              <button
-                type="submit"
-                className="share-invite-btn"
-                disabled={loading || !inviteEmail.trim()}
-              >
-                {loading ? 'Inviting...' : 'Send Invite'}
-              </button>
-            </form>
-          </div>
-
           {/* Collaborators List */}
           <div className="share-section">
             <h3>Collaborators ({collaborators.length})</h3>
             {collaborators.length === 0 ? (
-              <p className="share-empty-state">No collaborators yet. Invite someone to get started!</p>
+              <p className="share-empty-state">No collaborators yet. Share the link above to invite people!</p>
             ) : (
               <div className="share-collaborators-list">
                 {collaborators.map((collab) => (

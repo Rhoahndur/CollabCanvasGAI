@@ -347,12 +347,34 @@ firebase deploy --only hosting
 - Verify you're authenticated
 - Check Firebase Realtime Database rules
 
+**Canvas background settings not saving:**
+
+1. **Check console logs** when saving settings:
+   - Success: `✅ Canvas settings saved successfully`
+   - Error: `❌ Failed to save settings: PERMISSION_DENIED`
+
+2. **Verify database rules are deployed:**
+   ```bash
+   firebase deploy --only database
+   ```
+
+3. **Check permissions in Firebase Console:**
+   - Navigate to: `canvases/{canvasId}/permissions`
+   - Should see: `{userId}: "owner"` or `{userId}: "editor"`
+   - Also check: `userCanvases/{userId}/{canvasId}/role`
+
+4. **Common causes:**
+   - Database rules not deployed to production
+   - User doesn't have owner/editor permissions
+   - Incorrect Firebase project configuration
+
 ### Getting Help
 
 - Check the browser console for error messages
 - Review Firebase Console logs
 - Check Vercel function logs (for production)
 - Review `running_log.txt` for implementation details
+- For permission issues, verify your role in the canvas
 
 ---
 

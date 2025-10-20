@@ -400,14 +400,15 @@ const isShapeVisible = (shape, viewport) => {
 
 Canny has access to these tools:
 
-1. **createShape**: Create shapes with specified properties
-2. **alignShapes**: Align shapes (left, right, top, bottom, center)
-3. **distributeShapes**: Evenly distribute shapes
-4. **arrangeInGrid**: Arrange shapes in rows × columns
-5. **updateShapeProperties**: Modify colors, sizes, rotation
-6. **deleteShapes**: Remove shapes (with confirmation)
-7. **getCanvasInfo**: Query canvas state
-8. **selectShapes**: Select shapes by type or color
+1. **createShape**: Create shapes with specified properties (single or horizontal line)
+2. **createShapesBatch**: Create multiple shapes at specific x,y positions (NEW)
+3. **alignShapes**: Align shapes (left, right, top, bottom, center)
+4. **distributeShapes**: Evenly distribute shapes
+5. **arrangeInGrid**: Arrange shapes in rows × columns
+6. **updateShapeProperties**: Modify colors, sizes, rotation
+7. **deleteShapes**: Remove shapes (with confirmation)
+8. **getCanvasInfo**: Query canvas state
+9. **selectShapes**: Select shapes by type or color
 
 **Tool Definition Example:**
 ```javascript
@@ -433,6 +434,42 @@ Canny has access to these tools:
   }
 }
 ```
+
+**Batch Shape Creation Tool:**
+```javascript
+{
+  type: 'function',
+  function: {
+    name: 'createShapesBatch',
+    description: 'Create multiple shapes at specific positions in one call',
+    parameters: {
+      type: 'object',
+      properties: {
+        shapes: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              shapeType: { type: 'string' },
+              x: { type: 'number' },
+              y: { type: 'number' },
+              radius: { type: 'number' },
+              color: { type: 'string' }
+            }
+          },
+          maxItems: 50
+        }
+      }
+    }
+  }
+}
+```
+
+**Use Cases:**
+- Drawing patterns (circle outlines, spirals, stars)
+- Creating shapes based on mathematical calculations
+- Visual arrangements requiring precise positioning
+- Efficient multi-shape operations (50 shapes in one API call)
 
 ### Vision Integration
 
@@ -520,6 +557,93 @@ const { messages, input, handleSubmit, isLoading } = useChat({
 - Old `createRectangle()` still works (calls `createShape()`)
 - Database field remains `objects` (generic)
 - Type field distinguishes shape types
+
+---
+
+## Canvas Constraints
+
+### Fixed Canvas Boundaries
+
+**Implementation:**
+- Canvas size: 5000×5000 pixels (0,0 to 5000,5000)
+- All shape creation/movement constrained to boundaries
+- Applies to both manual operations and Canny AI tools
+
+**Constraint Functions:**
+```javascript
+// For rectangles and text boxes
+constrainRectangle(x, y, width, height, CANVAS_WIDTH, CANVAS_HEIGHT)
+
+// For circles and polygons
+constrainCircle(x, y, radius, CANVAS_WIDTH, CANVAS_HEIGHT)
+
+// Generic clamping
+clamp(value, min, max)
+```
+
+**Tools with Boundary Enforcement:**
+- ✅ `createShape()` - All new shapes constrained
+- ✅ `createShapesBatch()` - All batch shapes constrained
+- ✅ `updateShapeProperties()` - Position updates constrained
+- ✅ `alignShapes()` - Aligned positions constrained
+- ✅ `distributeShapes()` - Distributed positions constrained
+- ✅ `arrangeInGrid()` - Grid layouts constrained
+
+**Benefits:**
+- Prevents shapes from being lost off-canvas
+- Consistent behavior between manual and AI operations
+- No performance impact (simple math operations)
+
+---
+
+## Copy/Paste Implementation
+
+### Keyboard Shortcuts
+
+**Copy (Ctrl/Cmd + C):**
+```javascript
+// Extract selected shapes, remove IDs and locks
+const copiedShapes = shapes
+  .filter(s => selectedShapeIds.includes(s.id))
+  .map(shape => ({
+    ...shape,
+    id: undefined,        // New ID on paste
+    timestamp: undefined, // New timestamp on paste
+    lockedBy: null,
+    lockedByUserName: null,
+  }));
+
+setClipboard(copiedShapes);
+```
+
+**Paste (Ctrl/Cmd + V):**
+```javascript
+// Create new shapes with 20px offset
+for (const shape of clipboard) {
+  const newShape = {
+    ...shape,
+    x: shape.x + 20,
+    y: shape.y + 20,
+    createdBy: user.uid,
+  };
+  const newId = await createShape(canvasId, newShape);
+  newShapeIds.push(newId);
+}
+
+// Update clipboard for repeated pasting
+const updatedClipboard = clipboard.map(shape => ({
+  ...shape,
+  x: shape.x + 20,
+  y: shape.y + 20,
+}));
+setClipboard(updatedClipboard);
+```
+
+**Features:**
+- Persistent clipboard (copy once, paste multiple times)
+- Auto-incrementing offset for pattern creation
+- Multi-shape support
+- Permission-aware (viewers cannot paste)
 
 ---
 

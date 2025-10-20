@@ -21,7 +21,7 @@ console.log('📍 Port:', PORT);
 console.log('🔑 OpenAI Key:', process.env.OPENAI_API_KEY ? `✅ Found (${process.env.OPENAI_API_KEY.substring(0, 10)}...)` : '❌ Not found');
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' })); // Increased for canvas vision images
 
 // OpenAI configuration
 const openai = new OpenAI({
@@ -53,7 +53,11 @@ Your role:
 - Use emojis occasionally to be more personable
 
 You have the following tools to manipulate the canvas:
-- createShape: Create rectangles, circles, polygons, text, or custom polygons
+- createShape: Create rectangles, circles, polygons, text, or custom polygons (simple, uses count for horizontal lines)
+  * For TEXT shapes, you MUST include the 'text' parameter with the desired text content
+  * Example: createShape(shapeType='text', text='Hello', x=100, y=100)
+- createShapesBatch: Create multiple shapes at SPECIFIC x,y positions in ONE call (use this for patterns, circles, spirals, creative arrangements)
+  * For TEXT shapes in batch, include 'text' property for each text shape
 - alignShapes: Align shapes left, right, top, bottom, center-h, or center-v
 - distributeShapes: Evenly distribute shapes horizontally or vertically
 - arrangeInGrid: Arrange shapes in a rows x columns grid
@@ -88,11 +92,35 @@ When you receive an image of the canvas:
 
 When the user asks you to manipulate the canvas, USE the appropriate tools.
 Examples:
-- "Create 5 blue rectangles" → Use createShape with centerX/centerY from viewport
-- "Create rectangles AROUND the blue circle" → See canvas, identify circle position, use createShape with appropriate coordinates
+- "Create 5 blue rectangles" → Use createShape with count=5 (creates horizontal line)
+- "Add text saying Hello" → Use createShape(shapeType='text', text='Hello')
+- "Write Welcome on the canvas" → Use createShape(shapeType='text', text='Welcome')
+- "Draw a circle outline using small circles" → Use createShapesBatch with calculated positions (e.g., 12 circles at angles 0°, 30°, 60°, etc.)
+- "Arrange shapes in a spiral" → Use createShapesBatch with calculated spiral coordinates
+- "Create rectangles AROUND the blue circle" → See canvas, identify circle position, calculate positions, use createShapesBatch
 - "Align them to the left" → Use alignShapes
 - "What colors am I using?" → Observe the canvas image and describe colors
-- "Make them all red" → Use updateShapeProperties`,
+- "Make them all red" → Use updateShapeProperties
+- "Draw a smiley face" → Use createShapesBatch to position circles for eyes, mouth arc, etc.
+
+IMPORTANT - When to use createShape vs createShapesBatch:
+- createShape with count: Use ONLY for simple horizontal lines of shapes
+- createShapesBatch: Use for ANY creative arrangement (circles, spirals, diagonals, patterns, waves, scattered, etc.)
+  - You can calculate positions using math: circle (x = centerX + radius*cos(angle), y = centerY + radius*sin(angle))
+  - For spirals, diagonals, or any custom pattern, calculate each position
+  - Maximum 50 shapes per batch call
+
+IMPORTANT - Creating Grids:
+When users ask for a "grid" or "rows and columns" layout, you MUST use TWO tools in sequence:
+1. FIRST: Create the shapes using createShape with count=(rows × columns)
+   Example: "3x3 grid" = createShape with count=9
+2. SECOND: Arrange them using arrangeInGrid with rows and columns
+   Example: arrangeInGrid with rows=3, columns=3
+
+Grid Examples:
+- "Make a grid of 3x3 squares" → createShape(shapeType='rectangle', count=9) THEN arrangeInGrid(rows=3, columns=3)
+- "Create a 2x4 grid of circles" → createShape(shapeType='circle', count=8) THEN arrangeInGrid(rows=2, columns=4)
+- "Arrange these in a 3x3 grid" → arrangeInGrid(rows=3, columns=3) only (shapes already exist)`,
     };
 
     // Canvas tool definitions for function calling
@@ -101,21 +129,60 @@ Examples:
         type: 'function',
         function: {
           name: 'createShape',
-          description: 'Create a new shape on the canvas',
+          description: 'Create a new shape on the canvas. Use count for simple horizontal lines only. For text shapes, ALWAYS provide the text parameter with the desired content.',
           parameters: {
             type: 'object',
             properties: {
-              shapeType: { type: 'string', enum: ['rectangle', 'circle', 'polygon', 'text', 'customPolygon'] },
-              x: { type: 'number' },
-              y: { type: 'number' },
-              width: { type: 'number' },
-              height: { type: 'number' },
-              radius: { type: 'number' },
-              color: { type: 'string' },
-              text: { type: 'string' },
-              count: { type: 'number' }
+              shapeType: { 
+                type: 'string', 
+                enum: ['rectangle', 'circle', 'polygon', 'text', 'customPolygon'],
+                description: 'Type of shape to create'
+              },
+              x: { type: 'number', description: 'X coordinate (optional, defaults to center)' },
+              y: { type: 'number', description: 'Y coordinate (optional, defaults to center)' },
+              width: { type: 'number', description: 'Width for rectangles and text boxes' },
+              height: { type: 'number', description: 'Height for rectangles and text boxes' },
+              radius: { type: 'number', description: 'Radius for circles and polygons' },
+              color: { type: 'string', description: 'Color in hex format (e.g., #646cff)' },
+              text: { 
+                type: 'string', 
+                description: 'REQUIRED for text shapes - the actual text content to display'
+              },
+              count: { type: 'number', description: 'Number of shapes to create in a horizontal line (default: 1)' }
             },
             required: ['shapeType']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'createShapesBatch',
+          description: 'Create multiple shapes at specific x,y positions in one call. Perfect for patterns (circle outlines, spirals, grids, drawings). Calculate positions using math (e.g., circle: x = centerX + radius*cos(angle), y = centerY + radius*sin(angle)). Use this for ANY creative arrangement.',
+          parameters: {
+            type: 'object',
+            properties: {
+              shapes: {
+                type: 'array',
+                description: 'Array of shapes with specific positions',
+                items: {
+                  type: 'object',
+                  properties: {
+                    shapeType: { type: 'string', enum: ['rectangle', 'circle', 'polygon', 'text', 'customPolygon'] },
+                    x: { type: 'number', description: 'X position' },
+                    y: { type: 'number', description: 'Y position' },
+                    width: { type: 'number' },
+                    height: { type: 'number' },
+                    radius: { type: 'number' },
+                    color: { type: 'string' },
+                    text: { type: 'string' }
+                  },
+                  required: ['shapeType', 'x', 'y']
+                },
+                maxItems: 50
+              }
+            },
+            required: ['shapes']
           }
         }
       },

@@ -41,9 +41,9 @@ import { useCanvas } from '../hooks/useCanvas';
 import { useCursors } from '../hooks/useCursors';
 import { useAuth } from '../hooks/useAuth';
 import { useHistory } from '../hooks/useHistory';
-import { useTheme } from '../hooks/useTheme';
 import { getRandomColor, getGridColor } from '../utils/colorUtils';
 import { setup500Test, generateTestShapes } from '../utils/testData';
+import { executeCanvasTool } from '../utils/canvasTools';
 import Rectangle from './Rectangle';
 import Circle from './Circle';
 import Polygon from './Polygon';
@@ -57,7 +57,7 @@ import ZoomControls from './ZoomControls';
 import ChatPanel from './ChatPanel';
 import InlineTextEditor from './InlineTextEditor';
 import ContextMenu from './ContextMenu';
-import UserSettingsModal from './UserSettingsModal';
+import DebugPanel from './DebugPanel';
 import './Canvas.css';
 
 /**
@@ -90,13 +90,9 @@ function Canvas({
   } = useCanvas(user?.uid, user?.displayName, canvasId);
   const { cursors } = useCursors(sessionId, canvasId);
   const { recordAction, popUndo, popRedo, canUndo, canRedo } = useHistory();
-  const { theme, setTheme } = useTheme();
   
   // User role for permission checks
   const [userRole, setUserRole] = useState(null);
-  
-  // Settings modal state
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
   // Viewport state (pan and zoom)
   const [viewport, setViewport] = useState({
@@ -1827,6 +1823,38 @@ function Canvas({
     }
   }, [selectedShapeId, selectedShapeIds, shapes, user, deselectShape, selectShape, canvasId, notifyFirestoreActivity, setSelectedShapeIds, userRole]);
 
+  // Handle aligning selected shapes
+  const handleAlign = useCallback((alignment) => {
+    if (!user) return;
+    if (!selectedShapeId && selectedShapeIds.length === 0) return;
+    
+    // ⛔ Viewers can't align
+    if (userRole === 'viewer') {
+      console.log('👁️ Viewer mode: Cannot align shapes');
+      return;
+    }
+    
+    // Build context for the tool
+    const context = {
+      shapes,
+      selectedShapeIds: selectedShapeIds.length > 0 ? selectedShapeIds : (selectedShapeId ? [selectedShapeId] : []),
+      updateShape: (shapeId, updates) => updateShape(canvasId, shapeId, updates),
+      canvasId,
+      userId: user.uid,
+      viewport
+    };
+    
+    // Execute the alignment tool
+    const result = executeCanvasTool('alignShapes', { alignment, useSelected: true }, context);
+    
+    if (result.success) {
+      console.log(`✅ ${result.message}`);
+      notifyFirestoreActivity();
+    } else {
+      console.error(`❌ ${result.message}`);
+    }
+  }, [user, canvasId, shapes, selectedShapeId, selectedShapeIds, updateShape, userRole, viewport, notifyFirestoreActivity]);
+
   // ===== Canny AI Tool Wrappers =====
   // These functions wrap canvas operations for use by Canny AI
   
@@ -1835,7 +1863,12 @@ function Canvas({
    * Returns the created shape data
    */
   const handleCreateShapeForCanny = useCallback((shapeData) => {
-    if (!user || !canvasId) return null;
+    console.log('🤖 Canny requesting shape creation:', shapeData);
+    
+    if (!user || !canvasId) {
+      console.error('❌ Cannot create shape: missing user or canvasId');
+      return null;
+    }
     
     try {
       const shape = {
@@ -1847,12 +1880,15 @@ function Canvas({
         zIndex: Date.now()
       };
       
+      console.log('✅ Creating shape with data:', shape);
+      
       // Add to Firebase
       createShape(canvasId, shape);
       
+      console.log('✅ Shape created successfully:', shape.id);
       return shape;
     } catch (error) {
-      console.error('Failed to create shape for Canny:', error);
+      console.error('❌ Failed to create shape for Canny:', error);
       return null;
     }
   }, [user, canvasId, createShape]);
@@ -2541,17 +2577,6 @@ function Canvas({
           )}
           <button
             className="btn btn-secondary btn-small"
-            onClick={() => setIsSettingsOpen(true)}
-            title="Settings"
-            aria-label="Open settings"
-          >
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="3" />
-              <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6m-1.36-6.36l-4.24 4.24m-4.24 4.24l-4.24 4.24" />
-            </svg>
-          </button>
-          <button
-            className="btn btn-secondary btn-small"
             onClick={signOut}
             title="Sign out"
           >
@@ -2568,6 +2593,7 @@ function Canvas({
         onGenerate500={handleGenerate500}
         onImageUpload={handleImageUpload}
         onDuplicate={handleDuplicate}
+        onAlign={handleAlign}
         hasSelection={selectedShapeId || selectedShapeIds.length > 0}
       />
       
@@ -2839,29 +2865,41 @@ function Canvas({
                 
                 {/* Selection count label */}
                 <g transform={`translate(${minX - padding}, ${minY - padding - 25 / viewport.zoom})`}>
-                  <rect
-                    x="0"
-                    y="0"
-                    width={`${selectedShapeIds.length}`.length * 7 + 55}
-                    height={18 / viewport.zoom}
-                    fill="rgba(255, 165, 0, 0.95)"
-                    rx={4 / viewport.zoom}
-                    stroke="#fff"
-                    strokeWidth={0.5 / viewport.zoom}
-                    style={{ pointerEvents: 'none' }}
-                  />
-                  <text
-                    x={((`${selectedShapeIds.length}`.length * 7 + 55) / 2)}
-                    y={13 / viewport.zoom}
-                    fill="#fff"
-                    fontSize={12 / viewport.zoom}
-                    fontWeight="700"
-                    fontFamily="system-ui, -apple-system, sans-serif"
-                    textAnchor="middle"
-                    style={{ pointerEvents: 'none', userSelect: 'none' }}
-                  >
-                    {selectedShapeIds.length} selected
-                  </text>
+                  {(() => {
+                    const text = `${selectedShapeIds.length} selected`;
+                    // Calculate width based on actual text length (~7px per character)
+                    const textWidth = text.length * 7 / viewport.zoom;
+                    const paddingX = 12 / viewport.zoom;
+                    const bgWidth = textWidth + paddingX;
+                    
+                    return (
+                      <>
+                        <rect
+                          x="0"
+                          y="0"
+                          width={bgWidth}
+                          height={20 / viewport.zoom}
+                          fill="rgba(255, 165, 0, 0.95)"
+                          rx={4 / viewport.zoom}
+                          stroke="#fff"
+                          strokeWidth={0.5 / viewport.zoom}
+                          style={{ pointerEvents: 'none' }}
+                        />
+                        <text
+                          x={bgWidth / 2}
+                          y={14 / viewport.zoom}
+                          fill="#fff"
+                          fontSize={11 / viewport.zoom}
+                          fontWeight="600"
+                          fontFamily="system-ui, -apple-system, sans-serif"
+                          textAnchor="middle"
+                          style={{ pointerEvents: 'none', userSelect: 'none' }}
+                        >
+                          {text}
+                        </text>
+                      </>
+                    );
+                  })()}
                 </g>
               </g>
             );
@@ -3236,17 +3274,13 @@ function Canvas({
           selectedCount={contextMenu.shapeIds?.length || 1}
           onSendToFront={handleSendToFront}
           onSendToBack={handleSendToBack}
+          onAlign={handleAlign}
           onClose={() => setContextMenu(null)}
         />
       )}
       
-      {/* User Settings Modal */}
-      <UserSettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        theme={theme}
-        onThemeChange={setTheme}
-      />
+      {/* Debug Panel (dev only) */}
+      <DebugPanel />
     </div>
   );
 }

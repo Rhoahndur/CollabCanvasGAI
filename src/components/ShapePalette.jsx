@@ -13,6 +13,7 @@ const ShapePalette = memo(function ShapePalette({
   onGenerate500,
   onImageUpload,
   onDuplicate,
+  onAlign,
   hasSelection
 }) {
   const tools = [
@@ -110,6 +111,92 @@ const ShapePalette = memo(function ShapePalette({
           </button>
         ))}
       </div>
+      
+      {/* Alignment tools - only show when shapes are selected */}
+      {hasSelection && onAlign && (
+        <div className="shape-palette-alignment">
+          <div className="alignment-section-title">Align</div>
+          <div className="alignment-buttons">
+            <button
+              className="align-button"
+              onClick={() => onAlign('left')}
+              title="Align Left"
+              aria-label="Align left"
+            >
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="3" y1="4" x2="3" y2="20" />
+                <rect x="6" y="6" width="10" height="4" />
+                <rect x="6" y="14" width="14" height="4" />
+              </svg>
+            </button>
+            
+            <button
+              className="align-button"
+              onClick={() => onAlign('center-horizontal')}
+              title="Align Center Horizontally"
+              aria-label="Align center horizontally"
+            >
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="12" y1="4" x2="12" y2="20" />
+                <rect x="7" y="6" width="10" height="4" />
+                <rect x="5" y="14" width="14" height="4" />
+              </svg>
+            </button>
+            
+            <button
+              className="align-button"
+              onClick={() => onAlign('right')}
+              title="Align Right"
+              aria-label="Align right"
+            >
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="21" y1="4" x2="21" y2="20" />
+                <rect x="8" y="6" width="10" height="4" />
+                <rect x="4" y="14" width="14" height="4" />
+              </svg>
+            </button>
+            
+            <button
+              className="align-button"
+              onClick={() => onAlign('top')}
+              title="Align Top"
+              aria-label="Align top"
+            >
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="4" y1="3" x2="20" y2="3" />
+                <rect x="6" y="6" width="4" height="10" />
+                <rect x="14" y="6" width="4" height="14" />
+              </svg>
+            </button>
+            
+            <button
+              className="align-button"
+              onClick={() => onAlign('center-vertical')}
+              title="Align Center Vertically"
+              aria-label="Align center vertically"
+            >
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="4" y1="12" x2="20" y2="12" />
+                <rect x="6" y="7" width="4" height="10" />
+                <rect x="14" y="5" width="4" height="14" />
+              </svg>
+            </button>
+            
+            <button
+              className="align-button"
+              onClick={() => onAlign('bottom')}
+              title="Align Bottom"
+              aria-label="Align bottom"
+            >
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="4" y1="21" x2="20" y2="21" />
+                <rect x="6" y="8" width="4" height="10" />
+                <rect x="14" y="4" width="4" height="14" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
       
       {/* Action buttons */}
       {onGenerate500 && onClearAll && (

@@ -36,6 +36,8 @@
   align-items: center;
   padding: 24px 28px;
   border-bottom: 1px solid var(--border-color);
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .settings-modal-header h2 {
@@ -43,6 +45,15 @@
   font-size: 24px;
   font-weight: 600;
   color: var(--text-primary);
+  flex: 1 1 auto;
+}
+
+.settings-modal-subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+  width: 100%;
+  order: 3;
 }
 
 .settings-modal-close {
@@ -54,6 +65,7 @@
   padding: 4px 8px;
   transition: color 0.2s;
   line-height: 1;
+  order: 2;
 }
 
 .settings-modal-close:hover {

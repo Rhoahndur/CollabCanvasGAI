@@ -315,7 +315,8 @@ button:focus-visible {
   color: var(--text-primary);
 }
 
-.btn-settings {
+.btn-canvas-settings,
+.btn-user-settings {
   background-color: transparent;
   border: 1px solid var(--border-color);
   color: var(--text-secondary);
@@ -329,13 +330,15 @@ button:focus-visible {
   gap: 0.5rem;
 }
 
-.btn-settings:hover {
+.btn-canvas-settings:hover,
+.btn-user-settings:hover {
   background-color: var(--bg-hover);
   border-color: var(--accent-color);
   color: var(--text-primary);
 }
 
-.btn-settings svg {
+.btn-canvas-settings svg,
+.btn-user-settings svg {
   flex-shrink: 0;
 }
 
@@ -547,14 +550,16 @@ button:focus-visible {
   }
   
   .btn-back,
-  .btn-settings,
+  .btn-canvas-settings,
+  .btn-user-settings,
   .btn-share {
     font-size: 0.85rem;
     padding: 0.4rem 0.8rem;
   }
   
   .btn-back svg,
-  .btn-settings svg,
+  .btn-canvas-settings svg,
+  .btn-user-settings svg,
   .btn-share svg {
     width: 16px;
     height: 16px;

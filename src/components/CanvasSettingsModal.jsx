@@ -109,6 +109,7 @@ function CanvasSettingsModal({ canvasId, canvasName, isOpen, onClose, onSettings
         {/* Header */}
         <div className="settings-modal-header">
           <h2>Canvas Settings</h2>
+          <p className="settings-modal-subtitle">Background and grid settings for this canvas</p>
           <button className="settings-modal-close" onClick={handleClose} aria-label="Close">
             ✕
           </button>

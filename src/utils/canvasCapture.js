@@ -1,22 +1,25 @@
 /**
  * Canvas Capture Utility
  * 
- * Converts the SVG canvas to a PNG image for sending to GPT-4 Vision
+ * Converts the SVG canvas to a JPEG image for sending to GPT-4 Vision
+ * (JPEG with quality setting provides smaller file sizes than PNG)
  */
 
 /**
- * Capture the current viewport of the canvas as a base64 PNG image
+ * Capture the current viewport of the canvas as a base64 JPEG image
  * 
  * @param {SVGElement} svgElement - The SVG element to capture
  * @param {Object} options - Capture options
- * @param {number} options.maxWidth - Maximum width of captured image (default 1024)
- * @param {number} options.maxHeight - Maximum height of captured image (default 768)
- * @returns {Promise<string>} Base64 encoded PNG image
+ * @param {number} options.maxWidth - Maximum width of captured image (default 800)
+ * @param {number} options.maxHeight - Maximum height of captured image (default 600)
+ * @param {number} options.quality - JPEG quality 0-1 (default 0.8)
+ * @returns {Promise<string>} Base64 encoded JPEG image
  */
 export async function captureCanvasImage(svgElement, options = {}) {
   const {
-    maxWidth = 1024,
-    maxHeight = 768
+    maxWidth = 800,
+    maxHeight = 600,
+    quality = 0.8
   } = options;
 
   if (!svgElement) {
@@ -74,8 +77,10 @@ export async function captureCanvasImage(svgElement, options = {}) {
     // Clean up
     URL.revokeObjectURL(url);
     
-    // Convert canvas to base64 PNG
-    const base64Image = canvas.toDataURL('image/png');
+    // Convert canvas to base64 JPEG with quality setting (smaller file size)
+    const base64Image = canvas.toDataURL('image/jpeg', quality);
+    
+    console.log(`📸 Canvas captured: ${width}x${height}, size: ~${Math.round(base64Image.length / 1024)}KB`);
     
     return base64Image;
   } catch (error) {

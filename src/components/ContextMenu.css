@@ -60,10 +60,21 @@
   font-size: 12px;
 }
 
-/* Separator (if needed in future) */
-.context-menu-separator {
+/* Divider */
+.context-menu-divider {
   height: 1px;
-  background: rgba(255, 255, 255, 0.1);
-  margin: 4px 8px;
+  background: var(--border-color, rgba(255, 255, 255, 0.1));
+  margin: 6px 0;
+}
+
+/* Section title */
+.context-menu-section-title {
+  padding: 8px 14px 4px;
+  color: var(--text-tertiary, rgba(255, 255, 255, 0.5));
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  user-select: none;
 }
 

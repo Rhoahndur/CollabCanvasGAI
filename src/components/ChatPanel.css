@@ -37,21 +37,60 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 8px;
+  width: 12px;
   cursor: ew-resize;
-  background: transparent;
+  background: rgba(100, 108, 255, 0.15);
   z-index: 10;
   transition: background-color 0.2s ease;
   left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Grip lines indicator */
+.chat-resize-handle::before {
+  content: '';
+  width: 3px;
+  height: 40px;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(100, 108, 255, 0.4) 0px,
+    rgba(100, 108, 255, 0.4) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+  border-radius: 2px;
 }
 
 .chat-resize-handle:hover {
-  background: linear-gradient(90deg, rgba(100, 108, 255, 0.4), transparent);
+  background: rgba(100, 108, 255, 0.3);
+}
+
+.chat-resize-handle:hover::before {
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(100, 108, 255, 0.8) 0px,
+    rgba(100, 108, 255, 0.8) 4px,
+    transparent 4px,
+    transparent 8px
+  );
 }
 
 .chat-resize-handle:active,
 .chat-panel.resizing .chat-resize-handle {
-  background: rgba(100, 108, 255, 0.6);
+  background: rgba(100, 108, 255, 0.5);
+}
+
+.chat-resize-handle:active::before,
+.chat-panel.resizing .chat-resize-handle::before {
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.9) 0px,
+    rgba(255, 255, 255, 0.9) 4px,
+    transparent 4px,
+    transparent 8px
+  );
 }
 
 /* Toggle button */

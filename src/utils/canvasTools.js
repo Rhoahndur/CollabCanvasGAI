@@ -359,6 +359,10 @@ export function executeCanvasTool(toolName, args, context) {
  * Create one or more shapes
  */
 function handleCreateShape(args, context) {
+  console.log('🛠️ handleCreateShape called with args:', args);
+  console.log('📍 Context viewport:', context.viewport);
+  console.log('👤 Context userId:', context.userId);
+  
   const { createShape, viewport, userId, shapes } = context;
   const {
     shapeType,
@@ -371,6 +375,8 @@ function handleCreateShape(args, context) {
     text = 'Text',
     count = 1
   } = args;
+  
+  console.log('📝 Shape params - type:', shapeType, 'text:', text, 'position:', {x, y});
 
   // Safety check: Limit shapes per call
   if (count > MAX_SHAPES_PER_CALL) {
@@ -434,20 +440,28 @@ function handleCreateShape(args, context) {
         shapeData.text = text;
         shapeData.fontSize = 16;
         shapeData.textColor = '#000000';
-        shapeData.color = undefined; // No border by default
+        // Don't set color property at all for text (no border by default)
+        // Firebase doesn't allow undefined values
+        console.log('📝 Creating text shape:', shapeData);
       }
 
+      console.log('🎯 About to call createShape function with:', shapeData);
+      console.log('🎯 createShape function is:', typeof createShape, createShape);
       const newShape = createShape(shapeData);
+      console.log('✅ createShape returned:', newShape);
       if (newShape) {
         createdShapes.push(newShape);
       }
     }
 
-    return {
+    const result = {
       success: true,
       message: `Created ${createdShapes.length} ${shapeType}${createdShapes.length > 1 ? 's' : ''}`,
       data: { count: createdShapes.length, shapes: createdShapes }
     };
+    
+    console.log('🎉 handleCreateShape returning result:', result);
+    return result;
   } catch (error) {
     return {
       success: false,
@@ -541,15 +555,19 @@ function handleCreateShapesBatch(args, context) {
         shapeData.text = text;
         shapeData.fontSize = 16;
         shapeData.textColor = '#000000';
-        shapeData.color = undefined; // No border by default
+        // Don't set color property at all for text (no border by default)
+        // Firebase doesn't allow undefined values
+        console.log('📝 Creating text shape in batch:', shapeData);
       }
 
       try {
         const newShape = createShape(shapeData);
+        console.log('✅ Created batch shape:', newShape?.id, 'at', finalX, finalY);
         if (newShape) {
           createdShapes.push(newShape);
         }
       } catch (error) {
+        console.error('❌ Failed to create batch shape:', error);
         errors.push(`Shape ${index + 1}: ${error.message}`);
       }
     });

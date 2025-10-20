@@ -24,11 +24,12 @@ Complete guide to all features in CollabCanvas.
   - Manual zoom percentage input
   - Fit Canvas button (shows entire canvas)
 
-### Infinite Canvas
-- Canvas extends infinitely in all directions
+### Fixed Canvas
+- Canvas has fixed boundaries: 5000×5000 pixels (0,0 to 5000,5000)
+- Shapes cannot be created or moved outside these boundaries
 - Viewport culling optimizes performance (only visible shapes render)
 - Grid background for spatial reference
-- Customizable canvas background color
+- Customizable canvas background color (persists per canvas)
 
 ### Object Manipulation
 - **Select**: Click to select shapes
@@ -37,7 +38,8 @@ Complete guide to all features in CollabCanvas.
 - **Resize**: Drag selection handles to resize
 - **Rotate**: Use rotation handle above selected shapes
 - **Delete**: Press `Delete` or `Backspace` to remove selected shapes
-- **Duplicate**: Use duplicate button in tool palette
+- **Copy/Paste**: `Ctrl/Cmd+C` to copy, `Ctrl/Cmd+V` to paste (creates offset copies)
+- **Duplicate**: `Ctrl/Cmd+D` or use duplicate button in tool palette
 
 ### Undo/Redo
 - Full history tracking of all changes
@@ -193,6 +195,14 @@ Canny can create, arrange, and modify shapes on your canvas.
 - "Remove the selected shapes"
 - "Clear the canvas"
 
+**Batch Shape Creation**
+Canny can create multiple shapes at specific positions in one call:
+- "Draw a circle outline using 12 small circles"
+- "Create a smiley face with circles"
+- "Draw a star pattern"
+- Uses `createShapesBatch` tool for precise multi-shape layouts
+- Maximum 50 shapes per batch call
+
 #### 2. Vision Capabilities
 Canny can SEE your canvas using GPT-4 Vision!
 
@@ -324,6 +334,9 @@ Quick-start prompts in 5 categories:
 - `Shift/Cmd/Ctrl + Drag`: Pan canvas
 - `Scroll`: Zoom in/out
 - `Delete/Backspace`: Delete selected shapes
+- `Cmd+C / Ctrl+C`: Copy selected shapes
+- `Cmd+V / Ctrl+V`: Paste shapes (with 20px offset)
+- `Cmd+D / Ctrl+D`: Duplicate selected shapes
 - `Cmd+Z / Ctrl+Z`: Undo
 - `Cmd+Shift+Z / Ctrl+Shift+Z`: Redo
 - `Escape`: Cancel custom polygon drawing

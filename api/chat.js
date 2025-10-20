@@ -93,7 +93,19 @@ Examples:
 - "Align them to the left" → Use alignShapes
 - "What colors am I using?" → Observe the canvas image and describe colors
 - "Make them all red" → Use updateShapeProperties
-- "Draw a smiley face" → Use createShapesBatch to position circles for eyes, mouth arc, etc.`,
+- "Draw a smiley face" → Use createShapesBatch to position circles for eyes, mouth arc, etc.
+
+IMPORTANT - Creating Grids:
+When users ask for a "grid" or "rows and columns" layout, you MUST use TWO tools in sequence:
+1. FIRST: Create the shapes using createShape with count=(rows × columns)
+   Example: "3x3 grid" = createShape with count=9
+2. SECOND: Arrange them using arrangeInGrid with rows and columns
+   Example: arrangeInGrid with rows=3, columns=3
+
+Grid Examples:
+- "Make a grid of 3x3 squares" → createShape(shapeType='rectangle', count=9) THEN arrangeInGrid(rows=3, columns=3)
+- "Create a 2x4 grid of circles" → createShape(shapeType='circle', count=8) THEN arrangeInGrid(rows=2, columns=4)
+- "Arrange these in a 3x3 grid" → arrangeInGrid(rows=3, columns=3) only (shapes already exist)`,
     };
 
     // Canvas tool definitions for function calling
@@ -102,19 +114,26 @@ Examples:
         type: 'function',
         function: {
           name: 'createShape',
-          description: 'Create a new shape on the canvas',
+          description: 'Create a new shape on the canvas. Use count for simple horizontal lines only. For text shapes, ALWAYS provide the text parameter with the desired content.',
           parameters: {
             type: 'object',
             properties: {
-              shapeType: { type: 'string', enum: ['rectangle', 'circle', 'polygon', 'text', 'customPolygon'] },
-              x: { type: 'number' },
-              y: { type: 'number' },
-              width: { type: 'number' },
-              height: { type: 'number' },
-              radius: { type: 'number' },
-              color: { type: 'string' },
-              text: { type: 'string' },
-              count: { type: 'number' }
+              shapeType: { 
+                type: 'string', 
+                enum: ['rectangle', 'circle', 'polygon', 'text', 'customPolygon'],
+                description: 'Type of shape to create'
+              },
+              x: { type: 'number', description: 'X coordinate (optional, defaults to center)' },
+              y: { type: 'number', description: 'Y coordinate (optional, defaults to center)' },
+              width: { type: 'number', description: 'Width for rectangles and text boxes' },
+              height: { type: 'number', description: 'Height for rectangles and text boxes' },
+              radius: { type: 'number', description: 'Radius for circles and polygons' },
+              color: { type: 'string', description: 'Color in hex format (e.g., #646cff)' },
+              text: { 
+                type: 'string', 
+                description: 'REQUIRED for text shapes - the actual text content to display'
+              },
+              count: { type: 'number', description: 'Number of shapes to create in a horizontal line (default: 1)' }
             },
             required: ['shapeType']
           }
