@@ -106,6 +106,9 @@ const TextBox = memo(function TextBox({
   const centerX = x + width / 2;
   const centerY = y + height / 2;
   
+  // Rotation transform (SVG format: rotate(angle centerX centerY))
+  const transform = rotation ? `rotate(${rotation} ${centerX} ${centerY})` : undefined;
+  
   // Wrap text into lines
   const wrappedLines = useMemo(() => 
     wrapText(text, width, fontSize, fontWeight),
@@ -156,12 +159,7 @@ const TextBox = memo(function TextBox({
   };
 
   return (
-    <g
-      style={{ 
-        transform: `rotate(${rotation}deg)`,
-        transformOrigin: `${centerX}px ${centerY}px`,
-      }}
-    >
+    <g transform={transform}>
       {/* Background rectangle - handles all interactions */}
       <rect
         x={x}

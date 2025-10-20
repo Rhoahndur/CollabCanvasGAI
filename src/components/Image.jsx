@@ -40,6 +40,9 @@ const Image = memo(function Image({
   const centerX = x;
   const centerY = y;
   
+  // Rotation transform (SVG format: rotate(angle centerX centerY))
+  const transform = rotation ? `rotate(${rotation} ${centerX} ${centerY})` : undefined;
+  
   // Calculate top-left corner from center
   const topLeftX = x - width / 2;
   const topLeftY = y - height / 2;
@@ -67,10 +70,7 @@ const Image = memo(function Image({
   return (
     <g
       className="canvas-image"
-      style={{ 
-        transform: `rotate(${rotation}deg)`,
-        transformOrigin: `${centerX}px ${centerY}px`,
-      }}
+      transform={transform}
     >
       {/* Image element */}
       <image

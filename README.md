@@ -110,6 +110,8 @@ CollabCanvas is a multiplayer drawing application where multiple users can creat
 
 Comprehensive documentation is available in the `docs/` directory:
 
+### Main Documentation
+
 - **[SETUP.md](./docs/SETUP.md)** - Complete setup and deployment guide
   - Firebase configuration
   - SendGrid email setup
@@ -138,10 +140,18 @@ Comprehensive documentation is available in the `docs/` directory:
   - Bug fixes
   - Performance improvements
 
-**Quick Links:**
-- [PRD.md](./PRD.md) - Product Requirements Document
-- [architecture.md](./architecture.md) - System Architecture
-- [tasks.md](./tasks.md) - Task Tracking
+### Recent Updates
+
+- **[CANVAS_BOUNDARIES_FIX.md](./docs/CANVAS_BOUNDARIES_FIX.md)** - Canny AI canvas boundary constraints
+- **[CANNY_BATCH_TOOL_ADDED.md](./docs/CANNY_BATCH_TOOL_ADDED.md)** - Batch shape creation feature
+- **[COPY_PASTE_FEATURE.md](./docs/COPY_PASTE_FEATURE.md)** - Copy/paste functionality
+- **[TROUBLESHOOTING_CANVAS_SETTINGS.md](./docs/TROUBLESHOOTING_CANVAS_SETTINGS.md)** - Canvas settings debug guide
+
+### Initial Project Documents
+
+- **[PRD.md](./docs/init_docs/PRD.md)** - Product Requirements Document
+- **[architecture.md](./docs/init_docs/architecture.md)** - System Architecture
+- **[tasks.md](./docs/init_docs/tasks.md)** - Task Tracking
 
 ---
 
