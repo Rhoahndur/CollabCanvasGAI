@@ -1238,9 +1238,22 @@ function Canvas({
             let width = dx;
             let height = dy;
             
-            // Set minimum size for text boxes
-            if (width < 100) width = 200;
-            if (height < 40) height = 60;
+            // Set minimum size for text boxes and center them if drag was too small
+            const minWidth = 200;
+            const minHeight = 60;
+            
+            if (width < 100) {
+              // Expand width and center horizontally
+              x = drawStart.x - minWidth / 2;
+              width = minWidth;
+            }
+            if (height < 40) {
+              // Expand height and center vertically
+              y = drawStart.y - minHeight / 2;
+              height = minHeight;
+            }
+            
+            console.log('Creating text box at:', { x, y, width, height });
             
             // Constrain to canvas boundaries
             const constrained = constrainRectangle(x, y, width, height, CANVAS_WIDTH, CANVAS_HEIGHT);
@@ -1250,13 +1263,17 @@ function Canvas({
               ...constrained,
               text: 'Double-click to edit',
               fontSize: 16,
+              textColor: '#000000', // Black text by default
               backgroundColor: 'transparent',
               rotation: 0,
               zIndex: Date.now()
             };
+            
+            console.log('Text box data before creation:', shapeData);
+            
             const newTextBoxId = await createShape(canvasId, shapeData);
             recordAction({ type: 'create', shapeId: newTextBoxId, shapeData });
-            console.log('Text box created successfully');
+            console.log('✅ Text box created successfully with ID:', newTextBoxId);
             notifyFirestoreActivity();
             
             // Switch back to SELECT tool after creating text box
@@ -1268,6 +1285,7 @@ function Canvas({
                 selectShape(newTextBoxId);
                 setEditingTextId(newTextBoxId);
                 setEditingText('');
+                console.log('Text box selected and editing started');
               }
             }, 100);
           }
