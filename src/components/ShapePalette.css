@@ -1,7 +1,7 @@
 .shape-palette {
   position: absolute;
   left: 16px;
-  top: 16px;
+  top: 72px;
   width: 56px;
   background: var(--panel-bg);
   border: 1px solid var(--border-color);
@@ -147,7 +147,7 @@
 @media (max-width: 768px) {
   .shape-palette {
     left: 8px;
-    top: 8px;
+    top: 60px;
     width: 52px;
     padding: 6px;
   }

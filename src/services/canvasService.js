@@ -829,6 +829,8 @@ export const duplicateCanvas = async (sourceCanvasId, userId, newName) => {
  */
 export const updateCanvasMetadata = async (canvasId, updates) => {
   try {
+    console.log('📝 updateCanvasMetadata called:', { canvasId, updates });
+    
     // Handle nested updates (e.g., settings.backgroundColor)
     // Convert nested objects to flattened paths for proper merging
     const flattenedUpdates = {};
@@ -849,13 +851,19 @@ export const updateCanvasMetadata = async (canvasId, updates) => {
     flatten(updates);
     flattenedUpdates.lastModified = Date.now();
     
+    console.log('📝 Flattened updates:', flattenedUpdates);
+    console.log('📝 Metadata path:', `canvases/${canvasId}/metadata`);
+    
     // Use update with flattened paths for proper nested merging
     const metadataRef = getCanvasMetadataRef(canvasId);
     await update(metadataRef, flattenedUpdates);
     
-    // console.log('✅ Canvas metadata updated:', canvasId);
+    console.log('✅ Canvas metadata updated successfully:', canvasId);
   } catch (error) {
     console.error('❌ Error updating canvas metadata:', error);
+    console.error('Error code:', error.code);
+    console.error('Error message:', error.message);
+    console.error('Error details:', error);
     throw error;
   }
 };

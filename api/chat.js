@@ -51,7 +51,8 @@ Your role:
 - Use emojis occasionally to be more personable
 
 You have the following tools to manipulate the canvas:
-- createShape: Create rectangles, circles, polygons, text, or custom polygons
+- createShape: Create rectangles, circles, polygons, text, or custom polygons (simple, uses count for horizontal lines)
+- createShapesBatch: Create multiple shapes at SPECIFIC x,y positions in ONE call (use this for patterns, circles, drawings, precise arrangements)
 - alignShapes: Align shapes left, right, top, bottom, center-h, or center-v
 - distributeShapes: Evenly distribute shapes horizontally or vertically
 - arrangeInGrid: Arrange shapes in a rows x columns grid
@@ -59,6 +60,13 @@ You have the following tools to manipulate the canvas:
 - deleteShapes: Delete selected or all shapes (requires confirmation)
 - getCanvasInfo: Get information about the canvas state
 - selectShapes: Select shapes by type or color
+
+CRITICAL - Canvas Boundaries:
+- The canvas has FIXED boundaries: 0 to 5000 for both X and Y coordinates
+- ALL shapes MUST stay within these boundaries (0-5000 for x, 0-5000 for y)
+- The tools will automatically constrain shapes to these boundaries
+- You CANNOT create or move shapes outside this range
+- Treat the canvas as a 5000x5000 pixel space
 
 IMPORTANT - Creating shapes in the user's viewport:
 - The user's current viewport center is provided as (centerX, centerY) in the context
@@ -79,11 +87,13 @@ When you receive an image of the canvas:
 
 When the user asks you to manipulate the canvas, USE the appropriate tools.
 Examples:
-- "Create 5 blue rectangles" → Use createShape with centerX/centerY from viewport
-- "Create rectangles AROUND the blue circle" → See canvas, identify circle position, use createShape with appropriate coordinates
+- "Create 5 blue rectangles" → Use createShape with count:5 (creates horizontal line)
+- "Draw a circle outline using small circles" → Use createShapesBatch with calculated positions (e.g., 12 circles at angles 0°, 30°, 60°, etc.)
+- "Create rectangles AROUND the blue circle" → See canvas, identify circle position, calculate positions, use createShapesBatch
 - "Align them to the left" → Use alignShapes
 - "What colors am I using?" → Observe the canvas image and describe colors
-- "Make them all red" → Use updateShapeProperties`,
+- "Make them all red" → Use updateShapeProperties
+- "Draw a smiley face" → Use createShapesBatch to position circles for eyes, mouth arc, etc.`,
     };
 
     // Canvas tool definitions for function calling
@@ -107,6 +117,37 @@ Examples:
               count: { type: 'number' }
             },
             required: ['shapeType']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'createShapesBatch',
+          description: 'Create multiple shapes at specific x,y positions in one call. Perfect for patterns (circle outlines, grids, drawings). Calculate positions using math (e.g., circle: x = centerX + radius*cos(angle), y = centerY + radius*sin(angle)). You can see the canvas and calculate exact coordinates.',
+          parameters: {
+            type: 'object',
+            properties: {
+              shapes: {
+                type: 'array',
+                description: 'Array of shapes with specific positions',
+                items: {
+                  type: 'object',
+                  properties: {
+                    shapeType: { type: 'string', enum: ['rectangle', 'circle', 'polygon', 'text', 'customPolygon'] },
+                    x: { type: 'number', description: 'X position (required)' },
+                    y: { type: 'number', description: 'Y position (required)' },
+                    width: { type: 'number' },
+                    height: { type: 'number' },
+                    radius: { type: 'number' },
+                    color: { type: 'string' },
+                    text: { type: 'string' }
+                  },
+                  required: ['shapeType', 'x', 'y']
+                }
+              }
+            },
+            required: ['shapes']
           }
         }
       },

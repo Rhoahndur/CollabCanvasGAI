@@ -4,7 +4,7 @@
 .presence-minimized-tab {
   position: fixed;
   right: 16px;
-  top: 80px;
+  top: 72px;
   width: 56px;
   height: 72px;
   background: var(--panel-bg);
@@ -237,6 +237,23 @@
 @media (max-width: 768px) {
   .presence-sidebar {
     width: 240px;
+  }
+  
+  .presence-minimized-tab {
+    right: 12px;
+    top: 60px;
+    width: 52px;
+    height: 64px;
+  }
+  
+  .minimized-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .minimized-count {
+    font-size: 12px;
+    padding: 2px 8px;
   }
 }
 

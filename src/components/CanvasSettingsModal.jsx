@@ -53,6 +53,8 @@ function CanvasSettingsModal({ canvasId, canvasName, isOpen, onClose, onSettings
     setSuccessMessage('');
 
     try {
+      console.log('💾 Saving canvas settings:', { canvasId, backgroundColor, gridVisible });
+      
       await updateCanvasMetadata(canvasId, {
         settings: {
           backgroundColor,
@@ -60,6 +62,7 @@ function CanvasSettingsModal({ canvasId, canvasName, isOpen, onClose, onSettings
         },
       });
 
+      console.log('✅ Canvas settings saved successfully');
       setSuccessMessage('Settings saved successfully!');
       
       // Notify parent component of changes
@@ -72,14 +75,18 @@ function CanvasSettingsModal({ canvasId, canvasName, isOpen, onClose, onSettings
         onClose();
       }, 1500);
     } catch (err) {
-      console.error('Failed to save settings:', err);
+      console.error('❌ Failed to save settings:', err);
       console.error('Error code:', err.code);
       console.error('Error message:', err.message);
+      console.error('Canvas ID:', canvasId);
       
       // Provide more specific error messages
       let errorMessage = 'Failed to save settings. Please try again.';
-      if (err.code === 'PERMISSION_DENIED' || err.message?.includes('permission')) {
+      if (err.code === 'PERMISSION_DENIED' || err.message?.includes('permission') || err.message?.includes('PERMISSION_DENIED')) {
         errorMessage = 'Permission denied. You need owner or editor access to change canvas settings.';
+        console.error('📛 Permission denied - check Firebase Realtime Database rules');
+      } else if (err.code === 'NETWORK_ERROR' || err.message?.includes('network')) {
+        errorMessage = 'Network error. Please check your connection and try again.';
       }
       
       setError(errorMessage);

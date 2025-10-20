@@ -148,6 +148,9 @@ function Canvas({
   const [selectStart, setSelectStart] = useState({ x: 0, y: 0 });
   const [selectCurrent, setSelectCurrent] = useState({ x: 0, y: 0 });
   
+  // Clipboard for copy/paste
+  const [clipboard, setClipboard] = useState([]);
+  
   // Context menu state
   const [contextMenu, setContextMenu] = useState(null); // { x, y, shapeIds }
   
@@ -1167,7 +1170,7 @@ function Canvas({
           const color = getRandomColor();
           let shapeData = {
             type: selectedTool,
-            color,
+            color: selectedTool === SHAPE_TYPES.TEXT ? undefined : color, // No border for text boxes by default
             createdBy: user.uid,
           };
           
@@ -2088,6 +2091,98 @@ function Canvas({
           handleZoomReset();
           return;
         }
+      }
+
+      // Copy selected shapes (Ctrl/Cmd + C)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c' && (selectedShapeId || selectedShapeIds.length > 0) && !isDrawing && !isDragging && !isResizing && !isRotating && !isSelecting) {
+        e.preventDefault();
+        
+        console.log('📋 COPY KEY PRESSED');
+        
+        // Determine which shapes to copy
+        const shapesToCopy = selectedShapeIds.length > 0 ? selectedShapeIds : [selectedShapeId];
+        console.log('  shapesToCopy:', shapesToCopy);
+        
+        // Get the actual shape objects
+        const copiedShapes = shapes.filter(s => shapesToCopy.includes(s.id)).map(shape => ({
+          ...shape,
+          // Remove id and timestamp so new ones will be generated on paste
+          id: undefined,
+          timestamp: undefined,
+          // Remove lock-related fields
+          lockedBy: null,
+          lockedByUserName: null,
+        }));
+        
+        setClipboard(copiedShapes);
+        console.log(`✅ ${copiedShapes.length} shape(s) copied to clipboard`);
+        
+        return;
+      }
+
+      // Paste shapes from clipboard (Ctrl/Cmd + V)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v' && clipboard.length > 0 && !isDrawing && !isDragging && !isResizing && !isRotating && !isSelecting) {
+        e.preventDefault();
+        
+        // ⛔ Viewers can't paste
+        if (userRole === 'viewer') {
+          console.log('👁️ Viewer mode: Cannot paste shapes');
+          return;
+        }
+        
+        console.log('📋 PASTE KEY PRESSED');
+        console.log('  clipboard:', clipboard);
+        
+        try {
+          const newShapeIds = [];
+          const pasteOffset = 20; // Offset for pasted shapes
+          
+          // Deselect current shapes first
+          if (selectedShapeId) {
+            await deselectShape();
+          }
+          setSelectedShapeIds([]);
+          
+          // Create pasted shapes with offset
+          for (const shapeData of clipboard) {
+            // Create a copy with offset position
+            const pastedShape = {
+              ...shapeData,
+              x: shapeData.x + pasteOffset,
+              y: shapeData.y + pasteOffset,
+              createdBy: user.uid,
+            };
+            
+            const newId = await createShape(canvasId, pastedShape);
+            newShapeIds.push(newId);
+            console.log(`  ✅ Pasted shape -> ${newId}`);
+          }
+          
+          console.log(`✅ ${newShapeIds.length} shape(s) pasted successfully`);
+          
+          // Select the new pasted shapes
+          if (newShapeIds.length === 1) {
+            // Single shape - use normal selection
+            setTimeout(() => selectShape(newShapeIds[0]), 100);
+          } else {
+            // Multiple shapes - use multi-selection
+            setTimeout(() => setSelectedShapeIds(newShapeIds), 100);
+          }
+          
+          // Update clipboard to paste again at new offset
+          const updatedClipboard = clipboard.map(shape => ({
+            ...shape,
+            x: shape.x + pasteOffset,
+            y: shape.y + pasteOffset,
+          }));
+          setClipboard(updatedClipboard);
+          
+          notifyFirestoreActivity();
+        } catch (error) {
+          console.error('❌ Failed to paste shapes:', error);
+        }
+        
+        return;
       }
 
       // Duplicate selected shapes (Ctrl/Cmd + D)

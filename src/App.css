@@ -278,9 +278,10 @@ button:focus-visible {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 2rem;
+  padding: 0.75rem 1.5rem;
   background-color: var(--header-bg);
   border-bottom: 1px solid var(--border-color);
+  min-height: 64px;
 }
 
 .header-left {
@@ -532,5 +533,44 @@ button:focus-visible {
   color: var(--text-tertiary);
   font-size: 0.9rem;
   margin-top: 2rem;
+}
+
+/* Responsive App Header */
+@media (max-width: 768px) {
+  .app-header {
+    padding: 0.5rem 1rem;
+    min-height: 56px;
+  }
+  
+  .header-left h1 {
+    font-size: 1.25rem;
+  }
+  
+  .btn-back,
+  .btn-settings,
+  .btn-share {
+    font-size: 0.85rem;
+    padding: 0.4rem 0.8rem;
+  }
+  
+  .btn-back svg,
+  .btn-settings svg,
+  .btn-share svg {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .user-avatar {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .user-name {
+    font-size: 0.9rem;
+  }
+  
+  .header-right {
+    gap: 0.75rem;
+  }
 }
 

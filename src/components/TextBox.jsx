@@ -168,10 +168,10 @@ const TextBox = memo(function TextBox({
         y={y}
         width={width}
         height={height}
-        fill={backgroundColor === 'transparent' ? 'none' : backgroundColor}
+        fill={backgroundColor === 'transparent' ? 'transparent' : backgroundColor}
         fillOpacity={backgroundColor === 'transparent' ? 0 : 1}
-        stroke={color}
-        strokeWidth={2}
+        stroke={color || 'none'}
+        strokeWidth={color ? 2 : 0}
         rx={4}
         onClick={handleClick}
         onMouseDown={handleMouseDown}

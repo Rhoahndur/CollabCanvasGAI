@@ -5,11 +5,18 @@
  * including creating shapes, aligning objects, distributing elements, etc.
  */
 
-import { SHAPE_TYPES } from './constants';
+import { SHAPE_TYPES, CANVAS_WIDTH, CANVAS_HEIGHT } from './constants';
+import { constrainRectangle, constrainCircle, clamp } from './canvasUtils';
 
 // Safety limits to prevent accidental mass creation
 const MAX_SHAPES_PER_CALL = 50; // Maximum shapes to create in one tool call
 const MAX_TOTAL_SHAPES = 1000;   // Maximum total shapes on canvas
+
+// Canvas boundary enforcement
+const CANVAS_MIN_X = 0;
+const CANVAS_MAX_X = CANVAS_WIDTH;
+const CANVAS_MIN_Y = 0;
+const CANVAS_MAX_Y = CANVAS_HEIGHT;
 
 /**
  * OpenAI Function Calling Tool Definitions
@@ -63,6 +70,62 @@ export const canvasToolDefinitions = [
           }
         },
         required: ['shapeType']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'createShapesBatch',
+      description: 'Create multiple shapes at specific positions in a single call. Perfect for patterns, drawings, and arrangements. Example: To draw a circle outline using 12 small circles, calculate their positions around a center point using trigonometry (x = centerX + radius * cos(angle), y = centerY + radius * sin(angle)). You can see the canvas and calculate exact positions.',
+      parameters: {
+        type: 'object',
+        properties: {
+          shapes: {
+            type: 'array',
+            description: 'Array of shape definitions with specific positions',
+            items: {
+              type: 'object',
+              properties: {
+                shapeType: {
+                  type: 'string',
+                  enum: ['rectangle', 'circle', 'polygon', 'text', 'customPolygon'],
+                  description: 'Type of shape'
+                },
+                x: {
+                  type: 'number',
+                  description: 'X coordinate (required for each shape)'
+                },
+                y: {
+                  type: 'number',
+                  description: 'Y coordinate (required for each shape)'
+                },
+                width: {
+                  type: 'number',
+                  description: 'Width (for rectangles and text)'
+                },
+                height: {
+                  type: 'number',
+                  description: 'Height (for rectangles and text)'
+                },
+                radius: {
+                  type: 'number',
+                  description: 'Radius (for circles and polygons)'
+                },
+                color: {
+                  type: 'string',
+                  description: 'Fill color (hex code)'
+                },
+                text: {
+                  type: 'string',
+                  description: 'Text content (for text shapes)'
+                }
+              },
+              required: ['shapeType', 'x', 'y']
+            }
+          }
+        },
+        required: ['shapes']
       }
     }
   },
@@ -260,6 +323,9 @@ export function executeCanvasTool(toolName, args, context) {
     case 'createShape':
       return handleCreateShape(args, context);
     
+    case 'createShapesBatch':
+      return handleCreateShapesBatch(args, context);
+    
     case 'alignShapes':
       return handleAlignShapes(args, context);
     
@@ -329,10 +395,28 @@ function handleCreateShape(args, context) {
   try {
     for (let i = 0; i < count; i++) {
       const offsetX = i * spacing;
+      let finalX = x + offsetX;
+      let finalY = y;
+
+      // Apply canvas boundary constraints based on shape type
+      if (shapeType === SHAPE_TYPES.RECTANGLE || shapeType === SHAPE_TYPES.TEXT) {
+        const constrained = constrainRectangle(finalX, finalY, width, height, CANVAS_WIDTH, CANVAS_HEIGHT);
+        finalX = constrained.x;
+        finalY = constrained.y;
+      } else if (shapeType === SHAPE_TYPES.CIRCLE || shapeType === SHAPE_TYPES.POLYGON) {
+        const constrained = constrainCircle(finalX, finalY, radius, CANVAS_WIDTH, CANVAS_HEIGHT);
+        finalX = constrained.x;
+        finalY = constrained.y;
+      } else if (shapeType === SHAPE_TYPES.CUSTOM_POLYGON) {
+        // For custom polygons, just ensure the center point is within bounds
+        finalX = clamp(finalX, 100, CANVAS_WIDTH - 100); // Leave margin for vertices
+        finalY = clamp(finalY, 100, CANVAS_HEIGHT - 100);
+      }
+
       const shapeData = {
         type: shapeType,
-        x: x + offsetX,
-        y: y,
+        x: finalX,
+        y: finalY,
         color: color,
         createdBy: userId,
         timestamp: Date.now()
@@ -350,6 +434,7 @@ function handleCreateShape(args, context) {
         shapeData.text = text;
         shapeData.fontSize = 16;
         shapeData.textColor = '#000000';
+        shapeData.color = undefined; // No border by default
       }
 
       const newShape = createShape(shapeData);
@@ -367,6 +452,129 @@ function handleCreateShape(args, context) {
     return {
       success: false,
       message: `Failed to create shape: ${error.message}`
+    };
+  }
+}
+
+/**
+ * Create multiple shapes with specific positions in batch
+ */
+function handleCreateShapesBatch(args, context) {
+  const { createShape, userId, shapes: existingShapes } = context;
+  const { shapes: shapesToCreate } = args;
+
+  if (!shapesToCreate || shapesToCreate.length === 0) {
+    return {
+      success: false,
+      message: 'No shapes provided in batch'
+    };
+  }
+
+  // Safety check: Limit shapes per call
+  if (shapesToCreate.length > MAX_SHAPES_PER_CALL) {
+    return {
+      success: false,
+      message: `Cannot create ${shapesToCreate.length} shapes. Maximum is ${MAX_SHAPES_PER_CALL} per request for safety.`
+    };
+  }
+
+  // Safety check: Don't exceed total canvas limit
+  const currentShapeCount = existingShapes?.length || 0;
+  if (currentShapeCount + shapesToCreate.length > MAX_TOTAL_SHAPES) {
+    return {
+      success: false,
+      message: `Cannot create ${shapesToCreate.length} shapes. Canvas has ${currentShapeCount} shapes and limit is ${MAX_TOTAL_SHAPES}.`
+    };
+  }
+
+  const createdShapes = [];
+  const errors = [];
+
+  try {
+    shapesToCreate.forEach((shapeSpec, index) => {
+      const {
+        shapeType,
+        x,
+        y,
+        width = 100,
+        height = 100,
+        radius = 50,
+        color = '#646cff',
+        text = 'Text'
+      } = shapeSpec;
+
+      let finalX = x;
+      let finalY = y;
+
+      // Apply canvas boundary constraints based on shape type
+      if (shapeType === SHAPE_TYPES.RECTANGLE || shapeType === SHAPE_TYPES.TEXT) {
+        const constrained = constrainRectangle(finalX, finalY, width, height, CANVAS_WIDTH, CANVAS_HEIGHT);
+        finalX = constrained.x;
+        finalY = constrained.y;
+      } else if (shapeType === SHAPE_TYPES.CIRCLE || shapeType === SHAPE_TYPES.POLYGON) {
+        const constrained = constrainCircle(finalX, finalY, radius, CANVAS_WIDTH, CANVAS_HEIGHT);
+        finalX = constrained.x;
+        finalY = constrained.y;
+      } else if (shapeType === SHAPE_TYPES.CUSTOM_POLYGON) {
+        finalX = clamp(finalX, 100, CANVAS_WIDTH - 100);
+        finalY = clamp(finalY, 100, CANVAS_HEIGHT - 100);
+      }
+
+      const shapeData = {
+        type: shapeType,
+        x: finalX,
+        y: finalY,
+        color: color,
+        createdBy: userId,
+        timestamp: Date.now() + index // Unique timestamps
+      };
+
+      // Add type-specific properties
+      if (shapeType === SHAPE_TYPES.RECTANGLE) {
+        shapeData.width = width;
+        shapeData.height = height;
+      } else if (shapeType === SHAPE_TYPES.CIRCLE || shapeType === SHAPE_TYPES.POLYGON) {
+        shapeData.radius = radius;
+      } else if (shapeType === SHAPE_TYPES.TEXT) {
+        shapeData.width = width;
+        shapeData.height = height;
+        shapeData.text = text;
+        shapeData.fontSize = 16;
+        shapeData.textColor = '#000000';
+        shapeData.color = undefined; // No border by default
+      }
+
+      try {
+        const newShape = createShape(shapeData);
+        if (newShape) {
+          createdShapes.push(newShape);
+        }
+      } catch (error) {
+        errors.push(`Shape ${index + 1}: ${error.message}`);
+      }
+    });
+
+    const successCount = createdShapes.length;
+    const failCount = errors.length;
+    
+    let message = `Created ${successCount} shape${successCount !== 1 ? 's' : ''}`;
+    if (failCount > 0) {
+      message += ` (${failCount} failed: ${errors.join(', ')})`;
+    }
+
+    return {
+      success: successCount > 0,
+      message,
+      data: { 
+        created: successCount,
+        failed: failCount,
+        shapes: createdShapes 
+      }
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: `Failed to create shapes batch: ${error.message}`
     };
   }
 }
@@ -419,6 +627,34 @@ function handleAlignShapes(args, context) {
       }
 
       if (Object.keys(updates).length > 0) {
+        // Apply boundary constraints
+        const newX = updates.x !== undefined ? updates.x : shape.x;
+        const newY = updates.y !== undefined ? updates.y : shape.y;
+        
+        if (shape.type === SHAPE_TYPES.RECTANGLE || shape.type === SHAPE_TYPES.TEXT) {
+          const constrained = constrainRectangle(
+            newX, newY, 
+            shape.width || 100, 
+            shape.height || 100, 
+            CANVAS_WIDTH, 
+            CANVAS_HEIGHT
+          );
+          updates.x = constrained.x;
+          updates.y = constrained.y;
+        } else if (shape.type === SHAPE_TYPES.CIRCLE || shape.type === SHAPE_TYPES.POLYGON) {
+          const constrained = constrainCircle(
+            newX, newY, 
+            shape.radius || 50, 
+            CANVAS_WIDTH, 
+            CANVAS_HEIGHT
+          );
+          updates.x = constrained.x;
+          updates.y = constrained.y;
+        } else {
+          if (updates.x !== undefined) updates.x = clamp(updates.x, 0, CANVAS_WIDTH);
+          if (updates.y !== undefined) updates.y = clamp(updates.y, 0, CANVAS_HEIGHT);
+        }
+        
         updateShape(shape.id, updates);
       }
     });
@@ -479,6 +715,34 @@ function handleDistributeShapes(args, context) {
         updates.y = firstShapeBounds.centerY + (gapSize * index);
       }
 
+      // Apply boundary constraints
+      const newX = updates.x !== undefined ? updates.x : shape.x;
+      const newY = updates.y !== undefined ? updates.y : shape.y;
+      
+      if (shape.type === SHAPE_TYPES.RECTANGLE || shape.type === SHAPE_TYPES.TEXT) {
+        const constrained = constrainRectangle(
+          newX, newY, 
+          shape.width || 100, 
+          shape.height || 100, 
+          CANVAS_WIDTH, 
+          CANVAS_HEIGHT
+        );
+        updates.x = constrained.x;
+        updates.y = constrained.y;
+      } else if (shape.type === SHAPE_TYPES.CIRCLE || shape.type === SHAPE_TYPES.POLYGON) {
+        const constrained = constrainCircle(
+          newX, newY, 
+          shape.radius || 50, 
+          CANVAS_WIDTH, 
+          CANVAS_HEIGHT
+        );
+        updates.x = constrained.x;
+        updates.y = constrained.y;
+      } else {
+        if (updates.x !== undefined) updates.x = clamp(updates.x, 0, CANVAS_WIDTH);
+        if (updates.y !== undefined) updates.y = clamp(updates.y, 0, CANVAS_HEIGHT);
+      }
+
       updateShape(shape.id, updates);
     });
 
@@ -514,8 +778,18 @@ function handleArrangeInGrid(args, context) {
   }
 
   try {
-    const startX = viewport.centerX - ((columns - 1) * spacing / 2);
-    const startY = viewport.centerY - ((rows - 1) * spacing / 2);
+    let startX = viewport.centerX - ((columns - 1) * spacing / 2);
+    let startY = viewport.centerY - ((rows - 1) * spacing / 2);
+
+    // Ensure the grid stays within canvas boundaries
+    const gridWidth = (columns - 1) * spacing + 100; // +100 for shape size estimate
+    const gridHeight = (rows - 1) * spacing + 100;
+    
+    // Adjust start position if grid would extend beyond canvas
+    if (startX < 100) startX = 100;
+    if (startY < 100) startY = 100;
+    if (startX + gridWidth > CANVAS_WIDTH - 100) startX = CANVAS_WIDTH - gridWidth - 100;
+    if (startY + gridHeight > CANVAS_HEIGHT - 100) startY = CANVAS_HEIGHT - gridHeight - 100;
 
     shapesToArrange.forEach((shape, index) => {
       const row = Math.floor(index / columns);
@@ -523,10 +797,35 @@ function handleArrangeInGrid(args, context) {
 
       if (row >= rows) return; // Skip extra shapes
 
-      updateShape(shape.id, {
-        x: startX + (col * spacing),
-        y: startY + (row * spacing)
-      });
+      let posX = startX + (col * spacing);
+      let posY = startY + (row * spacing);
+      
+      // Apply per-shape boundary constraints
+      if (shape.type === SHAPE_TYPES.RECTANGLE || shape.type === SHAPE_TYPES.TEXT) {
+        const constrained = constrainRectangle(
+          posX, posY, 
+          shape.width || 100, 
+          shape.height || 100, 
+          CANVAS_WIDTH, 
+          CANVAS_HEIGHT
+        );
+        posX = constrained.x;
+        posY = constrained.y;
+      } else if (shape.type === SHAPE_TYPES.CIRCLE || shape.type === SHAPE_TYPES.POLYGON) {
+        const constrained = constrainCircle(
+          posX, posY, 
+          shape.radius || 50, 
+          CANVAS_WIDTH, 
+          CANVAS_HEIGHT
+        );
+        posX = constrained.x;
+        posY = constrained.y;
+      } else {
+        posX = clamp(posX, 0, CANVAS_WIDTH);
+        posY = clamp(posY, 0, CANVAS_HEIGHT);
+      }
+
+      updateShape(shape.id, { x: posX, y: posY });
     });
 
     const arranged = Math.min(shapesToArrange.length, rows * columns);
@@ -564,7 +863,41 @@ function handleUpdateShapeProperties(args, context) {
 
   try {
     shapesToUpdate.forEach(shape => {
-      updateShape(shape.id, properties);
+      // Apply boundary constraints if updating position
+      const constrainedProperties = { ...properties };
+      
+      if ('x' in properties || 'y' in properties) {
+        const newX = properties.x !== undefined ? properties.x : shape.x;
+        const newY = properties.y !== undefined ? properties.y : shape.y;
+        
+        // Apply constraints based on shape type
+        if (shape.type === SHAPE_TYPES.RECTANGLE || shape.type === SHAPE_TYPES.TEXT) {
+          const constrained = constrainRectangle(
+            newX, newY, 
+            shape.width || 100, 
+            shape.height || 100, 
+            CANVAS_WIDTH, 
+            CANVAS_HEIGHT
+          );
+          constrainedProperties.x = constrained.x;
+          constrainedProperties.y = constrained.y;
+        } else if (shape.type === SHAPE_TYPES.CIRCLE || shape.type === SHAPE_TYPES.POLYGON) {
+          const constrained = constrainCircle(
+            newX, newY, 
+            shape.radius || 50, 
+            CANVAS_WIDTH, 
+            CANVAS_HEIGHT
+          );
+          constrainedProperties.x = constrained.x;
+          constrainedProperties.y = constrained.y;
+        } else {
+          // For other types, just clamp to canvas bounds
+          constrainedProperties.x = clamp(newX, 0, CANVAS_WIDTH);
+          constrainedProperties.y = clamp(newY, 0, CANVAS_HEIGHT);
+        }
+      }
+      
+      updateShape(shape.id, constrainedProperties);
     });
 
     return {

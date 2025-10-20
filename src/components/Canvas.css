@@ -20,10 +20,11 @@
   gap: 0.75rem;
   background-color: var(--header-bg);
   border-bottom: 1px solid var(--border-color);
-  padding: 0.4rem 0.75rem;
+  padding: 0.5rem 1rem;
   backdrop-filter: blur(10px);
   z-index: 150;
   font-size: 0.8rem;
+  min-height: 48px;
 }
 
 .canvas-header-left {
@@ -65,13 +66,20 @@
 
 @media (max-width: 768px) {
   .canvas-header {
-    flex-direction: column;
-    gap: 0.25rem;
-    padding: 0.4rem 0.5rem;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.4rem 0.75rem;
+    min-height: 40px;
   }
   
   .canvas-header-hint {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
+  }
+  
+  .canvas-header-left,
+  .canvas-header-right {
+    flex: 1 1 auto;
   }
 }
 
@@ -87,8 +95,8 @@
 /* FPS Counter */
 .fps-counter {
   position: absolute;
-  top: 1rem;
-  left: 1rem;
+  top: 72px;
+  left: 88px;
   background-color: var(--panel-bg);
   border: 1px solid var(--border-color);
   border-radius: 8px;
@@ -131,10 +139,33 @@
   color: var(--warning-color);
 }
 
+/* Responsive FPS Counter */
+@media (max-width: 768px) {
+  .fps-counter {
+    top: 60px;
+    left: 68px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+    min-width: 120px;
+  }
+  
+  .fps-value {
+    font-size: 1rem;
+  }
+  
+  .fps-render,
+  .fps-objects,
+  .fps-zoom,
+  .fps-pos,
+  .fps-firestore {
+    font-size: 0.7rem;
+  }
+}
+
 /* Canvas Info Overlay */
 .canvas-info {
   position: absolute;
-  bottom: 2rem;
+  bottom: 1.5rem;
   left: 50%;
   transform: translateX(-50%);
   background-color: var(--panel-bg);
@@ -299,7 +330,7 @@
 /* Connection status indicator */
 .connection-status {
   position: absolute;
-  bottom: 1rem;
+  bottom: 1.5rem;
   left: 1rem;
   background-color: var(--panel-bg);
   border: 1px solid var(--border-color);

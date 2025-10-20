@@ -62,6 +62,13 @@ You have the following tools to manipulate the canvas:
 - getCanvasInfo: Get information about the canvas state
 - selectShapes: Select shapes by type or color
 
+CRITICAL - Canvas Boundaries:
+- The canvas has FIXED boundaries: 0 to 5000 for both X and Y coordinates
+- ALL shapes MUST stay within these boundaries (0-5000 for x, 0-5000 for y)
+- The tools will automatically constrain shapes to these boundaries
+- You CANNOT create or move shapes outside this range
+- Treat the canvas as a 5000x5000 pixel space
+
 IMPORTANT - Creating shapes in the user's viewport:
 - The user's current viewport center is provided as (centerX, centerY) in the context
 - ALWAYS prefer to create new shapes near the viewport center where the user is looking

@@ -523,6 +523,47 @@ const { messages, input, handleSubmit, isLoading } = useChat({
 
 ---
 
+## Bug Fixes & Edge Cases
+
+### Anonymous User Handling
+
+**Issue:** When `user.userName` is undefined (rare edge case with incomplete auth data), the presence sidebar would crash with `TypeError: undefined is not an object (evaluating 'user.userName.charAt')`.
+
+**Root Cause:** Direct access to `userName.charAt(0)` without checking if `userName` exists first.
+
+**Solution:** Added defensive fallbacks in `PresenceSidebar.jsx`:
+
+```javascript
+// User avatar with fallback
+<div
+  className="user-indicator"
+  style={{ backgroundColor: userColor }}
+  title={user.userName || 'Anonymous'}
+>
+  {(user.userName || 'A').charAt(0).toUpperCase()}
+</div>
+
+// User name display with fallback
+<div className="user-name">
+  {user.userName || 'Anonymous'}
+  {isCurrentUser && <span className="you-label">(you)</span>}
+</div>
+```
+
+**Result:**
+- ✅ No crashes when userName is undefined
+- ✅ Shows "Anonymous" as fallback name
+- ✅ Shows "A" as fallback avatar initial
+- ✅ Improved robustness of presence system
+
+**When This Occurs:**
+- Firebase auth data incomplete
+- User object created before displayName set
+- Race condition during authentication
+- Network issues during user profile fetch
+
+---
+
 For setup instructions, see [SETUP.md](./SETUP.md)  
 For feature documentation, see [FEATURES.md](./FEATURES.md)  
 For implementation history, see [CHANGELOG.md](./CHANGELOG.md)
