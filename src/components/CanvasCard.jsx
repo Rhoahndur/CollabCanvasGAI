@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import './CanvasCard.css';
 
 /**
@@ -8,6 +9,8 @@ function CanvasCard({ canvas, onOpenCanvas, onDeleteCanvas, onRenameCanvas, onDu
   const [showMenu, setShowMenu] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [newName, setNewName] = useState(canvas.name);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  const menuButtonRef = useRef(null);
 
   const formatDate = (timestamp) => {
     if (!timestamp) return 'Never';
@@ -89,11 +92,39 @@ function CanvasCard({ canvas, onOpenCanvas, onDeleteCanvas, onRenameCanvas, onDu
 
   const toggleMenu = (e) => {
     e.stopPropagation();
+    
+    if (!showMenu && menuButtonRef.current) {
+      // Calculate menu position relative to viewport
+      const rect = menuButtonRef.current.getBoundingClientRect();
+      setMenuPosition({
+        top: rect.bottom + 4, // 4px below button
+        left: rect.right - 140  // Align right edge (140px is menu width)
+      });
+    }
+    
     setShowMenu(!showMenu);
   };
+  
+  // Close menu when clicking outside
+  useEffect(() => {
+    if (!showMenu) return;
+    
+    const handleClickOutside = (e) => {
+      if (menuButtonRef.current && !menuButtonRef.current.contains(e.target)) {
+        // Check if click is on the menu itself (in portal)
+        const menuElement = document.getElementById(`canvas-menu-${canvas.id}`);
+        if (!menuElement || !menuElement.contains(e.target)) {
+          setShowMenu(false);
+        }
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showMenu, canvas.id]);
 
   return (
-    <div className="canvas-card" onClick={handleOpen}>
+    <div className={`canvas-card ${showMenu ? 'menu-open' : ''}`} onClick={handleOpen}>
       {/* Canvas Thumbnail */}
       <div className="canvas-thumbnail">
         <div className="canvas-thumbnail-placeholder">
@@ -146,6 +177,7 @@ function CanvasCard({ canvas, onOpenCanvas, onDeleteCanvas, onRenameCanvas, onDu
         </button>
         
         <button
+          ref={menuButtonRef}
           className="canvas-menu-btn"
           onClick={toggleMenu}
           aria-label="Canvas menu"
@@ -153,8 +185,17 @@ function CanvasCard({ canvas, onOpenCanvas, onDeleteCanvas, onRenameCanvas, onDu
           ⋮
         </button>
         
-        {showMenu && (
-          <div className="canvas-menu" onClick={(e) => e.stopPropagation()}>
+        {showMenu && createPortal(
+          <div 
+            id={`canvas-menu-${canvas.id}`}
+            className="canvas-menu canvas-menu-portal" 
+            style={{
+              position: 'fixed',
+              top: `${menuPosition.top}px`,
+              left: `${menuPosition.left}px`,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <button onClick={handleRename} disabled={canvas.role !== 'owner'}>
               ✏️ Rename
             </button>
@@ -164,7 +205,8 @@ function CanvasCard({ canvas, onOpenCanvas, onDeleteCanvas, onRenameCanvas, onDu
             <button onClick={handleDelete} disabled={canvas.role !== 'owner'} className="danger">
               🗑️ Delete
             </button>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
     </div>
