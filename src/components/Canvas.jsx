@@ -58,6 +58,7 @@ import ChatPanel from './ChatPanel';
 import InlineTextEditor from './InlineTextEditor';
 import ContextMenu from './ContextMenu';
 import DebugPanel from './DebugPanel';
+import LayersPanel from './LayersPanel';
 import './Canvas.css';
 
 /**
@@ -135,6 +136,9 @@ function Canvas({
   
   // Selected drawing tool
   const [selectedTool, setSelectedTool] = useState(TOOL_TYPES.SELECT);
+  
+  // Layers panel visibility
+  const [isLayersPanelOpen, setIsLayersPanelOpen] = useState(false);
   
   // Multiple selected shape IDs (for multi-select with SELECT tool)
   const [selectedShapeIds, setSelectedShapeIds] = useState([]);
@@ -1644,6 +1648,37 @@ function Canvas({
     }
   }, [user, selectedShapeId, selectedShapeIds, shapes, canvasId, notifyFirestoreActivity]);
 
+  // Handle visibility toggle from layers panel
+  const handleToggleVisibility = useCallback(async (shapeId) => {
+    if (!user || userRole === 'viewer') return;
+    
+    const shape = shapes.find(s => s.id === shapeId);
+    if (!shape) return;
+    
+    const newVisibility = shape.visible === false ? true : false;
+    
+    try {
+      await updateShape(canvasId, shapeId, { visible: newVisibility });
+      console.log(`👁️ Toggled visibility for shape ${shapeId}: ${newVisibility}`);
+      notifyFirestoreActivity();
+    } catch (error) {
+      console.error('❌ Failed to toggle visibility:', error);
+    }
+  }, [user, userRole, shapes, canvasId, updateShape, notifyFirestoreActivity]);
+
+  // Handle rename from layers panel
+  const handleRenameShape = useCallback(async (shapeId, newName) => {
+    if (!user || userRole === 'viewer') return;
+    
+    try {
+      await updateShape(canvasId, shapeId, { name: newName });
+      console.log(`✏️ Renamed shape ${shapeId} to "${newName}"`);
+      notifyFirestoreActivity();
+    } catch (error) {
+      console.error('❌ Failed to rename shape:', error);
+    }
+  }, [user, userRole, canvasId, updateShape, notifyFirestoreActivity]);
+
   // Handle clearing all shapes
   const handleClearAll = useCallback(async () => {
     if (!user) return;
@@ -2520,8 +2555,11 @@ function Canvas({
     const viewportRight = viewport.offsetX + (containerSize.width / viewport.zoom) + bufferSize;
     const viewportBottom = viewport.offsetY + (containerSize.height / viewport.zoom) + bufferSize;
     
-    // Filter shapes that intersect with viewport
+    // Filter shapes that are marked as visible and intersect with viewport
     const visible = shapes.filter(shape => {
+      // Skip shapes that are explicitly hidden
+      if (shape.visible === false) return false;
+      
       // Calculate bounding box based on shape type
       let shapeLeft, shapeTop, shapeRight, shapeBottom;
       
@@ -3203,6 +3241,32 @@ function Canvas({
         onFitCanvas={handleFitCanvas}
         minZoom={MIN_ZOOM}
         maxZoom={MAX_ZOOM}
+      />
+      
+      {/* Layers Panel Toggle Button */}
+      <button
+        className="layers-toggle-btn"
+        onClick={() => setIsLayersPanelOpen(!isLayersPanelOpen)}
+        title="Toggle layers panel"
+        aria-label="Toggle layers panel"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <rect x="3" y="3" width="18" height="18" rx="2" />
+          <path d="M3 9h18M3 15h18" />
+        </svg>
+        <span className="layers-count">{shapes.length}</span>
+      </button>
+      
+      {/* Layers Panel */}
+      <LayersPanel
+        shapes={shapes}
+        selectedShapeIds={selectedShapeIds}
+        onSelectShape={selectShape}
+        onToggleVisibility={handleToggleVisibility}
+        onRenameShape={handleRenameShape}
+        userRole={userRole}
+        isOpen={isLayersPanelOpen}
+        onTogglePanel={() => setIsLayersPanelOpen(!isLayersPanelOpen)}
       />
       
       {/* Chat Panel (Canvas Chat + Canny AI) */}

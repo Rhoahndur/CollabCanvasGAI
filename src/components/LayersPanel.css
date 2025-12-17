@@ -1,0 +1,270 @@
+/* Layers Panel - Illustrator-style layers management */
+.layers-panel {
+  position: fixed;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 280px;
+  height: 60vh; /* Shorter - 60% of viewport height */
+  max-height: 500px; /* Cap maximum height */
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+  animation: slideInRight 0.2s ease-out;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translate(100%, -50%);
+    opacity: 0;
+  }
+  to {
+    transform: translate(0, -50%);
+    opacity: 1;
+  }
+}
+
+/* Panel Header */
+.layers-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--bg-tertiary);
+  border-radius: 8px 8px 0 0;
+  flex-shrink: 0; /* Prevent header from shrinking */
+  min-height: 44px;
+}
+
+.layers-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.layers-close-btn {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 6px 8px;
+  font-size: 18px;
+  font-weight: bold;
+  line-height: 1;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  min-width: 32px;
+  min-height: 32px;
+  flex-shrink: 0;
+}
+
+.layers-close-btn:hover {
+  color: white;
+  background-color: var(--error-color);
+  border-color: var(--error-color);
+  transform: scale(1.05);
+}
+
+/* Layers List Wrapper */
+.layers-list-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Layers List */
+.layers-list {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px;
+}
+
+/* Custom scrollbar */
+.layers-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.layers-list::-webkit-scrollbar-track {
+  background: var(--bg-tertiary);
+}
+
+.layers-list::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+.layers-list::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}
+
+/* Empty State */
+.layers-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--text-tertiary);
+}
+
+.layers-empty svg {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+.layers-empty p {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.layers-empty span {
+  font-size: 12px;
+}
+
+/* Layer Item */
+.layer-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  margin-bottom: 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+  background-color: var(--bg-primary);
+}
+
+.layer-item:hover {
+  background-color: var(--bg-hover);
+  border-color: var(--border-color);
+}
+
+.layer-item.selected {
+  background-color: var(--accent-bg);
+  border-color: var(--accent-color);
+}
+
+.layer-item.selected .layer-name {
+  color: var(--accent-color);
+  font-weight: 600;
+}
+
+.layer-item.hidden {
+  opacity: 0.4;
+}
+
+.layer-item.hidden:hover {
+  opacity: 0.6;
+}
+
+/* Visibility Toggle */
+.layer-visibility-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.layer-visibility-toggle:hover {
+  transform: scale(1.15);
+}
+
+/* Shape Icon */
+.layer-icon {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.layer-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Shape Name */
+.layer-name {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+}
+
+.layer-name-input {
+  flex: 1;
+  background-color: var(--bg-input);
+  border: 1px solid var(--accent-color);
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 13px;
+  color: var(--text-primary);
+  font-family: inherit;
+  outline: none;
+}
+
+/* Lock Indicator */
+.layer-lock-indicator {
+  font-size: 12px;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .layers-panel {
+    right: 10px;
+    width: 240px;
+    height: 55vh;
+  }
+}
+
+@media (max-width: 768px) {
+  .layers-panel {
+    width: 200px;
+    height: 50vh;
+    max-height: 400px;
+  }
+  
+  .layer-name {
+    font-size: 12px;
+  }
+}
+
+@media (max-height: 600px) {
+  .layers-panel {
+    height: 70vh;
+    max-height: 420px;
+  }
+}
+
+/* Theme handled by CSS variables in themes.css */
+

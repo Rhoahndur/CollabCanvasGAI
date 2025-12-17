@@ -68,6 +68,23 @@ export const generateObjectId = (userId) => {
 // ============================================================================
 
 /**
+ * Generate a default name for a shape based on its type
+ * @param {string} type - Shape type
+ * @returns {string} Default name
+ */
+const getDefaultShapeName = (type) => {
+  const typeNames = {
+    rectangle: 'Rectangle',
+    circle: 'Circle',
+    polygon: 'Pentagon',
+    customPolygon: 'Polygon',
+    text: 'Text',
+    image: 'Image'
+  };
+  return typeNames[type] || 'Shape';
+};
+
+/**
  * Create a new shape on the canvas
  * @param {string} canvasId - Canvas ID
  * @param {Object} shapeData - Shape data (type, x, y, color, createdBy, and type-specific props)
@@ -78,9 +95,14 @@ export const createShape = async (canvasId = DEFAULT_CANVAS_ID, shapeData) => {
     const objectId = generateObjectId(shapeData.createdBy);
     const objectRef = getObjectRef(canvasId, objectId);
     
+    // Auto-generate name if not provided
+    const defaultName = getDefaultShapeName(shapeData.type);
+    
     await set(objectRef, {
       ...shapeData,
       id: objectId,
+      name: shapeData.name || defaultName, // Auto-generated name
+      visible: shapeData.visible !== undefined ? shapeData.visible : true, // Default to visible
       lockedBy: null,
       lockedByUserName: null,
       timestamp: Date.now(),
