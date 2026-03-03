@@ -19,7 +19,7 @@ export function useAuth() {
       if (currentUser) {
         // Try to get GitHub username from localStorage (saved during sign-in)
         const storedGithubUsername = localStorage.getItem('github_username');
-        
+
         // Debug: Log available user data to find GitHub username
         // console.log('🔍 Auth user data:', {
         //   storedGithubUsername,
@@ -28,29 +28,31 @@ export function useAuth() {
         //   reloadUserInfo: currentUser.reloadUserInfo,
         //   providerData: currentUser.providerData,
         // });
-        
+
         // Extract GitHub username (handle) from provider data
         let githubUsername = null;
-        
+
         // Try multiple sources for GitHub username
         if (currentUser.providerData && currentUser.providerData.length > 0) {
-          const githubProvider = currentUser.providerData.find(p => p.providerId === 'github.com');
+          const githubProvider = currentUser.providerData.find(
+            (p) => p.providerId === 'github.com'
+          );
           if (githubProvider) {
             // GitHub username is often in the displayName for GitHub provider
             githubUsername = githubProvider.displayName;
           }
         }
-        
+
         // Fallback chain: Stored GitHub username > reloadUserInfo.screenName > provider displayName > user displayName > email
         // Works for both GitHub and Google OAuth
         // Note: We MUST have a valid displayName (not anonymous) for presence to work
-        const displayName = 
+        const displayName =
           storedGithubUsername ||
-          currentUser.reloadUserInfo?.screenName || 
+          currentUser.reloadUserInfo?.screenName ||
           githubUsername ||
-          currentUser.displayName || 
+          currentUser.displayName ||
           currentUser.email?.split('@')[0];
-        
+
         // Safety check: If displayName is still empty/undefined, don't set user
         // This prevents anonymous users from accessing the app
         if (!displayName || displayName.trim() === '') {
@@ -59,7 +61,7 @@ export function useAuth() {
           setLoading(false);
           return;
         }
-        
+
         // console.log('✅ Using display name:', displayName);
 
         setUser({
@@ -125,14 +127,14 @@ export function useAuth() {
           // Remove both cursor and presence
           await Promise.all([
             removeCursor(DEFAULT_CANVAS_ID, sessionId),
-            removePresence(DEFAULT_CANVAS_ID, sessionId)
+            removePresence(DEFAULT_CANVAS_ID, sessionId),
           ]);
           console.log('Cursor and presence removed before sign out');
         } catch (error) {
           console.warn('Failed to remove cursor/presence before sign out:', error);
         }
       }
-      
+
       // Now sign out
       await signOutUser();
     } catch (error) {
@@ -148,4 +150,3 @@ export function useAuth() {
     signOut,
   };
 }
-

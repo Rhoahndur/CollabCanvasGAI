@@ -1,12 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
-import { 
-  subscribeToPresence, 
-  setUserPresence, 
+import {
+  subscribeToPresence,
+  setUserPresence,
   updatePresenceHeartbeat,
   removePresence,
-  cleanupStalePresence
+  cleanupStalePresence,
 } from '../services/canvasService';
-import { DEFAULT_CANVAS_ID, PRESENCE_HEARTBEAT_INTERVAL, PRESENCE_TIMEOUT } from '../utils/constants';
+import {
+  DEFAULT_CANVAS_ID,
+  PRESENCE_HEARTBEAT_INTERVAL,
+  PRESENCE_TIMEOUT,
+} from '../utils/constants';
 import { getUserColor } from '../utils/colorUtils';
 
 /**
@@ -22,22 +26,22 @@ export function usePresence(sessionId, userId, userName, canvasId = DEFAULT_CANV
   // Helper function to filter active users and deduplicate by sessionId
   const filterActiveUsers = (presenceData) => {
     const timeoutThreshold = Date.now() - PRESENCE_TIMEOUT; // 30 second timeout
-    
+
     // Deduplicate by sessionId first (in case Firestore sends duplicates)
     const sessionMap = new Map();
-    presenceData.forEach(user => {
+    presenceData.forEach((user) => {
       // Keep the most recent data for each sessionId
       const existing = sessionMap.get(user.sessionId);
       if (!existing || user.lastSeen > existing.lastSeen) {
         sessionMap.set(user.sessionId, user);
       }
     });
-    
+
     // Filter to only active sessions (within timeout threshold)
-    const activeUsers = Array.from(sessionMap.values()).filter(user => 
-      user.isOnline && user.lastSeen > timeoutThreshold
+    const activeUsers = Array.from(sessionMap.values()).filter(
+      (user) => user.isOnline && user.lastSeen > timeoutThreshold
     );
-    
+
     return activeUsers;
   };
 
@@ -52,14 +56,17 @@ export function usePresence(sessionId, userId, userName, canvasId = DEFAULT_CANV
     // console.log('Setting up presence for user:', userName, 'session:', sessionId, 'canvas:', canvasId);
 
     // Clean up stale sessions on mount (especially helpful for Safari and duplicate sessions)
-    cleanupStalePresence(canvasId).then((cleanedCount) => {
-      // console.log(`🧹 Initial cleanup removed ${cleanedCount} stale sessions`);
-      
-      // Set user as online after cleanup completes
-      const userColor = getUserColor(userId);
-      setUserPresence(canvasId, sessionId, userId, userName, userColor, true)
-        .catch(console.error);
-    }).catch(console.error);
+    cleanupStalePresence(canvasId)
+      .then((cleanedCount) => {
+        // console.log(`🧹 Initial cleanup removed ${cleanedCount} stale sessions`);
+
+        // Set user as online after cleanup completes
+        const userColor = getUserColor(userId);
+        setUserPresence(canvasId, sessionId, userId, userName, userColor, true).catch(
+          console.error
+        );
+      })
+      .catch(console.error);
     // Subscribe to presence changes from Firestore
     const unsubscribe = subscribeToPresence(canvasId, (presenceData) => {
       setAllPresenceData(presenceData);
@@ -72,7 +79,7 @@ export function usePresence(sessionId, userId, userName, canvasId = DEFAULT_CANV
     // This ensures the UI updates even if Firestore doesn't send new data
     // Using 5 seconds to avoid premature filtering while heartbeat is in flight
     filterIntervalRef.current = setInterval(() => {
-      setAllPresenceData(prevData => {
+      setAllPresenceData((prevData) => {
         const activeUsers = filterActiveUsers(prevData);
         setOnlineUsers(activeUsers);
         return prevData;
@@ -81,8 +88,7 @@ export function usePresence(sessionId, userId, userName, canvasId = DEFAULT_CANV
 
     // Start heartbeat to keep presence alive
     heartbeatIntervalRef.current = setInterval(() => {
-      updatePresenceHeartbeat(canvasId, sessionId)
-        .catch(console.error);
+      updatePresenceHeartbeat(canvasId, sessionId).catch(console.error);
     }, PRESENCE_HEARTBEAT_INTERVAL);
 
     // Handle visibility changes (tab switching)
@@ -93,8 +99,9 @@ export function usePresence(sessionId, userId, userName, canvasId = DEFAULT_CANV
       } else {
         // Tab visible again - mark as active
         const userColor = getUserColor(userId);
-        setUserPresence(canvasId, sessionId, userId, userName, userColor, true, true)
-          .catch(console.error);
+        setUserPresence(canvasId, sessionId, userId, userName, userColor, true, true).catch(
+          console.error
+        );
       }
     };
 
@@ -113,7 +120,7 @@ export function usePresence(sessionId, userId, userName, canvasId = DEFAULT_CANV
     // Cleanup
     return () => {
       console.log('Cleaning up presence for session:', sessionId);
-      
+
       // Clear intervals
       if (heartbeatIntervalRef.current) {
         clearInterval(heartbeatIntervalRef.current);
@@ -121,14 +128,14 @@ export function usePresence(sessionId, userId, userName, canvasId = DEFAULT_CANV
       if (filterIntervalRef.current) {
         clearInterval(filterIntervalRef.current);
       }
-      
+
       // Remove listeners
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      
+
       // Remove presence document immediately
       removePresence(canvasId, sessionId).catch(console.error);
-      
+
       // Unsubscribe from Firestore
       unsubscribe();
     };
@@ -139,6 +146,3 @@ export function usePresence(sessionId, userId, userName, canvasId = DEFAULT_CANV
     onlineCount: onlineUsers.length,
   };
 }
-
-
-

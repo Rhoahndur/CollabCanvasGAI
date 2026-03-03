@@ -16,18 +16,18 @@ export function useTheme() {
   useEffect(() => {
     const updateEffectiveTheme = () => {
       let newTheme = theme;
-      
+
       if (theme === 'system') {
         // Use system preference
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         newTheme = prefersDark ? 'dark' : 'light';
       }
-      
+
       setEffectiveTheme(newTheme);
-      
+
       // Apply theme to document
       document.documentElement.setAttribute('data-theme', newTheme);
-      
+
       // Save preference
       localStorage.setItem('theme-preference', theme);
     };
@@ -38,7 +38,7 @@ export function useTheme() {
     if (theme === 'system') {
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
       const handler = () => updateEffectiveTheme();
-      
+
       // Modern browsers
       if (mediaQuery.addEventListener) {
         mediaQuery.addEventListener('change', handler);
@@ -63,4 +63,3 @@ export function useTheme() {
     setTheme: setThemePreference,
   };
 }
-
