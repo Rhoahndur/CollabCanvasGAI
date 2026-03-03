@@ -446,9 +446,16 @@ button:focus-visible {
 }
 
 @keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-10px); }
-  75% { transform: translateX(10px); }
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-10px);
+  }
+  75% {
+    transform: translateX(10px);
+  }
 }
 
 .error-boundary h1 {
@@ -544,11 +551,11 @@ button:focus-visible {
     padding: 0.5rem 1rem;
     min-height: 56px;
   }
-  
+
   .header-left h1 {
     font-size: 1.25rem;
   }
-  
+
   .btn-back,
   .btn-canvas-settings,
   .btn-user-settings,
@@ -556,7 +563,7 @@ button:focus-visible {
     font-size: 0.85rem;
     padding: 0.4rem 0.8rem;
   }
-  
+
   .btn-back svg,
   .btn-canvas-settings svg,
   .btn-user-settings svg,
@@ -564,18 +571,17 @@ button:focus-visible {
     width: 16px;
     height: 16px;
   }
-  
+
   .user-avatar {
     width: 32px;
     height: 32px;
   }
-  
+
   .user-name {
     font-size: 0.9rem;
   }
-  
+
   .header-right {
     gap: 0.75rem;
   }
 }
-
