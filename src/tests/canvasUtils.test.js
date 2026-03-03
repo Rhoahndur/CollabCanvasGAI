@@ -4,9 +4,9 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { 
-  screenToCanvas, 
-  clamp, 
+import {
+  screenToCanvas,
+  clamp,
   isPointInRect,
   constrainRectangle,
   constrainCircle,
@@ -14,36 +14,41 @@ import {
 
 describe('canvasUtils', () => {
   describe('screenToCanvas', () => {
+    const svgRect = { left: 0, top: 0 };
+
     it('should convert screen coordinates to canvas coordinates with no offset or zoom', () => {
       const viewport = { offsetX: 0, offsetY: 0, zoom: 1 };
-      const result = screenToCanvas(100, 200, viewport);
-      
+      const result = screenToCanvas(100, 200, viewport, svgRect);
+
       expect(result.x).toBe(100);
       expect(result.y).toBe(200);
     });
 
     it('should apply viewport offset', () => {
+      // canvasX = (screenX - svgRect.left) / zoom + offsetX = (100-0)/1 + 50 = 150
       const viewport = { offsetX: 50, offsetY: 100, zoom: 1 };
-      const result = screenToCanvas(100, 200, viewport);
-      
-      expect(result.x).toBe(50);
-      expect(result.y).toBe(100);
+      const result = screenToCanvas(100, 200, viewport, svgRect);
+
+      expect(result.x).toBe(150);
+      expect(result.y).toBe(300);
     });
 
     it('should apply zoom', () => {
+      // canvasX = (screenX - 0) / 2 + 0 = 50
       const viewport = { offsetX: 0, offsetY: 0, zoom: 2 };
-      const result = screenToCanvas(100, 200, viewport);
-      
+      const result = screenToCanvas(100, 200, viewport, svgRect);
+
       expect(result.x).toBe(50);
       expect(result.y).toBe(100);
     });
 
     it('should apply both offset and zoom', () => {
+      // canvasX = (200-0)/2 + 100 = 200, canvasY = (400-0)/2 + 200 = 400
       const viewport = { offsetX: 100, offsetY: 200, zoom: 2 };
-      const result = screenToCanvas(200, 400, viewport);
-      
-      expect(result.x).toBe(0);
-      expect(result.y).toBe(0);
+      const result = screenToCanvas(200, 400, viewport, svgRect);
+
+      expect(result.x).toBe(200);
+      expect(result.y).toBe(400);
     });
   });
 
@@ -90,7 +95,7 @@ describe('canvasUtils', () => {
 
     it('should not modify rectangle within bounds', () => {
       const result = constrainRectangle(100, 100, 200, 150, canvasWidth, canvasHeight);
-      
+
       expect(result.x).toBe(100);
       expect(result.y).toBe(100);
       expect(result.width).toBe(200);
@@ -99,25 +104,25 @@ describe('canvasUtils', () => {
 
     it('should constrain rectangle extending beyond right edge', () => {
       const result = constrainRectangle(900, 100, 200, 150, canvasWidth, canvasHeight);
-      
+
       expect(result.x + result.width).toBeLessThanOrEqual(canvasWidth);
     });
 
     it('should constrain rectangle extending beyond bottom edge', () => {
       const result = constrainRectangle(100, 700, 200, 150, canvasWidth, canvasHeight);
-      
+
       expect(result.y + result.height).toBeLessThanOrEqual(canvasHeight);
     });
 
     it('should constrain rectangle beyond left edge', () => {
       const result = constrainRectangle(-50, 100, 200, 150, canvasWidth, canvasHeight);
-      
+
       expect(result.x).toBeGreaterThanOrEqual(0);
     });
 
     it('should constrain rectangle beyond top edge', () => {
       const result = constrainRectangle(100, -50, 200, 150, canvasWidth, canvasHeight);
-      
+
       expect(result.y).toBeGreaterThanOrEqual(0);
     });
   });
@@ -128,7 +133,7 @@ describe('canvasUtils', () => {
 
     it('should not modify circle within bounds', () => {
       const result = constrainCircle(500, 400, 50, canvasWidth, canvasHeight);
-      
+
       expect(result.x).toBe(500);
       expect(result.y).toBe(400);
       expect(result.radius).toBe(50);
@@ -136,27 +141,26 @@ describe('canvasUtils', () => {
 
     it('should constrain circle extending beyond right edge', () => {
       const result = constrainCircle(980, 400, 50, canvasWidth, canvasHeight);
-      
+
       expect(result.x + result.radius).toBeLessThanOrEqual(canvasWidth);
     });
 
     it('should constrain circle extending beyond bottom edge', () => {
       const result = constrainCircle(500, 780, 50, canvasWidth, canvasHeight);
-      
+
       expect(result.y + result.radius).toBeLessThanOrEqual(canvasHeight);
     });
 
     it('should constrain circle beyond left edge', () => {
       const result = constrainCircle(20, 400, 50, canvasWidth, canvasHeight);
-      
+
       expect(result.x - result.radius).toBeGreaterThanOrEqual(0);
     });
 
     it('should constrain circle beyond top edge', () => {
       const result = constrainCircle(500, 20, 50, canvasWidth, canvasHeight);
-      
+
       expect(result.y - result.radius).toBeGreaterThanOrEqual(0);
     });
   });
 });
-
