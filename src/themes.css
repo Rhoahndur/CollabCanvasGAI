@@ -5,7 +5,7 @@
 
 /* Light Theme (Default) */
 :root,
-[data-theme="light"] {
+[data-theme='light'] {
   /* Background Colors */
   --bg-primary: #ffffff;
   --bg-secondary: #f8f9fa;
@@ -15,26 +15,26 @@
   --bg-input: #ffffff;
   --bg-button: #f0f0f0;
   --bg-button-hover: #e5e5e5;
-  
+
   /* Text Colors */
   --text-primary: #1a1a1a;
   --text-secondary: #666666;
   --text-tertiary: #999999;
   --text-inverse: #ffffff;
   --text-on-accent: #ffffff;
-  
+
   /* Border Colors */
   --border-color: #dee2e6;
   --border-hover: #adb5bd;
   --border-focus: #646cff;
-  
+
   /* Accent Colors */
   --accent-color: #646cff;
   --accent-hover: #535bf2;
   --accent-bg: rgba(100, 108, 255, 0.1);
   --accent-shadow: rgba(100, 108, 255, 0.2);
   --accent-border: rgba(100, 108, 255, 0.3);
-  
+
   /* Status Colors */
   --success-color: #10b981;
   --success-bg: rgba(16, 185, 129, 0.1);
@@ -45,7 +45,7 @@
   --error-color: #ef4444;
   --error-bg: rgba(239, 68, 68, 0.1);
   --error-border: rgba(239, 68, 68, 0.3);
-  
+
   /* Component Specific */
   --header-bg: rgba(255, 255, 255, 0.95);
   --sidebar-bg: rgba(255, 255, 255, 0.95);
@@ -60,7 +60,7 @@
 }
 
 /* Dark Theme */
-[data-theme="dark"] {
+[data-theme='dark'] {
   /* Background Colors */
   --bg-primary: #1a1a1a;
   --bg-secondary: #242424;
@@ -70,26 +70,26 @@
   --bg-input: #2a2a2a;
   --bg-button: #2a2a2a;
   --bg-button-hover: #333333;
-  
+
   /* Text Colors */
   --text-primary: #ffffff;
   --text-secondary: #aaaaaa;
   --text-tertiary: #888888;
   --text-inverse: #1a1a1a;
   --text-on-accent: #ffffff;
-  
+
   /* Border Colors */
   --border-color: #444444;
   --border-hover: #666666;
   --border-focus: #646cff;
-  
+
   /* Accent Colors */
   --accent-color: #646cff;
   --accent-hover: #535bf2;
   --accent-bg: rgba(100, 108, 255, 0.2);
   --accent-shadow: rgba(100, 108, 255, 0.3);
   --accent-border: rgba(100, 108, 255, 0.4);
-  
+
   /* Status Colors */
   --success-color: #10b981;
   --success-bg: rgba(16, 185, 129, 0.15);
@@ -100,9 +100,9 @@
   --error-color: #ef4444;
   --error-bg: rgba(239, 68, 68, 0.15);
   --error-border: rgba(239, 68, 68, 0.3);
-  
+
   /* Component Specific */
-  --header-bg: rgba(0, 0, 0, 0.90);
+  --header-bg: rgba(0, 0, 0, 0.9);
   --sidebar-bg: rgba(26, 26, 26, 0.95);
   --panel-bg: rgba(26, 26, 26, 0.98);
   --modal-bg: #1e1e1e;
@@ -116,11 +116,13 @@
 
 /* Smooth transitions for theme changes */
 * {
-  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
 }
 
 /* Disable transitions on theme elements to avoid animation */
 [data-theme] {
   transition: none;
 }
-
