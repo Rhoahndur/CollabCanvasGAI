@@ -7,6 +7,30 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: './src/tests/setup.js',
+    include: ['src/**/*.{test,spec}.{js,jsx}', 'src/tests/**/*.{test,spec}.{js,jsx}'],
+    exclude: ['node_modules', 'dist', 'src/utils/testData.js'],
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: true,
+        execArgv: ['--max-old-space-size=4096'],
+      },
+    },
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov', 'html'],
+      include: ['src/**/*.{js,jsx}'],
+      exclude: [
+        'src/tests/**',
+        'src/utils/testData.js',
+        'src/main.jsx',
+      ],
+      thresholds: {
+        statements: 40,
+        lines: 40,
+        branches: 30,
+        functions: 35,
+      },
+    },
   },
 });
-
