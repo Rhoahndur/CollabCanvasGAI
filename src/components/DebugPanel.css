@@ -178,9 +178,8 @@
     right: 10px;
     width: calc(100vw - 20px);
   }
-  
+
   .debug-content {
     height: 300px;
   }
 }
-

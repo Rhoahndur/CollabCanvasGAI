@@ -48,13 +48,13 @@ function ContextMenu({ x, y, onSendToFront, onSendToBack, onAlign, onClose, sele
         <span>Send to Back</span>
         {selectedCount > 1 && <span className="context-menu-count">({itemLabel})</span>}
       </div>
-      
+
       {/* Alignment options - only show when multiple items selected */}
       {selectedCount > 1 && onAlign && (
         <>
           <div className="context-menu-divider" />
           <div className="context-menu-section-title">Align {itemLabel}</div>
-          
+
           <div className="context-menu-item" onClick={handleAlign('left')}>
             <span className="context-menu-icon">⬅️</span>
             <span>Align Left</span>
@@ -67,9 +67,9 @@ function ContextMenu({ x, y, onSendToFront, onSendToBack, onAlign, onClose, sele
             <span className="context-menu-icon">➡️</span>
             <span>Align Right</span>
           </div>
-          
+
           <div className="context-menu-divider" />
-          
+
           <div className="context-menu-item" onClick={handleAlign('top')}>
             <span className="context-menu-icon">⬆️</span>
             <span>Align Top</span>
@@ -89,4 +89,3 @@ function ContextMenu({ x, y, onSendToFront, onSendToBack, onAlign, onClose, sele
 }
 
 export default ContextMenu;
-

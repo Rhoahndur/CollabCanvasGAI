@@ -54,7 +54,7 @@ function CanvasSettingsModal({ canvasId, canvasName, isOpen, onClose, onSettings
 
     try {
       console.log('💾 Saving canvas settings:', { canvasId, backgroundColor, gridVisible });
-      
+
       await updateCanvasMetadata(canvasId, {
         settings: {
           backgroundColor,
@@ -64,7 +64,7 @@ function CanvasSettingsModal({ canvasId, canvasName, isOpen, onClose, onSettings
 
       console.log('✅ Canvas settings saved successfully');
       setSuccessMessage('Settings saved successfully!');
-      
+
       // Notify parent component of changes
       if (onSettingsChange) {
         onSettingsChange({ backgroundColor, gridVisible });
@@ -79,16 +79,21 @@ function CanvasSettingsModal({ canvasId, canvasName, isOpen, onClose, onSettings
       console.error('Error code:', err.code);
       console.error('Error message:', err.message);
       console.error('Canvas ID:', canvasId);
-      
+
       // Provide more specific error messages
       let errorMessage = 'Failed to save settings. Please try again.';
-      if (err.code === 'PERMISSION_DENIED' || err.message?.includes('permission') || err.message?.includes('PERMISSION_DENIED')) {
-        errorMessage = 'Permission denied. You need owner or editor access to change canvas settings.';
+      if (
+        err.code === 'PERMISSION_DENIED' ||
+        err.message?.includes('permission') ||
+        err.message?.includes('PERMISSION_DENIED')
+      ) {
+        errorMessage =
+          'Permission denied. You need owner or editor access to change canvas settings.';
         console.error('📛 Permission denied - check Firebase Realtime Database rules');
       } else if (err.code === 'NETWORK_ERROR' || err.message?.includes('network')) {
         errorMessage = 'Network error. Please check your connection and try again.';
       }
-      
+
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -170,9 +175,7 @@ function CanvasSettingsModal({ canvasId, canvasName, isOpen, onClose, onSettings
           {/* Grid Visibility Section */}
           <div className="settings-section">
             <h3>Grid</h3>
-            <p className="settings-section-description">
-              Show or hide the canvas grid
-            </p>
+            <p className="settings-section-description">Show or hide the canvas grid</p>
 
             <label className="settings-toggle">
               <input
@@ -190,18 +193,10 @@ function CanvasSettingsModal({ canvasId, canvasName, isOpen, onClose, onSettings
 
         {/* Footer */}
         <div className="settings-modal-footer">
-          <button
-            className="settings-modal-cancel-btn"
-            onClick={handleClose}
-            disabled={loading}
-          >
+          <button className="settings-modal-cancel-btn" onClick={handleClose} disabled={loading}>
             Cancel
           </button>
-          <button
-            className="settings-modal-save-btn"
-            onClick={handleSave}
-            disabled={loading}
-          >
+          <button className="settings-modal-save-btn" onClick={handleSave} disabled={loading}>
             {loading ? 'Saving...' : 'Save Settings'}
           </button>
         </div>
@@ -211,4 +206,3 @@ function CanvasSettingsModal({ canvasId, canvasName, isOpen, onClose, onSettings
 }
 
 export default CanvasSettingsModal;
-

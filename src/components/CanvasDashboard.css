@@ -338,53 +338,53 @@
   .dashboard-container {
     padding: 1rem;
   }
-  
+
   .dashboard-header {
     flex-direction: column;
     align-items: flex-start;
   }
-  
+
   .dashboard-title {
     width: 100%;
   }
-  
+
   .dashboard-title h1 {
     font-size: 1.5rem;
   }
-  
+
   .dashboard-actions {
     width: 100%;
   }
-  
+
   .dashboard-actions .btn {
     flex: 1;
   }
-  
+
   .canvas-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .canvas-list .canvas-card {
     grid-template-columns: 1fr;
   }
-  
+
   .canvas-list .canvas-thumbnail {
     width: 100%;
   }
-  
+
   .canvas-list .canvas-info {
     padding: 1rem;
   }
-  
+
   .dashboard-controls {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .search-box {
     max-width: none;
   }
-  
+
   .view-toggle {
     align-self: flex-end;
   }
@@ -394,15 +394,15 @@
   .dashboard-title h1 {
     font-size: 1.25rem;
   }
-  
+
   .canvas-grid {
     gap: 1rem;
   }
-  
+
   .empty-icon {
     font-size: 3rem;
   }
-  
+
   .dashboard-empty h2 {
     font-size: 1.25rem;
   }
@@ -434,4 +434,3 @@
   font-size: 0.9rem;
   margin-bottom: 0;
 }
-

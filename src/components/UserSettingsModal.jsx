@@ -30,20 +30,20 @@ export default function UserSettingsModal({ isOpen, onClose, theme, onThemeChang
       value: 'light',
       label: 'Light',
       icon: '☀️',
-      description: 'Clean, bright interface'
+      description: 'Clean, bright interface',
     },
     {
       value: 'dark',
       label: 'Dark',
       icon: '🌙',
-      description: 'Easy on the eyes'
+      description: 'Easy on the eyes',
     },
     {
       value: 'system',
       label: 'System',
       icon: '💻',
-      description: 'Match your device'
-    }
+      description: 'Match your device',
+    },
   ];
 
   return (
@@ -51,12 +51,15 @@ export default function UserSettingsModal({ isOpen, onClose, theme, onThemeChang
       <div className="settings-modal">
         <div className="settings-modal-header">
           <h2>Settings</h2>
-          <button
-            className="settings-modal-close"
-            onClick={onClose}
-            aria-label="Close settings"
-          >
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+          <button className="settings-modal-close" onClick={onClose} aria-label="Close settings">
+            <svg
+              viewBox="0 0 24 24"
+              width="24"
+              height="24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <path d="M18 6L6 18M6 6l12 12" />
             </svg>
           </button>
@@ -65,9 +68,7 @@ export default function UserSettingsModal({ isOpen, onClose, theme, onThemeChang
         <div className="settings-modal-content">
           <div className="settings-section">
             <h3 className="settings-section-title">Appearance</h3>
-            <p className="settings-section-description">
-              Customize how CollabCanvas looks for you
-            </p>
+            <p className="settings-section-description">Customize how CollabCanvas looks for you</p>
 
             <div className="theme-options">
               {themeOptions.map((option) => (
@@ -82,7 +83,15 @@ export default function UserSettingsModal({ isOpen, onClose, theme, onThemeChang
                     <div className="theme-option-description">{option.description}</div>
                   </div>
                   {selectedTheme === option.value && (
-                    <svg className="theme-option-check" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg
+                      className="theme-option-check"
+                      viewBox="0 0 24 24"
+                      width="20"
+                      height="20"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
                       <path d="M20 6L9 17l-5-5" />
                     </svg>
                   )}
@@ -93,12 +102,9 @@ export default function UserSettingsModal({ isOpen, onClose, theme, onThemeChang
         </div>
 
         <div className="settings-modal-footer">
-          <p className="settings-info">
-            Theme preference is saved locally on your device
-          </p>
+          <p className="settings-info">Theme preference is saved locally on your device</p>
         </div>
       </div>
     </div>
   );
 }
-

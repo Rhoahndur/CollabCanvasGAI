@@ -5,7 +5,7 @@ import './ZoomControls.css';
  * ZoomControls component - Provides zoom in/out buttons and zoom level display
  * Alternative to mousewheel zoom for browsers with gesture conflicts (like Safari)
  */
-const ZoomControls = memo(function ZoomControls({ 
+const ZoomControls = memo(function ZoomControls({
   zoom,
   onZoomIn,
   onZoomOut,
@@ -20,30 +20,30 @@ const ZoomControls = memo(function ZoomControls({
   const [isEditing, setIsEditing] = useState(false);
   const inputRef = useRef(null);
   const updateTimerRef = useRef(null);
-  
+
   // Update input when zoom changes externally (but not while editing)
   useEffect(() => {
     if (!isEditing) {
       setInputValue(String(Math.round(zoom * 100)));
     }
   }, [zoom, isEditing]);
-  
+
   // Handle input change with debounced update
   const handleInputChange = (e) => {
     const value = e.target.value.replace(/[^0-9]/g, ''); // Only allow digits
     setInputValue(value);
-    
+
     // Clear existing timer
     if (updateTimerRef.current) {
       clearTimeout(updateTimerRef.current);
     }
-    
+
     // Set new timer for 5 second debounce
     updateTimerRef.current = setTimeout(() => {
       applyZoomValue(value);
     }, 5000);
   };
-  
+
   // Apply zoom value
   const applyZoomValue = (value) => {
     const numValue = parseInt(value, 10);
@@ -59,7 +59,7 @@ const ZoomControls = memo(function ZoomControls({
     }
     setIsEditing(false);
   };
-  
+
   // Handle input blur
   const handleInputBlur = () => {
     if (updateTimerRef.current) {
@@ -67,7 +67,7 @@ const ZoomControls = memo(function ZoomControls({
     }
     applyZoomValue(inputValue);
   };
-  
+
   // Handle input focus
   const handleInputFocus = () => {
     setIsEditing(true);
@@ -76,7 +76,7 @@ const ZoomControls = memo(function ZoomControls({
       inputRef.current.select();
     }
   };
-  
+
   // Handle Enter key
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
@@ -91,7 +91,7 @@ const ZoomControls = memo(function ZoomControls({
       inputRef.current?.blur();
     }
   };
-  
+
   // Handle fit canvas button click
   const handleFitCanvas = () => {
     if (updateTimerRef.current) {
@@ -102,7 +102,7 @@ const ZoomControls = memo(function ZoomControls({
     }
     setIsEditing(false);
   };
-  
+
   const canZoomIn = zoom < maxZoom;
   const canZoomOut = zoom > minZoom;
 
@@ -117,10 +117,10 @@ const ZoomControls = memo(function ZoomControls({
           aria-label="Zoom out"
         >
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            <path d="M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           </svg>
         </button>
-        
+
         <div className="zoom-input-container">
           <input
             ref={inputRef}
@@ -136,7 +136,7 @@ const ZoomControls = memo(function ZoomControls({
           />
           <span className="zoom-percent-sign">%</span>
         </div>
-        
+
         <button
           className="zoom-btn zoom-in"
           onClick={onZoomIn}
@@ -145,11 +145,16 @@ const ZoomControls = memo(function ZoomControls({
           aria-label="Zoom in"
         >
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            <path
+              d="M12 5v14M5 12h14"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
           </svg>
         </button>
       </div>
-      
+
       {/* Fit Canvas button */}
       <button
         className="zoom-btn zoom-fit"
@@ -158,7 +163,13 @@ const ZoomControls = memo(function ZoomControls({
         aria-label="Fit canvas to view"
       >
         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <path
+            d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </svg>
       </button>
     </div>
@@ -166,4 +177,3 @@ const ZoomControls = memo(function ZoomControls({
 });
 
 export default ZoomControls;
-

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
-import { 
-  getUserCanvases, 
-  createCanvas, 
+import {
+  getUserCanvases,
+  createCanvas,
   deleteCanvas,
   updateCanvasMetadata,
   duplicateCanvas,
@@ -49,10 +49,10 @@ function CanvasDashboard({ onOpenCanvas }) {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Auto-migrate if needed
       await autoMigrate(user.uid, user.displayName, user);
-      
+
       // Load canvases
       const userCanvases = await getUserCanvases(user.uid);
       setCanvases(userCanvases);
@@ -70,14 +70,14 @@ function CanvasDashboard({ onOpenCanvas }) {
       setShowLimitModal(true);
       return;
     }
-    
+
     try {
       const canvasId = await createCanvas(user.uid, name, template);
       console.log('✅ Canvas created:', canvasId);
-      
+
       // Reload canvases
       await loadCanvases();
-      
+
       // Open the new canvas
       onOpenCanvas(canvasId, name);
     } catch (error) {
@@ -90,7 +90,7 @@ function CanvasDashboard({ onOpenCanvas }) {
     try {
       await deleteCanvas(canvasId, user.uid);
       console.log('✅ Canvas deleted:', canvasId);
-      
+
       // Reload canvases
       await loadCanvases();
     } catch (error) {
@@ -103,10 +103,10 @@ function CanvasDashboard({ onOpenCanvas }) {
     try {
       await updateCanvasMetadata(canvasId, { name: newName });
       console.log('✅ Canvas renamed:', canvasId, newName);
-      
+
       // Update local state
-      setCanvases(prevCanvases =>
-        prevCanvases.map(canvas =>
+      setCanvases((prevCanvases) =>
+        prevCanvases.map((canvas) =>
           canvas.id === canvasId ? { ...canvas, name: newName } : canvas
         )
       );
@@ -121,10 +121,10 @@ function CanvasDashboard({ onOpenCanvas }) {
       const newName = `${canvasName} (Copy)`;
       const newCanvasId = await duplicateCanvas(canvasId, user.uid, newName);
       console.log('✅ Canvas duplicated:', canvasId, '→', newCanvasId);
-      
+
       // Reload canvases
       await loadCanvases();
-      
+
       // Optionally open the new canvas
       // onOpenCanvas(newCanvasId, newName);
     } catch (error) {
@@ -137,10 +137,10 @@ function CanvasDashboard({ onOpenCanvas }) {
     try {
       const newStarred = await toggleCanvasStarred(canvasId, user.uid);
       console.log('⭐ Canvas star toggled:', canvasId, newStarred);
-      
+
       // Update local state
-      setCanvases(prevCanvases =>
-        prevCanvases.map(canvas =>
+      setCanvases((prevCanvases) =>
+        prevCanvases.map((canvas) =>
           canvas.id === canvasId ? { ...canvas, starred: newStarred } : canvas
         )
       );
@@ -151,12 +151,12 @@ function CanvasDashboard({ onOpenCanvas }) {
 
   // Filter and sort canvases
   const filteredCanvases = canvases
-    .filter(canvas => {
+    .filter((canvas) => {
       // Search query filter
       if (!canvas.name.toLowerCase().includes(searchQuery.toLowerCase())) {
         return false;
       }
-      
+
       // Role filter
       if (filterBy === 'owned' && canvas.role !== 'owner') {
         return false;
@@ -164,14 +164,14 @@ function CanvasDashboard({ onOpenCanvas }) {
       if (filterBy === 'shared' && canvas.role === 'owner') {
         return false;
       }
-      
+
       return true;
     })
     .sort((a, b) => {
       // Starred canvases always first
       if (a.starred && !b.starred) return -1;
       if (!a.starred && b.starred) return 1;
-      
+
       // Then by selected sort option
       switch (sortBy) {
         case 'name':
@@ -230,38 +230,38 @@ function CanvasDashboard({ onOpenCanvas }) {
             {canvases.length} {canvases.length === 1 ? 'canvas' : 'canvases'}
           </span>
         </div>
-        
+
         <div className="dashboard-actions">
           {user && (
             <div className="user-display">
               <span className="user-name">{user.displayName || user.email}</span>
             </div>
           )}
-          
-          <button 
-            className="btn btn-primary"
-            onClick={() => setShowCreateModal(true)}
-          >
+
+          <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
             ＋ New Canvas
           </button>
-          
+
           <button
             className="btn btn-secondary"
             onClick={() => setIsSettingsOpen(true)}
             title="Settings"
             aria-label="Open settings"
           >
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              viewBox="0 0 24 24"
+              width="16"
+              height="16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <circle cx="12" cy="12" r="3" />
               <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6m-1.36-6.36l-4.24 4.24m-4.24 4.24l-4.24 4.24" />
             </svg>
           </button>
-          
-          <button
-            className="btn btn-secondary"
-            onClick={signOut}
-            title="Sign out"
-          >
+
+          <button className="btn btn-secondary" onClick={signOut} title="Sign out">
             Sign Out
           </button>
         </div>
@@ -290,7 +290,7 @@ function CanvasDashboard({ onOpenCanvas }) {
           </button>
         </div>
       )}
-      
+
       {/* Search and View Controls */}
       {canvases.length > 0 && (
         <div className="dashboard-controls">
@@ -303,7 +303,7 @@ function CanvasDashboard({ onOpenCanvas }) {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          
+
           <div className="sort-select">
             <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
               <option value="lastAccessed">Last Accessed</option>
@@ -311,7 +311,7 @@ function CanvasDashboard({ onOpenCanvas }) {
               <option value="created">Date Created</option>
             </select>
           </div>
-          
+
           <div className="view-toggle">
             <button
               className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`}
@@ -356,10 +356,7 @@ function CanvasDashboard({ onOpenCanvas }) {
           <div className="empty-icon">🎨</div>
           <h2>No canvases yet</h2>
           <p>Create your first canvas to get started!</p>
-          <button
-            className="btn btn-primary btn-large"
-            onClick={() => setShowCreateModal(true)}
-          >
+          <button className="btn btn-primary btn-large" onClick={() => setShowCreateModal(true)}>
             ＋ Create Your First Canvas
           </button>
         </div>
@@ -372,36 +369,36 @@ function CanvasDashboard({ onOpenCanvas }) {
         onCreateCanvas={handleCreateCanvas}
         userCanvasCount={canvases.length}
       />
-      
+
       {/* Canvas Limit Modal */}
       {showLimitModal && (
         <div className="modal-overlay" onClick={() => setShowLimitModal(false)}>
           <div className="modal-content limit-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Canvas Limit Reached</h2>
-              <button className="modal-close" onClick={() => setShowLimitModal(false)}>✕</button>
+              <button className="modal-close" onClick={() => setShowLimitModal(false)}>
+                ✕
+              </button>
             </div>
             <div className="modal-body">
               <div className="limit-icon">🎨</div>
               <p className="limit-message">
-                You've reached the maximum of <strong>{CANVAS_LIMIT} canvases</strong> for your account.
+                You've reached the maximum of <strong>{CANVAS_LIMIT} canvases</strong> for your
+                account.
               </p>
               <p className="limit-hint">
                 To create a new canvas, please delete an existing one first.
               </p>
             </div>
             <div className="modal-footer">
-              <button 
-                className="btn btn-primary" 
-                onClick={() => setShowLimitModal(false)}
-              >
+              <button className="btn btn-primary" onClick={() => setShowLimitModal(false)}>
                 Got it
               </button>
             </div>
           </div>
         </div>
       )}
-      
+
       {/* User Settings Modal */}
       <UserSettingsModal
         isOpen={isSettingsOpen}
@@ -414,4 +411,3 @@ function CanvasDashboard({ onOpenCanvas }) {
 }
 
 export default CanvasDashboard;
-

@@ -22,8 +22,8 @@ const EXAMPLE_PROMPTS = [
       'Create 5 blue rectangles',
       'Add 3 red circles in a row',
       'Make a grid of 3x3 squares',
-      'Create a text box that says "Hello"'
-    ]
+      'Create a text box that says "Hello"',
+    ],
   },
   {
     category: '📐 Arrange',
@@ -31,8 +31,8 @@ const EXAMPLE_PROMPTS = [
       'Align these shapes to the left',
       'Distribute them horizontally',
       'Arrange in a 2x3 grid',
-      'Center everything on the canvas'
-    ]
+      'Center everything on the canvas',
+    ],
   },
   {
     category: '👁️ Vision',
@@ -40,8 +40,8 @@ const EXAMPLE_PROMPTS = [
       'What colors am I using?',
       'Create rectangles around the blue circle',
       'Fill the empty space on the right',
-      'Match the pattern on the left'
-    ]
+      'Match the pattern on the left',
+    ],
   },
   {
     category: '✨ Transform',
@@ -49,8 +49,8 @@ const EXAMPLE_PROMPTS = [
       'Make them all green',
       'Rotate selected shapes 45 degrees',
       'Make all circles bigger',
-      'Change the layout to be symmetric'
-    ]
+      'Change the layout to be symmetric',
+    ],
   },
   {
     category: '❓ Ask',
@@ -58,9 +58,9 @@ const EXAMPLE_PROMPTS = [
       'How many shapes are there?',
       'Describe the current layout',
       'What would make this balanced?',
-      'Suggest improvements'
-    ]
-  }
+      'Suggest improvements',
+    ],
+  },
 ];
 
 /**
@@ -68,8 +68,8 @@ const EXAMPLE_PROMPTS = [
  * - Canvas Chat: Real-time chat for users on the same canvas
  * - Canny: AI assistant for help and suggestions with canvas manipulation tools
  */
-function ChatPanel({ 
-  canvasId, 
+function ChatPanel({
+  canvasId,
   user,
   // Canvas operations for Canny
   shapes = [],
@@ -80,7 +80,7 @@ function ChatPanel({
   selectShape,
   deselectShape,
   viewport = { offsetX: 0, offsetY: 0, zoom: 1, centerX: 0, centerY: 0 },
-  svgRef // SVG element reference for canvas capture
+  svgRef, // SVG element reference for canvas capture
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('canvas'); // 'canvas' or 'canny'
@@ -99,14 +99,12 @@ function ChatPanel({
   const resizeStartX = useRef(0);
   const resizeStartWidth = useRef(0);
   const exampleSubmitTimeoutRef = useRef(null);
-  
+
   // Use AI SDK's useChat hook for streaming with tool support
   // In production (Vercel), uses /api/chat
   // In development, uses localhost:3001/api/chat
-  const apiEndpoint = import.meta.env.PROD 
-    ? '/api/chat' 
-    : 'http://localhost:3001/api/chat';
-  
+  const apiEndpoint = import.meta.env.PROD ? '/api/chat' : 'http://localhost:3001/api/chat';
+
   const { messages, input, handleInputChange, handleSubmit, isLoading, error, append } = useChat({
     api: apiEndpoint,
     maxToolRoundtrips: 5, // Allow automatic tool execution
@@ -114,25 +112,34 @@ function ChatPanel({
       {
         id: 'welcome',
         role: 'assistant',
-        content: '👋 Hi! I\'m Canny, your CollabCanvas assistant! I can manipulate the canvas for you and even SEE what\'s on it! Try "create rectangles around the blue circle" or "what colors am I using?" 🎨👁️✨',
-      }
+        content:
+          '👋 Hi! I\'m Canny, your CollabCanvas assistant! I can manipulate the canvas for you and even SEE what\'s on it! Try "create rectangles around the blue circle" or "what colors am I using?" 🎨👁️✨',
+      },
     ],
     // Handle tool calls from Canny
     experimental_onToolCall: async (toolCall) => {
-      console.log('🔧 Canny is calling tool:', toolCall.toolName, 'with args:', toolCall.args, 'TOOL CALL EVENT FIRED!');
-      
+      console.log(
+        '🔧 Canny is calling tool:',
+        toolCall.toolName,
+        'with args:',
+        toolCall.args,
+        'TOOL CALL EVENT FIRED!'
+      );
+
       // Emit debug event for tool call
-      window.dispatchEvent(new CustomEvent('canny-debug', {
-        detail: {
-          type: 'tool-call',
-          data: {
-            toolName: toolCall.toolName,
-            arguments: toolCall.args
+      window.dispatchEvent(
+        new CustomEvent('canny-debug', {
+          detail: {
+            type: 'tool-call',
+            data: {
+              toolName: toolCall.toolName,
+              arguments: toolCall.args,
+            },
+            timestamp: Date.now(),
           },
-          timestamp: Date.now()
-        }
-      }));
-      
+        })
+      );
+
       // Execute the tool
       const context = {
         shapes,
@@ -144,57 +151,63 @@ function ChatPanel({
         deselectShape,
         viewport,
         canvasId,
-        userId: user?.uid
+        userId: user?.uid,
       };
-      
+
       const result = executeCanvasTool(toolCall.toolName, toolCall.args, context);
-      
+
       console.log('✅ Tool execution result:', result);
-      
+
       // Emit debug event for tool result
-      window.dispatchEvent(new CustomEvent('canny-debug', {
-        detail: {
-          type: 'tool-result',
-          data: {
-            toolName: toolCall.toolName,
-            result: result
+      window.dispatchEvent(
+        new CustomEvent('canny-debug', {
+          detail: {
+            type: 'tool-result',
+            data: {
+              toolName: toolCall.toolName,
+              result: result,
+            },
+            timestamp: Date.now(),
           },
-          timestamp: Date.now()
-        }
-      }));
-      
+        })
+      );
+
       // Return result to Canny
       return result;
     },
     // Log errors
     onError: (error) => {
       console.error('❌ Chat error:', error);
-      window.dispatchEvent(new CustomEvent('canny-debug', {
-        detail: {
-          type: 'error',
-          data: {
-            message: error.message,
-            stack: error.stack
+      window.dispatchEvent(
+        new CustomEvent('canny-debug', {
+          detail: {
+            type: 'error',
+            data: {
+              message: error.message,
+              stack: error.stack,
+            },
+            timestamp: Date.now(),
           },
-          timestamp: Date.now()
-        }
-      }));
+        })
+      );
     },
     // Log when response is received
     onFinish: (message) => {
       console.log('✅ Response finished:', message);
-      window.dispatchEvent(new CustomEvent('canny-debug', {
-        detail: {
-          type: 'response',
-          data: {
-            role: message.role,
-            content: message.content,
-            toolCalls: message.tool_calls
+      window.dispatchEvent(
+        new CustomEvent('canny-debug', {
+          detail: {
+            type: 'response',
+            data: {
+              role: message.role,
+              content: message.content,
+              toolCalls: message.tool_calls,
+            },
+            timestamp: Date.now(),
           },
-          timestamp: Date.now()
-        }
-      }));
-    }
+        })
+      );
+    },
   });
 
   // Cleanup on unmount
@@ -221,96 +234,102 @@ function ChatPanel({
   // Custom submit handler with guardrails
   const handleCannySubmit = async (e, overrideInput = null) => {
     e.preventDefault();
-    
+
     // Clear any pending auto-submit from example prompts
     if (exampleSubmitTimeoutRef.current) {
       clearTimeout(exampleSubmitTimeoutRef.current);
       exampleSubmitTimeoutRef.current = null;
     }
-    
+
     // Use override input if provided (for example prompts), otherwise use current input state
     const inputToSubmit = overrideInput !== null ? overrideInput : input;
     const trimmedInput = inputToSubmit.trim();
     if (!trimmedInput) return;
-    
+
     // Guardrail 1: Message length limit
     if (trimmedInput.length > MAX_MESSAGE_LENGTH) {
-      alert(`Message too long! Please keep it under ${MAX_MESSAGE_LENGTH} characters (currently ${trimmedInput.length}).`);
+      alert(
+        `Message too long! Please keep it under ${MAX_MESSAGE_LENGTH} characters (currently ${trimmedInput.length}).`
+      );
       return;
     }
-    
+
     // Guardrail 2: Rate limiting (cooldown between requests)
     const now = Date.now();
     const timeSinceLastRequest = now - lastRequestTime;
     if (timeSinceLastRequest < REQUEST_COOLDOWN && lastRequestTime > 0) {
       const waitTime = Math.ceil((REQUEST_COOLDOWN - timeSinceLastRequest) / 1000);
-      alert(`Please wait ${waitTime} second${waitTime > 1 ? 's' : ''} before sending another message.`);
+      alert(
+        `Please wait ${waitTime} second${waitTime > 1 ? 's' : ''} before sending another message.`
+      );
       return;
     }
-    
+
     setLastRequestTime(now);
     setShowExamples(false); // Hide examples after first message
-    
+
     // Check if vision should be used
     const useVision = shouldUseVision(trimmedInput);
-    
+
     // Create abort controller for this request
     abortControllerRef.current = new AbortController();
-    
+
     if (useVision && svgRef?.current) {
       try {
         setIsCapturingCanvas(true);
         setVisionReason(getVisionReason(trimmedInput));
-        
+
         console.log('👁️ Vision detected! Capturing canvas...');
-        
+
         // Capture canvas as image
         const canvasImage = await captureCanvasImage(svgRef.current);
-        
+
         console.log('✅ Canvas captured, sending with vision...');
-        
+
         // Emit debug event for request with vision
-        window.dispatchEvent(new CustomEvent('canny-debug', {
-          detail: {
-            type: 'request',
-            data: {
-              message: trimmedInput,
-              withVision: true,
-              imageSize: `${canvasImage.length} bytes`
+        window.dispatchEvent(
+          new CustomEvent('canny-debug', {
+            detail: {
+              type: 'request',
+              data: {
+                message: trimmedInput,
+                withVision: true,
+                imageSize: `${canvasImage.length} bytes`,
+              },
+              timestamp: Date.now(),
             },
-            timestamp: Date.now()
-          }
-        }));
-        
+          })
+        );
+
         // Send message with image using append()
         await append({
           role: 'user',
           content: [
             {
               type: 'text',
-              text: trimmedInput
+              text: trimmedInput,
             },
             {
               type: 'image_url',
               image_url: {
-                url: canvasImage
-              }
-            }
-          ]
+                url: canvasImage,
+              },
+            },
+          ],
         });
-        
+
         // Clear input after sending if we used override
         if (overrideInput !== null) {
           handleInputChange({ target: { value: '' } });
         }
-        
+
         setIsCapturingCanvas(false);
         setVisionReason(null);
       } catch (error) {
         console.error('Failed to capture canvas:', error);
         setIsCapturingCanvas(false);
         setVisionReason(null);
-        
+
         // Fallback: send without vision
         if (error.name !== 'AbortError') {
           handleSubmit(e);
@@ -320,23 +339,25 @@ function ChatPanel({
       // No vision needed, use regular submit
       try {
         // Emit debug event for regular request
-        window.dispatchEvent(new CustomEvent('canny-debug', {
-          detail: {
-            type: 'request',
-            data: {
-              message: trimmedInput,
-              withVision: false
+        window.dispatchEvent(
+          new CustomEvent('canny-debug', {
+            detail: {
+              type: 'request',
+              data: {
+                message: trimmedInput,
+                withVision: false,
+              },
+              timestamp: Date.now(),
             },
-            timestamp: Date.now()
-          }
-        }));
-        
+          })
+        );
+
         // If we have an override input, use append() to send directly
         // This ensures we send the correct message even if input state changed
         if (overrideInput !== null) {
           await append({
             role: 'user',
-            content: trimmedInput
+            content: trimmedInput,
           });
           // Clear input after sending
           handleInputChange({ target: { value: '' } });
@@ -358,10 +379,10 @@ function ChatPanel({
       clearTimeout(exampleSubmitTimeoutRef.current);
       exampleSubmitTimeoutRef.current = null;
     }
-    
+
     setShowExamples(false); // Close dropdown
     handleInputChange({ target: { value: prompt } });
-    
+
     // Auto-submit after short delay so user can see what was filled in
     // Pass the prompt directly to avoid race conditions with state updates
     exampleSubmitTimeoutRef.current = setTimeout(() => {
@@ -438,7 +459,7 @@ function ChatPanel({
       snapshot.forEach((childSnapshot) => {
         msgs.push({
           id: childSnapshot.key,
-          ...childSnapshot.val()
+          ...childSnapshot.val(),
         });
       });
       setCanvasMessages(msgs);
@@ -451,20 +472,20 @@ function ChatPanel({
   // IMPORTANT: Only depends on `messages` to avoid infinite loops!
   useEffect(() => {
     const lastMessage = messages[messages.length - 1];
-    
+
     if (!lastMessage) return;
-    
+
     // Create a unique ID for this message to track if we've processed it
     const messageId = lastMessage.id || `msg_${messages.length - 1}`;
-    
+
     let toolCallsToExecute = [];
-    
+
     // Method 1: Check if message has tool_calls property (standard format)
     if (lastMessage?.tool_calls && Array.isArray(lastMessage.tool_calls)) {
       console.log('🔧 Detected tool calls in message (standard format):', lastMessage.tool_calls);
       toolCallsToExecute = lastMessage.tool_calls;
     }
-    
+
     // Method 2: Check if message content contains our special marker
     if (lastMessage?.content && typeof lastMessage.content === 'string') {
       const markerMatch = lastMessage.content.match(/__TOOL_CALLS__(.+?)__END_TOOL_CALLS__/);
@@ -478,35 +499,35 @@ function ChatPanel({
         }
       }
     }
-    
+
     // Execute any detected tool calls (but only once per message!)
     if (toolCallsToExecute.length > 0) {
       for (const toolCall of toolCallsToExecute) {
         // Create unique ID for this tool call
         const toolCallId = `${messageId}_${toolCall.id || toolCall.function?.name}`;
-        
+
         // Skip if already executed
         if (executedToolCalls.has(toolCallId)) {
           console.log(`⏭️ Skipping already executed tool call: ${toolCallId}`);
           continue;
         }
-        
+
         // Mark as executed BEFORE running to prevent race conditions
         executedToolCalls.add(toolCallId);
-        
+
         if (toolCall.type === 'function' && toolCall.function) {
           const toolName = toolCall.function.name;
           let args;
-          
+
           try {
             args = JSON.parse(toolCall.function.arguments);
           } catch (e) {
             console.error('Failed to parse tool arguments:', e);
             continue;
           }
-          
+
           console.log(`🛠️ Executing tool (${toolCallId}): ${toolName}`, args);
-          
+
           // Build context (use latest values from closure)
           const context = {
             shapes,
@@ -518,9 +539,9 @@ function ChatPanel({
             deselectShape,
             viewport,
             canvasId,
-            userId: user?.uid
+            userId: user?.uid,
           };
-          
+
           // Execute the tool
           const result = executeCanvasTool(toolName, args, context);
           console.log('✅ Tool result:', result);
@@ -541,7 +562,7 @@ function ChatPanel({
   // Send canvas chat message
   const handleCanvasChatSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!canvasInput.trim() || !user || !canvasId) return;
 
     try {
@@ -550,7 +571,7 @@ function ChatPanel({
         text: canvasInput.trim(),
         userId: user.uid,
         userName: user.displayName || user.email,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
 
       setCanvasInput('');
@@ -568,9 +589,9 @@ function ChatPanel({
 
   // Format timestamp
   const formatTime = (timestamp) => {
-    return new Date(timestamp).toLocaleTimeString([], { 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    return new Date(timestamp).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
     });
   };
 
@@ -593,7 +614,7 @@ function ChatPanel({
       '#5DADE2', // Light Blue
       '#F39C12', // Orange
     ];
-    
+
     // Use userId to generate consistent color index
     let hash = 0;
     for (let i = 0; i < userId.length; i++) {
@@ -604,33 +625,47 @@ function ChatPanel({
   };
 
   return (
-    <div 
+    <div
       className={`chat-panel ${isOpen ? 'open' : 'closed'} ${isResizing ? 'resizing' : ''}`}
       style={{ width: isOpen ? `${panelWidth}px` : undefined }}
     >
       {/* Resize handle */}
       {isOpen && (
-        <div 
+        <div
           className="chat-resize-handle"
           onMouseDown={handleResizeStart}
           title="Drag to resize"
         />
       )}
-      
+
       {/* Toggle button */}
-      <button 
+      <button
         className="chat-toggle"
         onClick={handleToggle}
         title={isOpen ? 'Close Chat' : 'Open Chat'}
         aria-label={isOpen ? 'Close Chat' : 'Open Chat'}
       >
         {isOpen ? (
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            viewBox="0 0 24 24"
+            width="24"
+            height="24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <path d="M19 9l-7 7-7-7" />
           </svg>
         ) : (
           <>
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              viewBox="0 0 24 24"
+              width="20"
+              height="20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <circle cx="12" cy="12" r="10" />
               <path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01" />
             </svg>
@@ -648,7 +683,14 @@ function ChatPanel({
               className={`chat-tab ${activeTab === 'canvas' ? 'active' : ''}`}
               onClick={() => setActiveTab('canvas')}
             >
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
               Users
@@ -657,7 +699,14 @@ function ChatPanel({
               className={`chat-tab ${activeTab === 'canny' ? 'active' : ''}`}
               onClick={() => setActiveTab('canny')}
             >
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
                 <circle cx="12" cy="12" r="10" />
                 <path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01" />
               </svg>
@@ -666,24 +715,38 @@ function ChatPanel({
           </div>
           <div className="chat-header-actions">
             {activeTab === 'canny' && (
-              <button 
+              <button
                 className="chat-action-btn"
                 onClick={handleClear}
                 title="Clear chat"
                 aria-label="Clear chat"
               >
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="16"
+                  height="16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
                 </svg>
               </button>
             )}
-            <button 
+            <button
               className="chat-action-btn"
               onClick={handleToggle}
               title="Minimize"
               aria-label="Minimize"
             >
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
                 <path d="M19 9l-7 7-7-7" />
               </svg>
             </button>
@@ -696,7 +759,14 @@ function ChatPanel({
             <div className="chat-messages">
               {canvasMessages.length === 0 ? (
                 <div className="chat-empty-state">
-                  <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="48"
+                    height="48"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  >
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                   </svg>
                   <p>No messages yet</p>
@@ -707,30 +777,28 @@ function ChatPanel({
                   {canvasMessages.map((msg) => {
                     const isOwnMessage = user && msg.userId === user.uid;
                     const userColor = getUserColor(msg.userId);
-                    
+
                     return (
-                      <div key={msg.id} className={`chat-message ${isOwnMessage ? 'user' : 'other'}`}>
-                        <div 
+                      <div
+                        key={msg.id}
+                        className={`chat-message ${isOwnMessage ? 'user' : 'other'}`}
+                      >
+                        <div
                           className="message-avatar"
-                          style={{ 
+                          style={{
                             backgroundColor: `${userColor}20`,
                             color: userColor,
-                            border: `2px solid ${userColor}40`
+                            border: `2px solid ${userColor}40`,
                           }}
                         >
                           {msg.userName.charAt(0).toUpperCase()}
                         </div>
                         <div className="message-content">
                           <div className="message-header">
-                            <span 
-                              className="message-sender"
-                              style={{ color: userColor }}
-                            >
+                            <span className="message-sender" style={{ color: userColor }}>
                               {msg.userName}
                             </span>
-                            {isOwnMessage && (
-                              <span className="message-you-badge">You</span>
-                            )}
+                            {isOwnMessage && <span className="message-you-badge">You</span>}
                             <span className="message-time">{formatTime(msg.timestamp)}</span>
                           </div>
                           <div className="message-text">{msg.text}</div>
@@ -753,8 +821,8 @@ function ChatPanel({
                 disabled={!user || !canvasId}
                 aria-label="Canvas chat message input"
               />
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 className="chat-send-btn"
                 disabled={!canvasInput.trim() || !user || !canvasId}
                 aria-label="Send message"
@@ -771,75 +839,80 @@ function ChatPanel({
         {activeTab === 'canny' && (
           <>
             <div className="chat-messages">
-          
-          {messages.map((message, index) => {
-            // Skip rendering messages that only contain tool calls (no text content)
-            if (message.tool_calls && !message.content) {
-              return null;
-            }
-            
-            // Extract text content from message (handle both string and multimodal array formats)
-            let cleanContent = '';
-            
-            if (typeof message.content === 'string') {
-              // Simple string content
-              cleanContent = message.content.replace(/__TOOL_CALLS__.+?__END_TOOL_CALLS__/g, '').trim();
-            } else if (Array.isArray(message.content)) {
-              // Multimodal content (text + image) - extract text parts only
-              cleanContent = message.content
-                .filter(part => part.type === 'text')
-                .map(part => part.text)
-                .join(' ')
-                .replace(/__TOOL_CALLS__.+?__END_TOOL_CALLS__/g, '')
-                .trim();
-            }
-            
-            // Skip if message is now empty after removing marker
-            if (!cleanContent && !message.tool_calls) {
-              return null;
-            }
-            
-            const messageType = getMessageType(message.role);
-            return (
-              <div key={message.id || index} className={`chat-message ${messageType}`}>
-                <div className="message-avatar">
-                  {messageType === 'user' ? '👤' : messageType === 'assistant' ? '🤖' : 'ℹ️'}
-                </div>
-                <div className="message-content">
-                  <div className="message-text">{cleanContent}</div>
-                  {message.createdAt && (
-                    <div className="message-time">
-                      {new Date(message.createdAt).toLocaleTimeString([], { 
-                        hour: '2-digit', 
-                        minute: '2-digit' 
-                      })}
+              {messages.map((message, index) => {
+                // Skip rendering messages that only contain tool calls (no text content)
+                if (message.tool_calls && !message.content) {
+                  return null;
+                }
+
+                // Extract text content from message (handle both string and multimodal array formats)
+                let cleanContent = '';
+
+                if (typeof message.content === 'string') {
+                  // Simple string content
+                  cleanContent = message.content
+                    .replace(/__TOOL_CALLS__.+?__END_TOOL_CALLS__/g, '')
+                    .trim();
+                } else if (Array.isArray(message.content)) {
+                  // Multimodal content (text + image) - extract text parts only
+                  cleanContent = message.content
+                    .filter((part) => part.type === 'text')
+                    .map((part) => part.text)
+                    .join(' ')
+                    .replace(/__TOOL_CALLS__.+?__END_TOOL_CALLS__/g, '')
+                    .trim();
+                }
+
+                // Skip if message is now empty after removing marker
+                if (!cleanContent && !message.tool_calls) {
+                  return null;
+                }
+
+                const messageType = getMessageType(message.role);
+                return (
+                  <div key={message.id || index} className={`chat-message ${messageType}`}>
+                    <div className="message-avatar">
+                      {messageType === 'user' ? '👤' : messageType === 'assistant' ? '🤖' : 'ℹ️'}
                     </div>
-                  )}
+                    <div className="message-content">
+                      <div className="message-text">{cleanContent}</div>
+                      {message.createdAt && (
+                        <div className="message-time">
+                          {new Date(message.createdAt).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              {isLoading && (
+                <div className="chat-message assistant loading">
+                  <div className="message-avatar">🤖</div>
+                  <div className="message-content">
+                    <div className="message-text typing-indicator">
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-          {isLoading && (
-            <div className="chat-message assistant loading">
-              <div className="message-avatar">🤖</div>
-              <div className="message-content">
-                <div className="message-text typing-indicator">
-                  <span></span><span></span><span></span>
+              )}
+              {error && (
+                <div className="chat-message system error">
+                  <div className="message-avatar">⚠️</div>
+                  <div className="message-content">
+                    <div className="message-text" style={{ color: '#ff6b6b' }}>
+                      <strong>Error:</strong>{' '}
+                      {error.message ||
+                        'Failed to connect to Canny. Make sure the backend server is running and your OpenAI API key is configured.'}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
-          {error && (
-            <div className="chat-message system error">
-              <div className="message-avatar">⚠️</div>
-              <div className="message-content">
-                <div className="message-text" style={{ color: '#ff6b6b' }}>
-                  <strong>Error:</strong> {error.message || 'Failed to connect to Canny. Make sure the backend server is running and your OpenAI API key is configured.'}
-                </div>
-              </div>
-            </div>
-          )}
-          <div ref={cannyMessagesEndRef} />
+              )}
+              <div ref={cannyMessagesEndRef} />
             </div>
 
             {/* Vision indicator */}
@@ -903,7 +976,7 @@ function ChatPanel({
                 disabled={isLoading || isCapturingCanvas}
                 aria-label="Chat message input"
               />
-              
+
               {/* Stop button - visible during loading */}
               {(isLoading || isCapturingCanvas) && (
                 <button
@@ -918,11 +991,11 @@ function ChatPanel({
                   </svg>
                 </button>
               )}
-              
+
               {/* Send button - visible when not loading */}
               {!(isLoading || isCapturingCanvas) && (
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   className="chat-send-btn"
                   disabled={!input.trim()}
                   aria-label="Send message"
@@ -941,4 +1014,3 @@ function ChatPanel({
 }
 
 export default ChatPanel;
-

@@ -7,10 +7,10 @@ import { getUserColor, getContrastColor } from '../utils/colorUtils';
  * Renders a single circle with optional selection highlight
  * Memoized for performance with large numbers of objects
  */
-const Circle = memo(function Circle({ 
+const Circle = memo(function Circle({
   id,
-  x, 
-  y, 
+  x,
+  y,
   radius,
   color,
   rotation = 0,
@@ -41,14 +41,14 @@ const Circle = memo(function Circle({
       onMouseDown(id, e);
     }
   };
-  
+
   const handleDoubleClick = (e) => {
     e.stopPropagation();
     if (onDoubleClick) {
       onDoubleClick(e);
     }
   };
-  
+
   const handleContextMenu = (e) => {
     e.stopPropagation();
     if (onContextMenu) {
@@ -76,7 +76,7 @@ const Circle = memo(function Circle({
         onDoubleClick={handleDoubleClick}
         onContextMenu={handleContextMenu}
       />
-      
+
       {/* Text content (centered) */}
       {text && (
         <text
@@ -95,17 +95,13 @@ const Circle = memo(function Circle({
           }}
         >
           {text.split('\n').map((line, i, arr) => (
-            <tspan
-              key={i}
-              x={x}
-              dy={i === 0 ? -((arr.length - 1) * fontSize) / 2 : fontSize}
-            >
+            <tspan key={i} x={x} dy={i === 0 ? -((arr.length - 1) * fontSize) / 2 : fontSize}>
               {line}
             </tspan>
           ))}
         </text>
       )}
-      
+
       {/* Selection highlight */}
       {isSelected && (
         <circle
@@ -121,7 +117,7 @@ const Circle = memo(function Circle({
           }}
         />
       )}
-      
+
       {/* Lock indicator (subtle overlay) */}
       {isLocked && !isSelected && (
         <>
@@ -137,7 +133,9 @@ const Circle = memo(function Circle({
           />
           {/* Show user name label for locked circle */}
           {lockedByUserName && (
-            <g transform={`translate(${x - (lockedByUserName.length * 7 + 12) / 2}, ${y - radius - 15})`}>
+            <g
+              transform={`translate(${x - (lockedByUserName.length * 7 + 12) / 2}, ${y - radius - 15})`}
+            >
               {/* Label background */}
               <rect
                 x="0"
@@ -147,7 +145,7 @@ const Circle = memo(function Circle({
                 fill={getUserColor(lockedBy)}
                 rx="4"
                 ry="4"
-                style={{ 
+                style={{
                   filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))',
                   pointerEvents: 'none',
                 }}
@@ -173,4 +171,3 @@ const Circle = memo(function Circle({
 });
 
 export default Circle;
-

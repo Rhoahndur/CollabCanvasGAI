@@ -34,7 +34,16 @@ import {
   constrainRectangle,
   constrainCircle,
 } from '../utils/canvasUtils';
-import { testFirestoreConnection, createShape, updateShape, deleteShape, updateCursor, removeCursor, updatePresenceHeartbeat, getUserRole } from '../services/canvasService';
+import {
+  testFirestoreConnection,
+  createShape,
+  updateShape,
+  deleteShape,
+  updateCursor,
+  removeCursor,
+  updatePresenceHeartbeat,
+  getUserRole,
+} from '../services/canvasService';
 import { uploadImage, handlePasteEvent } from '../services/imageService';
 import { startLockCleanup } from '../services/lockCleanupService';
 import { useCanvas } from '../hooks/useCanvas';
@@ -64,167 +73,167 @@ import './Canvas.css';
 /**
  * Canvas component - SVG-based collaborative canvas with pan and zoom
  */
-function Canvas({ 
-  sessionId, 
-  onlineUsersCount = 0, 
+function Canvas({
+  sessionId,
+  onlineUsersCount = 0,
   canvasId = DEFAULT_CANVAS_ID,
   backgroundColor = '#1a1a1a',
   gridVisible = false,
 }) {
   const svgRef = useRef(null);
   const containerRef = useRef(null);
-  
+
   // Auth and canvas state
   const { user, signOut } = useAuth();
-  const { 
-    shapes, 
-    setShapes, 
-    selectedShapeId, 
-    selectShape, 
-    deselectShape, 
+  const {
+    shapes,
+    setShapes,
+    selectedShapeId,
+    selectShape,
+    deselectShape,
     loading: canvasLoading,
     error: canvasError,
     connectionStatus,
     setIsDraggingLocal,
     notifyFirestoreActivity,
-    setBatchDeleting 
+    setBatchDeleting,
   } = useCanvas(user?.uid, user?.displayName, canvasId);
   const { cursors } = useCursors(sessionId, canvasId);
   const { recordAction, popUndo, popRedo, canUndo, canRedo } = useHistory();
-  
+
   // User role for permission checks
   const [userRole, setUserRole] = useState(null);
-  
+
   // Viewport state (pan and zoom)
   const [viewport, setViewport] = useState({
     offsetX: 0,
     offsetY: 0,
     zoom: DEFAULT_ZOOM,
   });
-  
+
   // Pan state
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
-  
+
   // Rectangle creation state
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawStart, setDrawStart] = useState({ x: 0, y: 0 });
   const [drawCurrent, setDrawCurrent] = useState({ x: 0, y: 0 });
-  
+
   // Rectangle dragging state
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [draggedShapeIds, setDraggedShapeIds] = useState([]); // For multi-shape drag
   const [dragInitialPositions, setDragInitialPositions] = useState({}); // Store initial positions of all dragged shapes
-  
+
   // Resize state
   const [isResizing, setIsResizing] = useState(false);
   const [resizeHandle, setResizeHandle] = useState(null); // 'nw', 'ne', 'sw', 'se', 'n', 's', 'e', 'w'
   const [resizeStart, setResizeStart] = useState({ x: 0, y: 0 });
   const [resizeInitial, setResizeInitial] = useState(null); // Initial shape dimensions
-  
+
   // Rotation state
   const [isRotating, setIsRotating] = useState(false);
   const [rotateStart, setRotateStart] = useState({ x: 0, y: 0 });
   const [rotateInitial, setRotateInitial] = useState(0);
-  
+
   // Text editing state
   const [editingTextId, setEditingTextId] = useState(null);
   const [editingText, setEditingText] = useState(''); // Initial rotation angle
-  
+
   // Selected drawing tool
   const [selectedTool, setSelectedTool] = useState(TOOL_TYPES.SELECT);
-  
+
   // Layers panel visibility
   const [isLayersPanelOpen, setIsLayersPanelOpen] = useState(false);
-  
+
   // Multiple selected shape IDs (for multi-select with SELECT tool)
   const [selectedShapeIds, setSelectedShapeIds] = useState([]);
-  
+
   // Selection rectangle (for multi-select)
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectStart, setSelectStart] = useState({ x: 0, y: 0 });
   const [selectCurrent, setSelectCurrent] = useState({ x: 0, y: 0 });
-  
+
   // Clipboard for copy/paste
   const [clipboard, setClipboard] = useState([]);
-  
+
   // Context menu state
   const [contextMenu, setContextMenu] = useState(null); // { x, y, shapeIds }
-  
+
   // Custom polygon drawing state (for click-to-add-vertex mode)
   const [isDrawingCustomPolygon, setIsDrawingCustomPolygon] = useState(false);
   const [customPolygonVertices, setCustomPolygonVertices] = useState([]);
-  
+
   // FPS and performance monitoring
   const [fps, setFps] = useState(0);
   const [renderTime, setRenderTime] = useState(0);
   const frameTimesRef = useRef([]);
   const lastFpsUpdateRef = useRef(Date.now());
   const renderStartRef = useRef(Date.now());
-  
+
   // Container dimensions
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
-  
+
   // Firestore connection status
   const [firestoreStatus, setFirestoreStatus] = useState('testing');
-  
+
   // Cursor tracking
   const lastCursorUpdate = useRef(0);
   const cursorArrivalTime = useRef(Date.now());
-  
+
   // Drag update tracking (for throttling real-time updates)
   const lastDragUpdate = useRef(0);
-  
+
   // Track if user actually interacted (dragged/resized/rotated) vs just clicked
   const didInteractRef = useRef(false);
-  
+
   // Activity tracking for presence updates
   const lastActivityRef = useRef(Date.now());
   const activityThrottleRef = useRef(null);
-  
+
   // File input ref for image uploads
   const fileInputRef = useRef(null);
-  
+
   // Auto-logout after 30 minutes of inactivity
   useEffect(() => {
     if (!user) return;
-    
+
     const checkInactivity = () => {
       const now = Date.now();
       const timeSinceLastActivity = now - lastActivityRef.current;
-      
+
       if (timeSinceLastActivity >= AUTO_LOGOUT_TIMEOUT) {
         console.log('Auto-logout: 30 minutes of inactivity detected');
-        signOut().catch(err => console.error('Auto-logout failed:', err));
+        signOut().catch((err) => console.error('Auto-logout failed:', err));
       }
     };
-    
+
     // Check every minute for inactivity
     const intervalId = setInterval(checkInactivity, 60000);
-    
+
     return () => clearInterval(intervalId);
   }, [user, signOut]);
-  
+
   // Get user role for this canvas
   useEffect(() => {
     if (!user?.uid || !canvasId) return;
-    
+
     const fetchRole = async () => {
       const role = await getUserRole(canvasId, user.uid);
       setUserRole(role);
       console.log(`👤 User role on this canvas: ${role}`);
     };
-    
+
     fetchRole();
   }, [user?.uid, canvasId]);
-  
+
   // Check if user can edit (owner or editor)
   const canEdit = userRole === 'owner' || userRole === 'editor';
   const isViewer = userRole === 'viewer';
-  
+
   // Test Firestore connection on mount
   useEffect(() => {
     const testConnection = async () => {
@@ -233,28 +242,28 @@ function Canvas({
     };
     testConnection();
   }, []);
-  
+
   // Start automatic lock cleanup service
   useEffect(() => {
     if (!canvasId) return;
-    
+
     console.log('🔧 Starting automatic lock cleanup service...');
     const stopCleanup = startLockCleanup(canvasId);
-    
+
     // Cleanup on unmount
     return () => {
       console.log('🛑 Stopping lock cleanup service');
       stopCleanup();
     };
   }, [canvasId]);
-  
+
   // Setup test utilities in dev mode
   useEffect(() => {
     if (SHOW_FPS_COUNTER && user?.uid) {
       setup500Test(user.uid);
       // console.log('🧪 Performance test utilities loaded. Check window.testCanvas');
     }
-    
+
     // Add debug helper to inspect shapes
     if (user) {
       window.debugShapes = {
@@ -265,7 +274,10 @@ function Canvas({
             console.log(`\n[${index}] Shape ID: ${shape.id}`);
             console.log('  Type:', shape.type);
             console.log('  Position:', { x: shape.x, y: shape.y });
-            console.log('  Size:', shape.width ? { width: shape.width, height: shape.height } : { radius: shape.radius });
+            console.log(
+              '  Size:',
+              shape.width ? { width: shape.width, height: shape.height } : { radius: shape.radius }
+            );
             console.log('  Color:', shape.color);
             console.log('  Created by:', shape.createdBy);
             console.log('  Locked by:', shape.lockedBy || 'unlocked');
@@ -274,10 +286,10 @@ function Canvas({
           });
           return shapes;
         },
-        
+
         // Inspect a specific shape by ID
         inspect: (id) => {
-          const shape = shapes.find(s => s.id === id);
+          const shape = shapes.find((s) => s.id === id);
           if (!shape) {
             console.error(`❌ Shape with ID "${id}" not found`);
             return null;
@@ -286,34 +298,40 @@ function Canvas({
           console.log(JSON.stringify(shape, null, 2));
           return shape;
         },
-        
+
         // Find shapes with missing or unusual properties
         findBroken: () => {
           console.log('🔍 Checking for shapes with issues...');
           const issues = [];
-          
-          shapes.forEach(shape => {
+
+          shapes.forEach((shape) => {
             const shapeIssues = [];
-            
+
             if (!shape.id) shapeIssues.push('Missing ID');
             if (!shape.type) shapeIssues.push('Missing type');
             if (shape.x === undefined || shape.x === null) shapeIssues.push('Missing x');
             if (shape.y === undefined || shape.y === null) shapeIssues.push('Missing y');
             if (!shape.color) shapeIssues.push('Missing color');
             if (!shape.createdBy) shapeIssues.push('Missing createdBy');
-            
-            if (shape.type === 'rectangle' && (shape.width === undefined || shape.height === undefined)) {
+
+            if (
+              shape.type === 'rectangle' &&
+              (shape.width === undefined || shape.height === undefined)
+            ) {
               shapeIssues.push('Rectangle missing width/height');
             }
-            if ((shape.type === 'circle' || shape.type === 'polygon') && shape.radius === undefined) {
+            if (
+              (shape.type === 'circle' || shape.type === 'polygon') &&
+              shape.radius === undefined
+            ) {
               shapeIssues.push('Circle/Polygon missing radius');
             }
-            
+
             if (shapeIssues.length > 0) {
               issues.push({ id: shape.id, issues: shapeIssues, shape });
             }
           });
-          
+
           if (issues.length === 0) {
             console.log('✅ All shapes look good!');
           } else {
@@ -324,46 +342,46 @@ function Canvas({
               console.log('    Data:', JSON.stringify(shape, null, 2));
             });
           }
-          
+
           return issues;
         },
-        
+
         // Get current user info
         currentUser: () => {
           console.log('👤 Current user:');
           console.log('  UID:', user?.uid);
           console.log('  Display name:', user?.displayName);
           return user;
-        }
+        },
       };
-      
+
       // Clean up broken shapes
       window.debugShapes.cleanupBroken = async () => {
         if (!user) {
           console.error('❌ You must be logged in to cleanup shapes');
           return;
         }
-        
+
         console.log('🔧 Starting cleanup of broken shapes...');
         const issues = window.debugShapes.findBroken();
-        
+
         if (issues.length === 0) {
           console.log('✅ No broken shapes found!');
           return { deleted: 0, fixed: 0 };
         }
-        
+
         const shouldDelete = window.confirm(
           `Found ${issues.length} shape(s) with issues.\n\n` +
-          `Do you want to DELETE them from the database?\n\n` +
-          `Click OK to DELETE or Cancel to keep them.`
+            `Do you want to DELETE them from the database?\n\n` +
+            `Click OK to DELETE or Cancel to keep them.`
         );
-        
+
         let deletedCount = 0;
         let failedCount = 0;
-        
+
         if (shouldDelete) {
           console.log(`🗑️ Deleting ${issues.length} broken shapes...`);
-          
+
           for (const { id, issues: shapeIssues, shape } of issues) {
             try {
               console.log(`  Deleting broken shape ${id}...`);
@@ -376,51 +394,51 @@ function Canvas({
               console.error(`  ❌ Failed to delete shape ${id}:`, error);
             }
           }
-          
+
           console.log(`\n✅ Cleanup complete!`);
           console.log(`  Deleted: ${deletedCount}`);
           console.log(`  Failed: ${failedCount}`);
-          
+
           notifyFirestoreActivity();
-          
+
           return { deleted: deletedCount, failed: failedCount };
         } else {
           console.log('❌ Cleanup cancelled by user');
           return { deleted: 0, failed: 0 };
         }
       };
-      
+
       // Force delete a specific shape (bypasses all checks)
       window.debugShapes.forceDelete = async (shapeId) => {
         if (!user) {
           console.error('❌ You must be logged in to delete shapes');
           return false;
         }
-        
-        const shape = shapes.find(s => s.id === shapeId);
+
+        const shape = shapes.find((s) => s.id === shapeId);
         if (!shape) {
           console.error(`❌ Shape ${shapeId} not found in local state`);
           return false;
         }
-        
+
         const confirmed = window.confirm(
           `Force delete shape ${shapeId}?\n\n` +
-          `This will attempt to delete it directly from Firestore,\n` +
-          `even if it's locked or has issues.`
+            `This will attempt to delete it directly from Firestore,\n` +
+            `even if it's locked or has issues.`
         );
-        
+
         if (!confirmed) {
           console.log('❌ Force delete cancelled');
           return false;
         }
-        
+
         try {
           console.log(`🗑️ Force deleting shape ${shapeId}...`);
           console.log('  Shape data:', JSON.stringify(shape, null, 2));
-          
+
           await deleteShape(canvasId, shapeId);
           console.log(`✅ Shape ${shapeId} force deleted from database`);
-          
+
           notifyFirestoreActivity();
           return true;
         } catch (error) {
@@ -428,7 +446,7 @@ function Canvas({
           return false;
         }
       };
-      
+
       // console.log('🛠️ Debug helpers available:');
       // console.log('  - window.debugShapes.listAll() - List all shapes');
       // console.log('  - window.debugShapes.inspect(id) - Inspect a specific shape');
@@ -438,7 +456,7 @@ function Canvas({
       // console.log('  - window.debugShapes.currentUser() - Show current user info');
     }
   }, [user?.uid, shapes, notifyFirestoreActivity]);
-  
+
   // Update container size on mount and resize
   useEffect(() => {
     const updateSize = () => {
@@ -447,159 +465,177 @@ function Canvas({
         setContainerSize({ width: rect.width, height: rect.height });
       }
     };
-    
+
     updateSize();
     window.addEventListener('resize', updateSize);
-    
+
     return () => window.removeEventListener('resize', updateSize);
   }, []);
-  
+
   // FPS and render time monitoring
   useEffect(() => {
     if (!SHOW_FPS_COUNTER) return;
-    
+
     let animationFrameId;
-    
+
     const updateFps = (timestamp) => {
       // Track render time
       const renderEnd = performance.now();
       const currentRenderTime = renderEnd - renderStartRef.current;
-      
+
       frameTimesRef.current.push(timestamp);
-      
+
       // Keep only last second of frame times
       const oneSecondAgo = timestamp - 1000;
-      frameTimesRef.current = frameTimesRef.current.filter(t => t > oneSecondAgo);
-      
+      frameTimesRef.current = frameTimesRef.current.filter((t) => t > oneSecondAgo);
+
       // Update FPS and render time display periodically
       if (timestamp - lastFpsUpdateRef.current > FPS_UPDATE_INTERVAL) {
         setFps(calculateFPS(frameTimesRef.current));
         setRenderTime(Math.round(currentRenderTime * 100) / 100);
         lastFpsUpdateRef.current = timestamp;
       }
-      
+
       renderStartRef.current = performance.now();
       animationFrameId = requestAnimationFrame(updateFps);
     };
-    
+
     animationFrameId = requestAnimationFrame(updateFps);
-    
+
     return () => cancelAnimationFrame(animationFrameId);
   }, []);
-  
+
   // Track user activity for presence updates (defined early so other callbacks can use it)
   const trackActivity = useCallback(() => {
     const now = Date.now();
     lastActivityRef.current = now;
-    
+
     // Throttle presence updates to max once per 3 seconds during active interaction
     // More frequent updates ensure user never appears offline while actively using
     if (activityThrottleRef.current) return;
-    
+
     activityThrottleRef.current = setTimeout(() => {
       activityThrottleRef.current = null;
     }, 3000);
-    
+
     // Update presence to show user is active
     if (sessionId) {
       updatePresenceHeartbeat(undefined, sessionId, true).catch(console.error);
     }
   }, [sessionId]);
-  
+
   // Handle click on background (canvas)
-  const handleCanvasMouseDown = useCallback((e) => {
-    // Only handle left mouse button
-    if (e.button !== 0) return;
-    
-    if (!svgRef.current) return;
-    
-    // Close context menu if open
-    if (contextMenu) {
-      setContextMenu(null);
-    }
-    
-    // Track activity for presence
-    trackActivity();
-    
-    const rect = svgRef.current.getBoundingClientRect();
-    const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, rect);
-    
-    // Check if holding Shift/Cmd/Ctrl for pan
-    const shouldPan = e.shiftKey || e.metaKey || e.ctrlKey;
-    
-    if (shouldPan) {
-      // Start panning
-      setIsPanning(true);
-      setPanStart({ x: e.clientX, y: e.clientY });
-      setPanOffset({ x: viewport.offsetX, y: viewport.offsetY });
-    } else if (selectedTool === TOOL_TYPES.CUSTOM_POLYGON) {
-      // ⛔ Viewers can't create shapes
-      if (userRole === 'viewer') {
-        console.log('👁️ Viewer mode: Cannot create shapes');
-        return;
+  const handleCanvasMouseDown = useCallback(
+    (e) => {
+      // Only handle left mouse button
+      if (e.button !== 0) return;
+
+      if (!svgRef.current) return;
+
+      // Close context menu if open
+      if (contextMenu) {
+        setContextMenu(null);
       }
-      
-      // Custom polygon: add vertex on click (don't start dragging)
-      e.preventDefault();
-      
-      if (!isDrawingCustomPolygon) {
-        // Start new custom polygon
-        setIsDrawingCustomPolygon(true);
-        setCustomPolygonVertices([canvasPos]);
+
+      // Track activity for presence
+      trackActivity();
+
+      const rect = svgRef.current.getBoundingClientRect();
+      const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, rect);
+
+      // Check if holding Shift/Cmd/Ctrl for pan
+      const shouldPan = e.shiftKey || e.metaKey || e.ctrlKey;
+
+      if (shouldPan) {
+        // Start panning
+        setIsPanning(true);
+        setPanStart({ x: e.clientX, y: e.clientY });
+        setPanOffset({ x: viewport.offsetX, y: viewport.offsetY });
+      } else if (selectedTool === TOOL_TYPES.CUSTOM_POLYGON) {
+        // ⛔ Viewers can't create shapes
+        if (userRole === 'viewer') {
+          console.log('👁️ Viewer mode: Cannot create shapes');
+          return;
+        }
+
+        // Custom polygon: add vertex on click (don't start dragging)
+        e.preventDefault();
+
+        if (!isDrawingCustomPolygon) {
+          // Start new custom polygon
+          setIsDrawingCustomPolygon(true);
+          setCustomPolygonVertices([canvasPos]);
+          deselectShape();
+          setSelectedShapeIds([]);
+          console.log('Started custom polygon at', canvasPos);
+        } else {
+          // Add vertex to existing polygon
+          const firstVertex = customPolygonVertices[0];
+          const distanceToFirst = Math.sqrt(
+            Math.pow(canvasPos.x - firstVertex.x, 2) + Math.pow(canvasPos.y - firstVertex.y, 2)
+          );
+
+          // If clicking near first vertex (within 20 pixels), close the polygon
+          const CLOSE_THRESHOLD = 20;
+          if (customPolygonVertices.length >= 3 && distanceToFirst < CLOSE_THRESHOLD) {
+            console.log('Closing custom polygon with', customPolygonVertices.length, 'vertices');
+            // Close the polygon - create it in Firestore
+            handleFinishCustomPolygon();
+          } else {
+            // Add new vertex
+            setCustomPolygonVertices((prev) => [...prev, canvasPos]);
+            console.log(
+              'Added vertex',
+              canvasPos,
+              '- total vertices:',
+              customPolygonVertices.length + 1
+            );
+          }
+        }
+      } else if (selectedTool === TOOL_TYPES.SELECT) {
+        // Start selection rectangle (multi-select)
+        setIsSelecting(true);
+        setSelectStart(canvasPos);
+        setSelectCurrent(canvasPos);
+      } else {
+        // ⛔ Viewers can't create shapes
+        if (userRole === 'viewer') {
+          console.log('👁️ Viewer mode: Cannot create shapes');
+          return;
+        }
+
+        // Start drawing shape (deselect any selected)
         deselectShape();
         setSelectedShapeIds([]);
-        console.log('Started custom polygon at', canvasPos);
-      } else {
-        // Add vertex to existing polygon
-        const firstVertex = customPolygonVertices[0];
-        const distanceToFirst = Math.sqrt(
-          Math.pow(canvasPos.x - firstVertex.x, 2) + 
-          Math.pow(canvasPos.y - firstVertex.y, 2)
-        );
-        
-        // If clicking near first vertex (within 20 pixels), close the polygon
-        const CLOSE_THRESHOLD = 20;
-        if (customPolygonVertices.length >= 3 && distanceToFirst < CLOSE_THRESHOLD) {
-          console.log('Closing custom polygon with', customPolygonVertices.length, 'vertices');
-          // Close the polygon - create it in Firestore
-          handleFinishCustomPolygon();
-        } else {
-          // Add new vertex
-          setCustomPolygonVertices(prev => [...prev, canvasPos]);
-          console.log('Added vertex', canvasPos, '- total vertices:', customPolygonVertices.length + 1);
-        }
+        setIsDrawing(true);
+        setDrawStart(canvasPos);
+        setDrawCurrent(canvasPos);
       }
-    } else if (selectedTool === TOOL_TYPES.SELECT) {
-      // Start selection rectangle (multi-select)
-      setIsSelecting(true);
-      setSelectStart(canvasPos);
-      setSelectCurrent(canvasPos);
-    } else {
-      // ⛔ Viewers can't create shapes
-      if (userRole === 'viewer') {
-        console.log('👁️ Viewer mode: Cannot create shapes');
-        return;
-      }
-      
-      // Start drawing shape (deselect any selected)
-      deselectShape();
-      setSelectedShapeIds([]);
-      setIsDrawing(true);
-      setDrawStart(canvasPos);
-      setDrawCurrent(canvasPos);
-    }
-    
-    // Prevent text selection while dragging
-    e.preventDefault();
-  }, [viewport, selectedTool, deselectShape, isDrawingCustomPolygon, customPolygonVertices, trackActivity, userRole, contextMenu]);
-  
+
+      // Prevent text selection while dragging
+      e.preventDefault();
+    },
+    [
+      viewport,
+      selectedTool,
+      deselectShape,
+      isDrawingCustomPolygon,
+      customPolygonVertices,
+      trackActivity,
+      userRole,
+      contextMenu,
+    ]
+  );
+
   // Handle finishing custom polygon creation
   const handleFinishCustomPolygon = useCallback(async () => {
     if (customPolygonVertices.length < 3 || !user) {
-      console.warn('Cannot create custom polygon: need at least 3 vertices and user must be logged in');
+      console.warn(
+        'Cannot create custom polygon: need at least 3 vertices and user must be logged in'
+      );
       return;
     }
-    
+
     try {
       const color = getRandomColor();
       const shapeData = {
@@ -610,504 +646,612 @@ function Canvas({
         rotation: 0,
         zIndex: Date.now(),
       };
-      
+
       const shapeId = await createShape(canvasId, shapeData);
       recordAction({ type: 'create', shapeId, shapeData });
-      console.log('Custom polygon created successfully with', customPolygonVertices.length, 'vertices');
+      console.log(
+        'Custom polygon created successfully with',
+        customPolygonVertices.length,
+        'vertices'
+      );
       notifyFirestoreActivity();
-      
+
       // Reset custom polygon state
       setIsDrawingCustomPolygon(false);
       setCustomPolygonVertices([]);
-      
+
       // Switch back to select tool
       setSelectedTool(TOOL_TYPES.SELECT);
     } catch (error) {
       console.error('Failed to create custom polygon:', error);
     }
   }, [customPolygonVertices, user, notifyFirestoreActivity, recordAction]);
-  
+
   // Handle click on rectangle (selection happens on mouse down, this is just for compatibility)
   const handleShapeClick = useCallback((shapeId, e) => {
     e.stopPropagation();
     // Selection now handled in mouse down
   }, []);
-  
+
   // Handle mouse down on rectangle (for dragging)
-  const handleShapeMouseDown = useCallback((shapeId, e) => {
-    e.stopPropagation();
-    
-    if (!svgRef.current) return;
-    
-    // Track activity for presence
-    trackActivity();
-    
-    const shape = shapes.find(s => s.id === shapeId);
-    if (!shape) return;
-    
-    // ⛔ Viewers can't edit - block all interactions
-    if (userRole === 'viewer') {
-      console.log('👁️ Viewer mode: Editing disabled');
-      return;
-    }
-    
-    // Can't drag if locked by another user
-    if (shape.lockedBy && shape.lockedBy !== user?.uid) {
-      return;
-    }
-    
-    // Determine which shapes to drag
-    let shapesToDrag = [];
-    if (selectedShapeIds.length > 0 && selectedShapeIds.includes(shapeId)) {
-      // Multi-select drag: drag all selected shapes
-      shapesToDrag = selectedShapeIds;
-    } else {
-      // Single shape drag
-    if (selectedShapeId !== shapeId) {
-      selectShape(shapeId);
+  const handleShapeMouseDown = useCallback(
+    (shapeId, e) => {
+      e.stopPropagation();
+
+      if (!svgRef.current) return;
+
+      // Track activity for presence
+      trackActivity();
+
+      const shape = shapes.find((s) => s.id === shapeId);
+      if (!shape) return;
+
+      // ⛔ Viewers can't edit - block all interactions
+      if (userRole === 'viewer') {
+        console.log('👁️ Viewer mode: Editing disabled');
+        return;
       }
-      shapesToDrag = [shapeId];
-    }
-    
-    // Start dragging
-    const svgRect = svgRef.current.getBoundingClientRect();
-    const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, svgRect);
-    
-    // Store initial positions of all shapes being dragged
-    const initialPositions = {};
-    shapesToDrag.forEach(id => {
-      const shape = shapes.find(s => s.id === id);
-      if (shape) {
-        if (shape.type === SHAPE_TYPES.CUSTOM_POLYGON) {
-          // For custom polygons, store vertices separately
-          initialPositions[id] = { 
-            vertices: shape.vertices.map(v => ({ x: v.x, y: v.y }))
-          };
-        } else {
-          initialPositions[id] = { x: shape.x, y: shape.y };
+
+      // Can't drag if locked by another user
+      if (shape.lockedBy && shape.lockedBy !== user?.uid) {
+        return;
+      }
+
+      // Determine which shapes to drag
+      let shapesToDrag = [];
+      if (selectedShapeIds.length > 0 && selectedShapeIds.includes(shapeId)) {
+        // Multi-select drag: drag all selected shapes
+        shapesToDrag = selectedShapeIds;
+      } else {
+        // Single shape drag
+        if (selectedShapeId !== shapeId) {
+          selectShape(shapeId);
+        }
+        shapesToDrag = [shapeId];
+      }
+
+      // Start dragging
+      const svgRect = svgRef.current.getBoundingClientRect();
+      const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, svgRect);
+
+      // Store initial positions of all shapes being dragged
+      const initialPositions = {};
+      shapesToDrag.forEach((id) => {
+        const shape = shapes.find((s) => s.id === id);
+        if (shape) {
+          if (shape.type === SHAPE_TYPES.CUSTOM_POLYGON) {
+            // For custom polygons, store vertices separately
+            initialPositions[id] = {
+              vertices: shape.vertices.map((v) => ({ x: v.x, y: v.y })),
+            };
+          } else {
+            initialPositions[id] = { x: shape.x, y: shape.y };
+          }
+        }
+      });
+
+      setDragStart(canvasPos);
+      setDragOffset({ x: shape.x, y: shape.y }); // Offset for the clicked shape
+      setDraggedShapeIds(shapesToDrag);
+      setDragInitialPositions(initialPositions);
+
+      // Reset interaction flag
+      didInteractRef.current = false;
+
+      // Set dragging flags AFTER setting positions to prevent race condition
+      setIsDragging(true);
+      setIsDraggingLocal(true); // Tell hook we're dragging
+
+      e.preventDefault();
+    },
+    [
+      shapes,
+      user,
+      selectedShapeId,
+      selectedShapeIds,
+      selectShape,
+      viewport,
+      setIsDraggingLocal,
+      userRole,
+    ]
+  );
+
+  // Handle resize start
+  const handleResizeStart = useCallback(
+    (handle, e) => {
+      if (!svgRef.current || !selectedShapeId) return;
+
+      // ⛔ Viewers can't resize
+      if (userRole === 'viewer') {
+        console.log('👁️ Viewer mode: Resizing disabled');
+        return;
+      }
+
+      const shape = shapes.find((s) => s.id === selectedShapeId);
+      if (!shape) return;
+
+      const svgRect = svgRef.current.getBoundingClientRect();
+      const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, svgRect);
+
+      setResizeHandle(handle);
+      setResizeStart(canvasPos);
+      setResizeInitial({ ...shape }); // Store initial shape state
+      setIsResizing(true);
+      setIsDraggingLocal(true); // Prevent Firestore updates during resize
+
+      e.preventDefault();
+    },
+    [selectedShapeId, shapes, viewport, setIsDraggingLocal, userRole]
+  );
+
+  // Handle rotation start
+  const handleRotateStart = useCallback(
+    (e) => {
+      if (!svgRef.current || !selectedShapeId) return;
+
+      // ⛔ Viewers can't rotate
+      if (userRole === 'viewer') {
+        console.log('👁️ Viewer mode: Rotation disabled');
+        return;
+      }
+
+      const shape = shapes.find((s) => s.id === selectedShapeId);
+      if (!shape) return;
+
+      const svgRect = svgRef.current.getBoundingClientRect();
+      const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, svgRect);
+
+      setRotateStart(canvasPos);
+      setRotateInitial(shape.rotation || 0);
+      setIsRotating(true);
+      setIsDraggingLocal(true); // Prevent Firestore updates during rotation
+
+      e.preventDefault();
+    },
+    [selectedShapeId, shapes, viewport, setIsDraggingLocal, userRole]
+  );
+
+  // Handle mouse move for panning, drawing, dragging, and cursor tracking
+  const handleMouseMove = useCallback(
+    (e) => {
+      // Track activity when moving during active operations
+      if (isDragging || isResizing || isRotating || isPanning || isDrawing || isSelecting) {
+        trackActivity();
+      }
+
+      // Track cursor position for multiplayer (throttled)
+      // Show cursor to others when actively manipulating objects (dragging, resizing, or rotating)
+      if (svgRef.current && user && (isDragging || isResizing || isRotating)) {
+        const now = Date.now();
+        if (now - lastCursorUpdate.current > CURSOR_UPDATE_THROTTLE) {
+          const rect = svgRef.current.getBoundingClientRect();
+          const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, rect);
+
+          // Update cursor position in Firestore
+          updateCursor(
+            canvasId,
+            sessionId,
+            user.uid,
+            canvasPos.x,
+            canvasPos.y,
+            user.displayName,
+            cursorArrivalTime.current,
+            true // isActive - show cursor when manipulating
+          )
+            .then(() => {
+              // Notify of successful Firestore operation (for connection detection)
+              notifyFirestoreActivity();
+            })
+            .catch(console.error);
+
+          lastCursorUpdate.current = now;
         }
       }
-    });
-    
-    setDragStart(canvasPos);
-    setDragOffset({ x: shape.x, y: shape.y }); // Offset for the clicked shape
-    setDraggedShapeIds(shapesToDrag);
-    setDragInitialPositions(initialPositions);
-    
-    // Reset interaction flag
-    didInteractRef.current = false;
-    
-    // Set dragging flags AFTER setting positions to prevent race condition
-    setIsDragging(true);
-    setIsDraggingLocal(true); // Tell hook we're dragging
-    
-    e.preventDefault();
-  }, [shapes, user, selectedShapeId, selectedShapeIds, selectShape, viewport, setIsDraggingLocal, userRole]);
-  
-  // Handle resize start
-  const handleResizeStart = useCallback((handle, e) => {
-    if (!svgRef.current || !selectedShapeId) return;
-    
-    // ⛔ Viewers can't resize
-    if (userRole === 'viewer') {
-      console.log('👁️ Viewer mode: Resizing disabled');
-      return;
-    }
-    
-    const shape = shapes.find(s => s.id === selectedShapeId);
-    if (!shape) return;
-    
-    const svgRect = svgRef.current.getBoundingClientRect();
-    const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, svgRect);
-    
-    setResizeHandle(handle);
-    setResizeStart(canvasPos);
-    setResizeInitial({ ...shape }); // Store initial shape state
-    setIsResizing(true);
-    setIsDraggingLocal(true); // Prevent Firestore updates during resize
-    
-    e.preventDefault();
-  }, [selectedShapeId, shapes, viewport, setIsDraggingLocal, userRole]);
-  
-  // Handle rotation start
-  const handleRotateStart = useCallback((e) => {
-    if (!svgRef.current || !selectedShapeId) return;
-    
-    // ⛔ Viewers can't rotate
-    if (userRole === 'viewer') {
-      console.log('👁️ Viewer mode: Rotation disabled');
-      return;
-    }
-    
-    const shape = shapes.find(s => s.id === selectedShapeId);
-    if (!shape) return;
-    
-    const svgRect = svgRef.current.getBoundingClientRect();
-    const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, svgRect);
-    
-    setRotateStart(canvasPos);
-    setRotateInitial(shape.rotation || 0);
-    setIsRotating(true);
-    setIsDraggingLocal(true); // Prevent Firestore updates during rotation
-    
-    e.preventDefault();
-  }, [selectedShapeId, shapes, viewport, setIsDraggingLocal, userRole]);
-  
-  // Handle mouse move for panning, drawing, dragging, and cursor tracking
-  const handleMouseMove = useCallback((e) => {
-    // Track activity when moving during active operations
-    if (isDragging || isResizing || isRotating || isPanning || isDrawing || isSelecting) {
-      trackActivity();
-    }
-    
-    // Track cursor position for multiplayer (throttled)
-    // Show cursor to others when actively manipulating objects (dragging, resizing, or rotating)
-    if (svgRef.current && user && (isDragging || isResizing || isRotating)) {
-      const now = Date.now();
-      if (now - lastCursorUpdate.current > CURSOR_UPDATE_THROTTLE) {
+
+      if (isPanning) {
+        // Handle panning
+        const dx = e.clientX - panStart.x;
+        const dy = e.clientY - panStart.y;
+
+        // Calculate new offset (inverted because we're moving the viewport)
+        const newOffsetX = panOffset.x - dx / viewport.zoom;
+        const newOffsetY = panOffset.y - dy / viewport.zoom;
+
+        // Clamp to canvas boundaries (with 20% padding)
+        const clamped = clampPanOffset(
+          newOffsetX,
+          newOffsetY,
+          viewport.zoom,
+          containerSize.width,
+          containerSize.height,
+          CANVAS_WIDTH,
+          CANVAS_HEIGHT,
+          PAN_PADDING_PERCENT
+        );
+
+        setViewport((prev) => ({
+          ...prev,
+          offsetX: clamped.offsetX,
+          offsetY: clamped.offsetY,
+        }));
+      } else if (isSelecting && svgRef.current) {
+        // Handle drawing selection rectangle
         const rect = svgRef.current.getBoundingClientRect();
         const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, rect);
-        
-        // Update cursor position in Firestore
-        updateCursor(
-          canvasId,
-          sessionId,
-          user.uid,
-          canvasPos.x,
-          canvasPos.y,
-          user.displayName,
-          cursorArrivalTime.current,
-          true // isActive - show cursor when manipulating
-        ).then(() => {
-          // Notify of successful Firestore operation (for connection detection)
-          notifyFirestoreActivity();
-        }).catch(console.error);
-        
-        lastCursorUpdate.current = now;
-      }
-    }
-    
-    if (isPanning) {
-      // Handle panning
-      const dx = e.clientX - panStart.x;
-      const dy = e.clientY - panStart.y;
-      
-      // Calculate new offset (inverted because we're moving the viewport)
-      const newOffsetX = panOffset.x - dx / viewport.zoom;
-      const newOffsetY = panOffset.y - dy / viewport.zoom;
-      
-      // Clamp to canvas boundaries (with 20% padding)
-      const clamped = clampPanOffset(
-        newOffsetX,
-        newOffsetY,
-        viewport.zoom,
-        containerSize.width,
-        containerSize.height,
-        CANVAS_WIDTH,
-        CANVAS_HEIGHT,
-        PAN_PADDING_PERCENT
-      );
-      
-      setViewport(prev => ({
-        ...prev,
-        offsetX: clamped.offsetX,
-        offsetY: clamped.offsetY,
-      }));
-    } else if (isSelecting && svgRef.current) {
-      // Handle drawing selection rectangle
-      const rect = svgRef.current.getBoundingClientRect();
-      const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, rect);
-      setSelectCurrent(canvasPos);
-    } else if (isDrawing && svgRef.current) {
-      // Handle drawing shape
-      const rect = svgRef.current.getBoundingClientRect();
-      const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, rect);
-      setDrawCurrent(canvasPos);
-    } else if (isDragging && svgRef.current && (selectedShapeId || draggedShapeIds.length > 0)) {
-      // Handle dragging selected shapes (single or multiple)
-      const rect = svgRef.current.getBoundingClientRect();
-      const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, rect);
-      
-      const dx = canvasPos.x - dragStart.x;
-      const dy = canvasPos.y - dragStart.y;
-      
-      // Mark that we actually moved the shape(s)
-      didInteractRef.current = true;
-      
-      // Optimistic update (update local state immediately for smooth dragging)
-      setShapes(prev => prev.map(r => {
-        if (draggedShapeIds.includes(r.id)) {
-          // Move this shape by the same delta
-          const initial = dragInitialPositions[r.id];
-          if (initial) {
-            let newX = initial.x + dx;
-            let newY = initial.y + dy;
-            
-            // Constrain to canvas boundaries
-            if (r.type === SHAPE_TYPES.RECTANGLE || r.type === SHAPE_TYPES.TEXT) {
-              const constrained = constrainRectangle(newX, newY, r.width, r.height, CANVAS_WIDTH, CANVAS_HEIGHT);
-              newX = constrained.x;
-              newY = constrained.y;
-            } else if (r.type === SHAPE_TYPES.IMAGE) {
-              // IMAGE uses center coordinates, convert for constraint check
-              const topLeftX = newX - r.width / 2;
-              const topLeftY = newY - r.height / 2;
-              const constrained = constrainRectangle(topLeftX, topLeftY, r.width, r.height, CANVAS_WIDTH, CANVAS_HEIGHT);
-              newX = constrained.x + r.width / 2; // Convert back to center
-              newY = constrained.y + r.height / 2;
-            } else if (r.type === SHAPE_TYPES.CIRCLE || r.type === SHAPE_TYPES.POLYGON) {
-              const constrained = constrainCircle(newX, newY, r.radius, CANVAS_WIDTH, CANVAS_HEIGHT);
-              newX = constrained.x;
-              newY = constrained.y;
-            } else if (r.type === SHAPE_TYPES.CUSTOM_POLYGON) {
-              // Custom polygons: move all vertices by delta from initial positions
-              const initialVertices = initial.vertices || r.vertices;
-              const newVertices = initialVertices.map(v => ({
-                x: v.x + dx,
-                y: v.y + dy
-              }));
-              
-              // Constrain all vertices to canvas
-              const clampedVertices = newVertices.map(v => ({
-                x: clamp(v.x, 0, CANVAS_WIDTH),
-                y: clamp(v.y, 0, CANVAS_HEIGHT)
-              }));
-              
-              return { ...r, vertices: clampedVertices };
-            }
-            
-            return { ...r, x: newX, y: newY };
-          }
-        }
-        return r;
-      }));
-      
-      // Send throttled updates to Firestore during drag for real-time sync
-      const now = Date.now();
-      if (now - lastDragUpdate.current > DRAG_UPDATE_THROTTLE) {
-        draggedShapeIds.forEach(id => {
-          const shape = shapes.find(s => s.id === id);
-          const initial = dragInitialPositions[id];
-          if (shape && initial) {
-            if (shape.type === SHAPE_TYPES.CUSTOM_POLYGON) {
-              // Custom polygons: sync vertices from initial positions
-              const initialVertices = initial.vertices || shape.vertices;
-              const newVertices = initialVertices.map(v => ({
-                x: v.x + dx,
-                y: v.y + dy
-              }));
-              
-              // Constrain all vertices to canvas
-              const clampedVertices = newVertices.map(v => ({
-                x: clamp(v.x, 0, CANVAS_WIDTH),
-                y: clamp(v.y, 0, CANVAS_HEIGHT)
-              }));
-              
-              updateShape(canvasId, id, { vertices: clampedVertices }).catch(console.error);
-            } else {
-              let newX = initial.x + dx;
-              let newY = initial.y + dy;
-              
-              // Apply same constraints as local display
-              if (shape.type === SHAPE_TYPES.RECTANGLE || shape.type === SHAPE_TYPES.TEXT) {
-                const constrained = constrainRectangle(newX, newY, shape.width, shape.height, CANVAS_WIDTH, CANVAS_HEIGHT);
-                newX = constrained.x;
-                newY = constrained.y;
-              } else if (shape.type === SHAPE_TYPES.IMAGE) {
-                const topLeftX = newX - shape.width / 2;
-                const topLeftY = newY - shape.height / 2;
-                const constrained = constrainRectangle(topLeftX, topLeftY, shape.width, shape.height, CANVAS_WIDTH, CANVAS_HEIGHT);
-                newX = constrained.x + shape.width / 2;
-                newY = constrained.y + shape.height / 2;
-              } else if (shape.type === SHAPE_TYPES.CIRCLE || shape.type === SHAPE_TYPES.POLYGON) {
-                const constrained = constrainCircle(newX, newY, shape.radius, CANVAS_WIDTH, CANVAS_HEIGHT);
-                newX = constrained.x;
-                newY = constrained.y;
+        setSelectCurrent(canvasPos);
+      } else if (isDrawing && svgRef.current) {
+        // Handle drawing shape
+        const rect = svgRef.current.getBoundingClientRect();
+        const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, rect);
+        setDrawCurrent(canvasPos);
+      } else if (isDragging && svgRef.current && (selectedShapeId || draggedShapeIds.length > 0)) {
+        // Handle dragging selected shapes (single or multiple)
+        const rect = svgRef.current.getBoundingClientRect();
+        const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, rect);
+
+        const dx = canvasPos.x - dragStart.x;
+        const dy = canvasPos.y - dragStart.y;
+
+        // Mark that we actually moved the shape(s)
+        didInteractRef.current = true;
+
+        // Optimistic update (update local state immediately for smooth dragging)
+        setShapes((prev) =>
+          prev.map((r) => {
+            if (draggedShapeIds.includes(r.id)) {
+              // Move this shape by the same delta
+              const initial = dragInitialPositions[r.id];
+              if (initial) {
+                let newX = initial.x + dx;
+                let newY = initial.y + dy;
+
+                // Constrain to canvas boundaries
+                if (r.type === SHAPE_TYPES.RECTANGLE || r.type === SHAPE_TYPES.TEXT) {
+                  const constrained = constrainRectangle(
+                    newX,
+                    newY,
+                    r.width,
+                    r.height,
+                    CANVAS_WIDTH,
+                    CANVAS_HEIGHT
+                  );
+                  newX = constrained.x;
+                  newY = constrained.y;
+                } else if (r.type === SHAPE_TYPES.IMAGE) {
+                  // IMAGE uses center coordinates, convert for constraint check
+                  const topLeftX = newX - r.width / 2;
+                  const topLeftY = newY - r.height / 2;
+                  const constrained = constrainRectangle(
+                    topLeftX,
+                    topLeftY,
+                    r.width,
+                    r.height,
+                    CANVAS_WIDTH,
+                    CANVAS_HEIGHT
+                  );
+                  newX = constrained.x + r.width / 2; // Convert back to center
+                  newY = constrained.y + r.height / 2;
+                } else if (r.type === SHAPE_TYPES.CIRCLE || r.type === SHAPE_TYPES.POLYGON) {
+                  const constrained = constrainCircle(
+                    newX,
+                    newY,
+                    r.radius,
+                    CANVAS_WIDTH,
+                    CANVAS_HEIGHT
+                  );
+                  newX = constrained.x;
+                  newY = constrained.y;
+                } else if (r.type === SHAPE_TYPES.CUSTOM_POLYGON) {
+                  // Custom polygons: move all vertices by delta from initial positions
+                  const initialVertices = initial.vertices || r.vertices;
+                  const newVertices = initialVertices.map((v) => ({
+                    x: v.x + dx,
+                    y: v.y + dy,
+                  }));
+
+                  // Constrain all vertices to canvas
+                  const clampedVertices = newVertices.map((v) => ({
+                    x: clamp(v.x, 0, CANVAS_WIDTH),
+                    y: clamp(v.y, 0, CANVAS_HEIGHT),
+                  }));
+
+                  return { ...r, vertices: clampedVertices };
+                }
+
+                return { ...r, x: newX, y: newY };
               }
-              
-              updateShape(canvasId, id, { x: newX, y: newY }).catch(console.error);
             }
-          }
-        });
-        lastDragUpdate.current = now;
-      }
-    } else if (isResizing && svgRef.current && selectedShapeId && resizeInitial) {
-      // Handle resizing selected shape
-      const rect = svgRef.current.getBoundingClientRect();
-      const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, rect);
-      
-      // Calculate new dimensions based on handle and shape type
-      let updates = {};
-      
-      if (resizeInitial.type === SHAPE_TYPES.RECTANGLE || resizeInitial.type === SHAPE_TYPES.TEXT || resizeInitial.type === SHAPE_TYPES.IMAGE) {
-        const { x, y, width, height } = resizeInitial;
-        
-        // Calculate center of the shape
-        // IMAGE uses center coordinates, RECTANGLE/TEXT use top-left
-        const centerX = resizeInitial.type === SHAPE_TYPES.IMAGE ? x : x + width / 2;
-        const centerY = resizeInitial.type === SHAPE_TYPES.IMAGE ? y : y + height / 2;
-        
-        // Calculate distance from cursor to center
-        const distX = Math.abs(canvasPos.x - centerX);
-        const distY = Math.abs(canvasPos.y - centerY);
-        
-        let newX = x, newY = y, newWidth = width, newHeight = height;
-        
-        // Resize based on which handle is being dragged
-        if (resizeHandle.includes('e')) {
-          // East handle: set width based on distance from center
-          newWidth = distX * 2;
-          newX = centerX - newWidth / 2;
-        } else if (resizeHandle.includes('w')) {
-          // West handle: set width based on distance from center
-          newWidth = distX * 2;
-          newX = centerX - newWidth / 2;
-        }
-        
-        if (resizeHandle.includes('s')) {
-          // South handle: set height based on distance from center
-          newHeight = distY * 2;
-          newY = centerY - newHeight / 2;
-        } else if (resizeHandle.includes('n')) {
-          // North handle: set height based on distance from center
-          newHeight = distY * 2;
-          newY = centerY - newHeight / 2;
-        }
-        
-        // Enforce minimum size
-        if (newWidth < MIN_RECTANGLE_SIZE) {
-          newWidth = MIN_RECTANGLE_SIZE;
-          newX = centerX - newWidth / 2;
-        }
-        if (newHeight < MIN_RECTANGLE_SIZE) {
-          newHeight = MIN_RECTANGLE_SIZE;
-          newY = centerY - newHeight / 2;
-        }
-        
-        // Constrain to canvas boundaries
-        const constrained = constrainRectangle(newX, newY, newWidth, newHeight, CANVAS_WIDTH, CANVAS_HEIGHT);
-        
-        // For IMAGE, convert back to center coordinates
-        if (resizeInitial.type === SHAPE_TYPES.IMAGE) {
-          updates = {
-            x: constrained.x + constrained.width / 2,  // Center X
-            y: constrained.y + constrained.height / 2, // Center Y
-            width: constrained.width,
-            height: constrained.height
-          };
-        } else {
-          // For RECTANGLE and TEXT, use top-left coordinates
-          updates = constrained;
-        }
-      } else if (resizeInitial.type === SHAPE_TYPES.CIRCLE || resizeInitial.type === SHAPE_TYPES.POLYGON) {
-        // For circles and polygons, radius is distance from cursor to center
-        const centerX = resizeInitial.x;
-        const centerY = resizeInitial.y;
-        
-        // Calculate distance from cursor to center
-        const distanceToCenter = Math.sqrt(
-          Math.pow(canvasPos.x - centerX, 2) + 
-          Math.pow(canvasPos.y - centerY, 2)
+            return r;
+          })
         );
-        
-        // New radius is simply the distance from cursor to center
-        let newRadius = distanceToCenter;
-        
-        // Enforce minimum radius
-        const minRadius = resizeInitial.type === SHAPE_TYPES.CIRCLE ? MIN_CIRCLE_RADIUS : MIN_POLYGON_RADIUS;
-        if (newRadius < minRadius) {
-          newRadius = minRadius;
+
+        // Send throttled updates to Firestore during drag for real-time sync
+        const now = Date.now();
+        if (now - lastDragUpdate.current > DRAG_UPDATE_THROTTLE) {
+          draggedShapeIds.forEach((id) => {
+            const shape = shapes.find((s) => s.id === id);
+            const initial = dragInitialPositions[id];
+            if (shape && initial) {
+              if (shape.type === SHAPE_TYPES.CUSTOM_POLYGON) {
+                // Custom polygons: sync vertices from initial positions
+                const initialVertices = initial.vertices || shape.vertices;
+                const newVertices = initialVertices.map((v) => ({
+                  x: v.x + dx,
+                  y: v.y + dy,
+                }));
+
+                // Constrain all vertices to canvas
+                const clampedVertices = newVertices.map((v) => ({
+                  x: clamp(v.x, 0, CANVAS_WIDTH),
+                  y: clamp(v.y, 0, CANVAS_HEIGHT),
+                }));
+
+                updateShape(canvasId, id, { vertices: clampedVertices }).catch(console.error);
+              } else {
+                let newX = initial.x + dx;
+                let newY = initial.y + dy;
+
+                // Apply same constraints as local display
+                if (shape.type === SHAPE_TYPES.RECTANGLE || shape.type === SHAPE_TYPES.TEXT) {
+                  const constrained = constrainRectangle(
+                    newX,
+                    newY,
+                    shape.width,
+                    shape.height,
+                    CANVAS_WIDTH,
+                    CANVAS_HEIGHT
+                  );
+                  newX = constrained.x;
+                  newY = constrained.y;
+                } else if (shape.type === SHAPE_TYPES.IMAGE) {
+                  const topLeftX = newX - shape.width / 2;
+                  const topLeftY = newY - shape.height / 2;
+                  const constrained = constrainRectangle(
+                    topLeftX,
+                    topLeftY,
+                    shape.width,
+                    shape.height,
+                    CANVAS_WIDTH,
+                    CANVAS_HEIGHT
+                  );
+                  newX = constrained.x + shape.width / 2;
+                  newY = constrained.y + shape.height / 2;
+                } else if (
+                  shape.type === SHAPE_TYPES.CIRCLE ||
+                  shape.type === SHAPE_TYPES.POLYGON
+                ) {
+                  const constrained = constrainCircle(
+                    newX,
+                    newY,
+                    shape.radius,
+                    CANVAS_WIDTH,
+                    CANVAS_HEIGHT
+                  );
+                  newX = constrained.x;
+                  newY = constrained.y;
+                }
+
+                updateShape(canvasId, id, { x: newX, y: newY }).catch(console.error);
+              }
+            }
+          });
+          lastDragUpdate.current = now;
         }
-        
-        // Constrain to canvas boundaries (keep center, adjust radius if needed)
-        const maxRadiusX = Math.min(centerX, CANVAS_WIDTH - centerX);
-        const maxRadiusY = Math.min(centerY, CANVAS_HEIGHT - centerY);
-        const maxRadius = Math.min(maxRadiusX, maxRadiusY);
-        newRadius = Math.min(newRadius, maxRadius);
-        
-        updates = { radius: newRadius };
+      } else if (isResizing && svgRef.current && selectedShapeId && resizeInitial) {
+        // Handle resizing selected shape
+        const rect = svgRef.current.getBoundingClientRect();
+        const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, rect);
+
+        // Calculate new dimensions based on handle and shape type
+        let updates = {};
+
+        if (
+          resizeInitial.type === SHAPE_TYPES.RECTANGLE ||
+          resizeInitial.type === SHAPE_TYPES.TEXT ||
+          resizeInitial.type === SHAPE_TYPES.IMAGE
+        ) {
+          const { x, y, width, height } = resizeInitial;
+
+          // Calculate center of the shape
+          // IMAGE uses center coordinates, RECTANGLE/TEXT use top-left
+          const centerX = resizeInitial.type === SHAPE_TYPES.IMAGE ? x : x + width / 2;
+          const centerY = resizeInitial.type === SHAPE_TYPES.IMAGE ? y : y + height / 2;
+
+          // Calculate distance from cursor to center
+          const distX = Math.abs(canvasPos.x - centerX);
+          const distY = Math.abs(canvasPos.y - centerY);
+
+          let newX = x,
+            newY = y,
+            newWidth = width,
+            newHeight = height;
+
+          // Resize based on which handle is being dragged
+          if (resizeHandle.includes('e')) {
+            // East handle: set width based on distance from center
+            newWidth = distX * 2;
+            newX = centerX - newWidth / 2;
+          } else if (resizeHandle.includes('w')) {
+            // West handle: set width based on distance from center
+            newWidth = distX * 2;
+            newX = centerX - newWidth / 2;
+          }
+
+          if (resizeHandle.includes('s')) {
+            // South handle: set height based on distance from center
+            newHeight = distY * 2;
+            newY = centerY - newHeight / 2;
+          } else if (resizeHandle.includes('n')) {
+            // North handle: set height based on distance from center
+            newHeight = distY * 2;
+            newY = centerY - newHeight / 2;
+          }
+
+          // Enforce minimum size
+          if (newWidth < MIN_RECTANGLE_SIZE) {
+            newWidth = MIN_RECTANGLE_SIZE;
+            newX = centerX - newWidth / 2;
+          }
+          if (newHeight < MIN_RECTANGLE_SIZE) {
+            newHeight = MIN_RECTANGLE_SIZE;
+            newY = centerY - newHeight / 2;
+          }
+
+          // Constrain to canvas boundaries
+          const constrained = constrainRectangle(
+            newX,
+            newY,
+            newWidth,
+            newHeight,
+            CANVAS_WIDTH,
+            CANVAS_HEIGHT
+          );
+
+          // For IMAGE, convert back to center coordinates
+          if (resizeInitial.type === SHAPE_TYPES.IMAGE) {
+            updates = {
+              x: constrained.x + constrained.width / 2, // Center X
+              y: constrained.y + constrained.height / 2, // Center Y
+              width: constrained.width,
+              height: constrained.height,
+            };
+          } else {
+            // For RECTANGLE and TEXT, use top-left coordinates
+            updates = constrained;
+          }
+        } else if (
+          resizeInitial.type === SHAPE_TYPES.CIRCLE ||
+          resizeInitial.type === SHAPE_TYPES.POLYGON
+        ) {
+          // For circles and polygons, radius is distance from cursor to center
+          const centerX = resizeInitial.x;
+          const centerY = resizeInitial.y;
+
+          // Calculate distance from cursor to center
+          const distanceToCenter = Math.sqrt(
+            Math.pow(canvasPos.x - centerX, 2) + Math.pow(canvasPos.y - centerY, 2)
+          );
+
+          // New radius is simply the distance from cursor to center
+          let newRadius = distanceToCenter;
+
+          // Enforce minimum radius
+          const minRadius =
+            resizeInitial.type === SHAPE_TYPES.CIRCLE ? MIN_CIRCLE_RADIUS : MIN_POLYGON_RADIUS;
+          if (newRadius < minRadius) {
+            newRadius = minRadius;
+          }
+
+          // Constrain to canvas boundaries (keep center, adjust radius if needed)
+          const maxRadiusX = Math.min(centerX, CANVAS_WIDTH - centerX);
+          const maxRadiusY = Math.min(centerY, CANVAS_HEIGHT - centerY);
+          const maxRadius = Math.min(maxRadiusX, maxRadiusY);
+          newRadius = Math.min(newRadius, maxRadius);
+
+          updates = { radius: newRadius };
+        }
+
+        // Mark that we actually resized the shape
+        didInteractRef.current = true;
+
+        // Optimistic update
+        setShapes((prev) => prev.map((r) => (r.id === selectedShapeId ? { ...r, ...updates } : r)));
+      } else if (isRotating && svgRef.current && selectedShapeId) {
+        // Handle rotation
+        const rect = svgRef.current.getBoundingClientRect();
+        const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, rect);
+
+        // Get the current shape to find its center
+        const shape = shapes.find((s) => s.id === selectedShapeId);
+        if (!shape) return;
+
+        // Calculate center of shape
+        let centerX, centerY;
+        if (shape.type === SHAPE_TYPES.RECTANGLE || shape.type === SHAPE_TYPES.TEXT) {
+          // Rectangles and text boxes: center is at x + width/2, y + height/2
+          centerX = shape.x + (shape.width || 0) / 2;
+          centerY = shape.y + (shape.height || 0) / 2;
+        } else if (shape.type === SHAPE_TYPES.IMAGE) {
+          // Images: x,y IS the center
+          centerX = shape.x;
+          centerY = shape.y;
+        } else if (shape.type === SHAPE_TYPES.CIRCLE || shape.type === SHAPE_TYPES.POLYGON) {
+          // Circles and polygons: x,y IS the center
+          centerX = shape.x;
+          centerY = shape.y;
+        } else if (shape.type === SHAPE_TYPES.CUSTOM_POLYGON && shape.vertices) {
+          // Custom polygons: calculate center from vertices
+          const minX = Math.min(...shape.vertices.map((v) => v.x));
+          const maxX = Math.max(...shape.vertices.map((v) => v.x));
+          const minY = Math.min(...shape.vertices.map((v) => v.y));
+          const maxY = Math.max(...shape.vertices.map((v) => v.y));
+          centerX = (minX + maxX) / 2;
+          centerY = (minY + maxY) / 2;
+        } else {
+          // Fallback: assume x,y is center
+          centerX = shape.x;
+          centerY = shape.y;
+        }
+
+        // Calculate angle from center to current mouse position
+        const angle = Math.atan2(canvasPos.y - centerY, canvasPos.x - centerX) * (180 / Math.PI);
+        const startAngle =
+          Math.atan2(rotateStart.y - centerY, rotateStart.x - centerX) * (180 / Math.PI);
+        const rotation = rotateInitial + (angle - startAngle);
+
+        // Mark that we actually rotated the shape
+        didInteractRef.current = true;
+
+        // Optimistic update
+        setShapes((prev) => prev.map((r) => (r.id === selectedShapeId ? { ...r, rotation } : r)));
       }
-      
-      // Mark that we actually resized the shape
-      didInteractRef.current = true;
-      
-      // Optimistic update
-      setShapes(prev => prev.map(r => 
-        r.id === selectedShapeId 
-          ? { ...r, ...updates }
-          : r
-      ));
-    } else if (isRotating && svgRef.current && selectedShapeId) {
-      // Handle rotation
-      const rect = svgRef.current.getBoundingClientRect();
-      const canvasPos = screenToCanvas(e.clientX, e.clientY, viewport, rect);
-      
-      // Get the current shape to find its center
-      const shape = shapes.find(s => s.id === selectedShapeId);
-      if (!shape) return;
-      
-      // Calculate center of shape
-      let centerX, centerY;
-      if (shape.type === SHAPE_TYPES.RECTANGLE || shape.type === SHAPE_TYPES.TEXT) {
-        // Rectangles and text boxes: center is at x + width/2, y + height/2
-        centerX = shape.x + (shape.width || 0) / 2;
-        centerY = shape.y + (shape.height || 0) / 2;
-      } else if (shape.type === SHAPE_TYPES.IMAGE) {
-        // Images: x,y IS the center
-        centerX = shape.x;
-        centerY = shape.y;
-      } else if (shape.type === SHAPE_TYPES.CIRCLE || shape.type === SHAPE_TYPES.POLYGON) {
-        // Circles and polygons: x,y IS the center
-        centerX = shape.x;
-        centerY = shape.y;
-      } else if (shape.type === SHAPE_TYPES.CUSTOM_POLYGON && shape.vertices) {
-        // Custom polygons: calculate center from vertices
-        const minX = Math.min(...shape.vertices.map(v => v.x));
-        const maxX = Math.max(...shape.vertices.map(v => v.x));
-        const minY = Math.min(...shape.vertices.map(v => v.y));
-        const maxY = Math.max(...shape.vertices.map(v => v.y));
-        centerX = (minX + maxX) / 2;
-        centerY = (minY + maxY) / 2;
-      } else {
-        // Fallback: assume x,y is center
-        centerX = shape.x;
-        centerY = shape.y;
-      }
-      
-      // Calculate angle from center to current mouse position
-      const angle = Math.atan2(canvasPos.y - centerY, canvasPos.x - centerX) * (180 / Math.PI);
-      const startAngle = Math.atan2(rotateStart.y - centerY, rotateStart.x - centerX) * (180 / Math.PI);
-      const rotation = rotateInitial + (angle - startAngle);
-      
-      // Mark that we actually rotated the shape
-      didInteractRef.current = true;
-      
-      // Optimistic update
-      setShapes(prev => prev.map(r => 
-        r.id === selectedShapeId 
-          ? { ...r, rotation }
-          : r
-      ));
-    }
-  }, [isPanning, isSelecting, isDrawing, isDragging, isResizing, isRotating, panStart, panOffset, viewport, containerSize, dragStart, dragOffset, draggedShapeIds, dragInitialPositions, resizeStart, resizeHandle, resizeInitial, rotateStart, rotateInitial, selectedShapeId, shapes, user, sessionId, notifyFirestoreActivity, trackActivity]);
-  
+    },
+    [
+      isPanning,
+      isSelecting,
+      isDrawing,
+      isDragging,
+      isResizing,
+      isRotating,
+      panStart,
+      panOffset,
+      viewport,
+      containerSize,
+      dragStart,
+      dragOffset,
+      draggedShapeIds,
+      dragInitialPositions,
+      resizeStart,
+      resizeHandle,
+      resizeInitial,
+      rotateStart,
+      rotateInitial,
+      selectedShapeId,
+      shapes,
+      user,
+      sessionId,
+      notifyFirestoreActivity,
+      trackActivity,
+    ]
+  );
+
   // Handle mouse up to stop panning, finish drawing, or finish dragging
   const handleMouseUp = useCallback(async () => {
     if (isPanning) {
       setIsPanning(false);
     } else if (isSelecting) {
       setIsSelecting(false);
-      
+
       // Calculate selection rectangle bounds
       const minX = Math.min(selectStart.x, selectCurrent.x);
       const maxX = Math.max(selectStart.x, selectCurrent.x);
       const minY = Math.min(selectStart.y, selectCurrent.y);
       const maxY = Math.max(selectStart.y, selectCurrent.y);
-      
+
       // Calculate selection rectangle dimensions
       const selectionWidth = maxX - minX;
       const selectionHeight = maxY - minY;
-      
+
       // If selection rectangle is too small (just a click), deselect all shapes
       const MIN_SELECTION_SIZE = 5; // 5 pixels minimum drag to be considered a selection
       if (selectionWidth < MIN_SELECTION_SIZE && selectionHeight < MIN_SELECTION_SIZE) {
@@ -1117,9 +1261,9 @@ function Canvas({
         console.log('Clicked on empty canvas - deselected all shapes');
       } else {
         // Actual drag selection - find all shapes that intersect with selection rectangle
-        const selected = shapes.filter(shape => {
+        const selected = shapes.filter((shape) => {
           let shapeLeft, shapeRight, shapeTop, shapeBottom;
-          
+
           if (shape.type === SHAPE_TYPES.RECTANGLE || shape.type === SHAPE_TYPES.TEXT) {
             shapeLeft = shape.x;
             shapeRight = shape.x + shape.width;
@@ -1139,10 +1283,10 @@ function Canvas({
             shapeBottom = shape.y + shape.radius;
           } else if (shape.type === SHAPE_TYPES.CUSTOM_POLYGON && shape.vertices) {
             const vertices = shape.vertices;
-            shapeLeft = Math.min(...vertices.map(v => v.x));
-            shapeRight = Math.max(...vertices.map(v => v.x));
-            shapeTop = Math.min(...vertices.map(v => v.y));
-            shapeBottom = Math.max(...vertices.map(v => v.y));
+            shapeLeft = Math.min(...vertices.map((v) => v.x));
+            shapeRight = Math.max(...vertices.map((v) => v.x));
+            shapeTop = Math.min(...vertices.map((v) => v.y));
+            shapeBottom = Math.max(...vertices.map((v) => v.y));
           } else {
             // Legacy shapes without type - assume rectangle
             shapeLeft = shape.x;
@@ -1150,20 +1294,20 @@ function Canvas({
             shapeTop = shape.y;
             shapeBottom = shape.y + (shape.height || 0);
           }
-          
+
           // Check if selection rectangle intersects with shape
           return !(shapeRight < minX || shapeLeft > maxX || shapeBottom < minY || shapeTop > maxY);
         });
-        
-        setSelectedShapeIds(selected.map(s => s.id));
+
+        setSelectedShapeIds(selected.map((s) => s.id));
         console.log(`Selected ${selected.length} shapes`);
       }
     } else if (isDrawing) {
       setIsDrawing(false);
-      
+
       const dx = Math.abs(drawCurrent.x - drawStart.x);
       const dy = Math.abs(drawCurrent.y - drawStart.y);
-      
+
       // Create shape based on selected tool
       if (user) {
         try {
@@ -1173,18 +1317,25 @@ function Canvas({
             color: selectedTool === SHAPE_TYPES.TEXT ? undefined : color, // No border for text boxes by default
             createdBy: user.uid,
           };
-          
+
           if (selectedTool === SHAPE_TYPES.RECTANGLE) {
             // Calculate rectangle dimensions
-            let x = Math.min(drawStart.x, drawCurrent.x);
-            let y = Math.min(drawStart.y, drawCurrent.y);
-            let width = dx;
-            let height = dy;
-            
+            const x = Math.min(drawStart.x, drawCurrent.x);
+            const y = Math.min(drawStart.y, drawCurrent.y);
+            const width = dx;
+            const height = dy;
+
             // Only create if rectangle meets minimum size
             if (width >= MIN_RECTANGLE_SIZE && height >= MIN_RECTANGLE_SIZE) {
               // Constrain to canvas boundaries
-              const constrained = constrainRectangle(x, y, width, height, CANVAS_WIDTH, CANVAS_HEIGHT);
+              const constrained = constrainRectangle(
+                x,
+                y,
+                width,
+                height,
+                CANVAS_WIDTH,
+                CANVAS_HEIGHT
+              );
               shapeData = { ...shapeData, ...constrained, rotation: 0, zIndex: Date.now() };
               const shapeId = await createShape(canvasId, shapeData);
               recordAction({ type: 'create', shapeId, shapeData });
@@ -1193,14 +1344,20 @@ function Canvas({
             }
           } else if (selectedTool === SHAPE_TYPES.CIRCLE) {
             // Calculate circle radius from bounding box
-            let radius = Math.sqrt(dx * dx + dy * dy) / 2;
-            let centerX = (drawStart.x + drawCurrent.x) / 2;
-            let centerY = (drawStart.y + drawCurrent.y) / 2;
-            
+            const radius = Math.sqrt(dx * dx + dy * dy) / 2;
+            const centerX = (drawStart.x + drawCurrent.x) / 2;
+            const centerY = (drawStart.y + drawCurrent.y) / 2;
+
             // Only create if circle meets minimum size
             if (radius >= MIN_CIRCLE_RADIUS) {
               // Constrain to canvas boundaries
-              const constrained = constrainCircle(centerX, centerY, radius, CANVAS_WIDTH, CANVAS_HEIGHT);
+              const constrained = constrainCircle(
+                centerX,
+                centerY,
+                radius,
+                CANVAS_WIDTH,
+                CANVAS_HEIGHT
+              );
               shapeData = { ...shapeData, ...constrained, rotation: 0, zIndex: Date.now() };
               const shapeId = await createShape(canvasId, shapeData);
               recordAction({ type: 'create', shapeId, shapeData });
@@ -1209,22 +1366,28 @@ function Canvas({
             }
           } else if (selectedTool === SHAPE_TYPES.POLYGON) {
             // Calculate polygon radius from bounding box
-            let radius = Math.sqrt(dx * dx + dy * dy) / 2;
-            let centerX = (drawStart.x + drawCurrent.x) / 2;
-            let centerY = (drawStart.y + drawCurrent.y) / 2;
-            
+            const radius = Math.sqrt(dx * dx + dy * dy) / 2;
+            const centerX = (drawStart.x + drawCurrent.x) / 2;
+            const centerY = (drawStart.y + drawCurrent.y) / 2;
+
             // Only create if polygon meets minimum size
             if (radius >= MIN_POLYGON_RADIUS) {
               // Constrain to canvas boundaries
-              const constrained = constrainCircle(centerX, centerY, radius, CANVAS_WIDTH, CANVAS_HEIGHT);
-              shapeData = { 
-                ...shapeData, 
+              const constrained = constrainCircle(
+                centerX,
+                centerY,
+                radius,
+                CANVAS_WIDTH,
+                CANVAS_HEIGHT
+              );
+              shapeData = {
+                ...shapeData,
                 x: constrained.x,
                 y: constrained.y,
                 radius: constrained.radius,
                 sides: DEFAULT_POLYGON_SIDES,
                 rotation: 0,
-                zIndex: Date.now()
+                zIndex: Date.now(),
               };
               const shapeId = await createShape(canvasId, shapeData);
               recordAction({ type: 'create', shapeId, shapeData });
@@ -1233,35 +1396,42 @@ function Canvas({
             }
           } else if (selectedTool === SHAPE_TYPES.TEXT) {
             // Calculate text box dimensions
-            let x = Math.min(drawStart.x, drawCurrent.x);
-            let y = Math.min(drawStart.y, drawCurrent.y);
+            const x = Math.min(drawStart.x, drawCurrent.x);
+            const y = Math.min(drawStart.y, drawCurrent.y);
             let width = dx;
             let height = dy;
-            
+
             // Set minimum size for text boxes
             if (width < 100) width = 200;
             if (height < 40) height = 60;
-            
+
             // Constrain to canvas boundaries
-            const constrained = constrainRectangle(x, y, width, height, CANVAS_WIDTH, CANVAS_HEIGHT);
-            
-            shapeData = { 
-              ...shapeData, 
+            const constrained = constrainRectangle(
+              x,
+              y,
+              width,
+              height,
+              CANVAS_WIDTH,
+              CANVAS_HEIGHT
+            );
+
+            shapeData = {
+              ...shapeData,
               ...constrained,
               text: 'Double-click to edit',
               fontSize: 16,
               backgroundColor: 'transparent',
               rotation: 0,
-              zIndex: Date.now()
+              zIndex: Date.now(),
             };
             const newTextBoxId = await createShape(canvasId, shapeData);
             recordAction({ type: 'create', shapeId: newTextBoxId, shapeData });
             console.log('Text box created successfully');
             notifyFirestoreActivity();
-            
+
             // Switch back to SELECT tool after creating text box
             setSelectedTool(TOOL_TYPES.SELECT);
-            
+
             // Auto-select and start editing the new text box
             setTimeout(() => {
               if (newTextBoxId) {
@@ -1278,16 +1448,16 @@ function Canvas({
     } else if (isDragging && (selectedShapeId || draggedShapeIds.length > 0)) {
       setIsDragging(false);
       setIsDraggingLocal(false); // Tell hook we stopped dragging
-      
+
       // Hide cursor for others (set isActive to false)
       if (user && sessionId) {
         removeCursor(canvasId, sessionId).catch(console.error);
       }
-      
+
       // Reset drag state to prevent stale offset on next drag
       setDragStart({ x: 0, y: 0 });
       setDragOffset({ x: 0, y: 0 });
-      
+
       // If we didn't actually drag (just clicked), deselect the shape
       if (!didInteractRef.current) {
         if (draggedShapeIds.length === 1) {
@@ -1300,8 +1470,8 @@ function Canvas({
         if (user) {
           try {
             await Promise.all(
-              draggedShapeIds.map(id => {
-                const shape = shapes.find(s => s.id === id);
+              draggedShapeIds.map((id) => {
+                const shape = shapes.find((s) => s.id === id);
                 if (shape) {
                   if (shape.type === SHAPE_TYPES.CUSTOM_POLYGON) {
                     // Custom polygons: sync vertices
@@ -1319,32 +1489,32 @@ function Canvas({
               })
             );
             // console.log(`${draggedShapeIds.length} shape(s) position updated in Firestore`);
-          notifyFirestoreActivity(); // Notify of successful operation
-        } catch (error) {
+            notifyFirestoreActivity(); // Notify of successful operation
+          } catch (error) {
             console.error('Failed to update shape positions:', error);
           }
         }
       }
-      
+
       // Clear multi-drag state
       setDraggedShapeIds([]);
       setDragInitialPositions({});
     } else if (isResizing && selectedShapeId) {
       setIsResizing(false);
       setIsDraggingLocal(false);
-      
+
       // Hide cursor for others
       if (user && sessionId) {
         removeCursor(canvasId, sessionId).catch(console.error);
       }
-      
+
       // Reset resize state
       setResizeHandle(null);
       setResizeStart({ x: 0, y: 0 });
       setResizeInitial(null);
-      
+
       // Get the shape's current dimensions from local state
-      const shape = shapes.find(s => s.id === selectedShapeId);
+      const shape = shapes.find((s) => s.id === selectedShapeId);
       if (shape && user) {
         try {
           // Sync to Firestore (different fields for different shape types)
@@ -1357,7 +1527,7 @@ function Canvas({
           } else if (shape.type === SHAPE_TYPES.CIRCLE || shape.type === SHAPE_TYPES.POLYGON) {
             updates = { radius: shape.radius };
           }
-          
+
           await updateShape(canvasId, selectedShapeId, updates);
           console.log('Shape dimensions updated in Firestore');
           notifyFirestoreActivity();
@@ -1368,18 +1538,18 @@ function Canvas({
     } else if (isRotating && selectedShapeId) {
       setIsRotating(false);
       setIsDraggingLocal(false);
-      
+
       // Hide cursor for others
       if (user && sessionId) {
         removeCursor(canvasId, sessionId).catch(console.error);
       }
-      
+
       // Reset rotation state
       setRotateStart({ x: 0, y: 0 });
       setRotateInitial(0);
-      
+
       // Get the shape's current rotation from local state
-      const shape = shapes.find(s => s.id === selectedShapeId);
+      const shape = shapes.find((s) => s.id === selectedShapeId);
       if (shape && user) {
         try {
           // Sync to Firestore
@@ -1393,90 +1563,113 @@ function Canvas({
         }
       }
     }
-  }, [isPanning, isSelecting, isDrawing, isDragging, isResizing, isRotating, selectStart, selectCurrent, drawStart, drawCurrent, selectedShapeId, draggedShapeIds, shapes, user, sessionId, selectedTool, setIsDraggingLocal, notifyFirestoreActivity, deselectShape, trackActivity]);
-  
+  }, [
+    isPanning,
+    isSelecting,
+    isDrawing,
+    isDragging,
+    isResizing,
+    isRotating,
+    selectStart,
+    selectCurrent,
+    drawStart,
+    drawCurrent,
+    selectedShapeId,
+    draggedShapeIds,
+    shapes,
+    user,
+    sessionId,
+    selectedTool,
+    setIsDraggingLocal,
+    notifyFirestoreActivity,
+    deselectShape,
+    trackActivity,
+  ]);
+
   // Handle mouse wheel for zooming
-  const handleWheel = useCallback((e) => {
-    e.preventDefault();
-    
-    if (!svgRef.current) return;
-    
-    const rect = svgRef.current.getBoundingClientRect();
-    
-    // Get mouse position in canvas coordinates before zoom
-    const mouseBeforeZoom = screenToCanvas(
-      e.clientX,
-      e.clientY,
-      viewport,
-      rect
-    );
-    
-    // Calculate new zoom level
-    const zoomDelta = -e.deltaY * ZOOM_SENSITIVITY;
-    const newZoom = clamp(viewport.zoom * (1 + zoomDelta), MIN_ZOOM, MAX_ZOOM);
-    
-    // Calculate new offset to keep mouse position stable
-    // We want the point under the mouse to stay in the same place
-    const mouseAfterZoom = {
-      x: (e.clientX - rect.left) / newZoom,
-      y: (e.clientY - rect.top) / newZoom,
-    };
-    
-    const newOffsetX = viewport.offsetX + (mouseBeforeZoom.x - mouseAfterZoom.x - viewport.offsetX);
-    const newOffsetY = viewport.offsetY + (mouseBeforeZoom.y - mouseAfterZoom.y - viewport.offsetY);
-    
-    // Clamp to canvas boundaries (with 20% padding)
-    const clamped = clampPanOffset(
-      newOffsetX,
-      newOffsetY,
-      newZoom,
-      containerSize.width,
-      containerSize.height,
-      CANVAS_WIDTH,
-      CANVAS_HEIGHT,
-      PAN_PADDING_PERCENT
-    );
-    
-    setViewport({
-      offsetX: clamped.offsetX,
-      offsetY: clamped.offsetY,
-      zoom: newZoom,
-    });
-  }, [viewport, containerSize]);
-  
+  const handleWheel = useCallback(
+    (e) => {
+      e.preventDefault();
+
+      if (!svgRef.current) return;
+
+      const rect = svgRef.current.getBoundingClientRect();
+
+      // Get mouse position in canvas coordinates before zoom
+      const mouseBeforeZoom = screenToCanvas(e.clientX, e.clientY, viewport, rect);
+
+      // Calculate new zoom level
+      const zoomDelta = -e.deltaY * ZOOM_SENSITIVITY;
+      const newZoom = clamp(viewport.zoom * (1 + zoomDelta), MIN_ZOOM, MAX_ZOOM);
+
+      // Calculate new offset to keep mouse position stable
+      // We want the point under the mouse to stay in the same place
+      const mouseAfterZoom = {
+        x: (e.clientX - rect.left) / newZoom,
+        y: (e.clientY - rect.top) / newZoom,
+      };
+
+      const newOffsetX =
+        viewport.offsetX + (mouseBeforeZoom.x - mouseAfterZoom.x - viewport.offsetX);
+      const newOffsetY =
+        viewport.offsetY + (mouseBeforeZoom.y - mouseAfterZoom.y - viewport.offsetY);
+
+      // Clamp to canvas boundaries (with 20% padding)
+      const clamped = clampPanOffset(
+        newOffsetX,
+        newOffsetY,
+        newZoom,
+        containerSize.width,
+        containerSize.height,
+        CANVAS_WIDTH,
+        CANVAS_HEIGHT,
+        PAN_PADDING_PERCENT
+      );
+
+      setViewport({
+        offsetX: clamped.offsetX,
+        offsetY: clamped.offsetY,
+        zoom: newZoom,
+      });
+    },
+    [viewport, containerSize]
+  );
+
   // Attach wheel event listener with passive: false to allow preventDefault
   useEffect(() => {
     const svg = svgRef.current;
     if (!svg) return;
-    
+
     svg.addEventListener('wheel', handleWheel, { passive: false });
-    
+
     return () => {
       svg.removeEventListener('wheel', handleWheel);
     };
   }, [handleWheel]);
-  
+
   // Programmatic zoom functions (for zoom controls)
   const handleZoomIn = useCallback(() => {
     if (!svgRef.current) return;
-    
+
     const rect = svgRef.current.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
-    
+
     // Zoom towards center of viewport
     const centerBeforeZoom = screenToCanvas(centerX, centerY, viewport, rect);
-    
+
     const newZoom = clamp(viewport.zoom * 1.2, MIN_ZOOM, MAX_ZOOM);
-    
+
     const centerAfterZoom = {
       x: (centerX - rect.left) / newZoom,
       y: (centerY - rect.top) / newZoom,
     };
-    
-    const newOffsetX = viewport.offsetX + (centerBeforeZoom.x - centerAfterZoom.x - viewport.offsetX);
-    const newOffsetY = viewport.offsetY + (centerBeforeZoom.y - centerAfterZoom.y - viewport.offsetY);
-    
+
+    const newOffsetX =
+      viewport.offsetX + (centerBeforeZoom.x - centerAfterZoom.x - viewport.offsetX);
+    const newOffsetY =
+      viewport.offsetY + (centerBeforeZoom.y - centerAfterZoom.y - viewport.offsetY);
+
     // Clamp to canvas boundaries (with 20% padding)
     const clamped = clampPanOffset(
       newOffsetX,
@@ -1488,7 +1681,7 @@ function Canvas({
       CANVAS_HEIGHT,
       PAN_PADDING_PERCENT
     );
-    
+
     setViewport({
       offsetX: clamped.offsetX,
       offsetY: clamped.offsetY,
@@ -1498,24 +1691,26 @@ function Canvas({
 
   const handleZoomOut = useCallback(() => {
     if (!svgRef.current) return;
-    
+
     const rect = svgRef.current.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
-    
+
     // Zoom out from center of viewport
     const centerBeforeZoom = screenToCanvas(centerX, centerY, viewport, rect);
-    
+
     const newZoom = clamp(viewport.zoom / 1.2, MIN_ZOOM, MAX_ZOOM);
-    
+
     const centerAfterZoom = {
       x: (centerX - rect.left) / newZoom,
       y: (centerY - rect.top) / newZoom,
     };
-    
-    const newOffsetX = viewport.offsetX + (centerBeforeZoom.x - centerAfterZoom.x - viewport.offsetX);
-    const newOffsetY = viewport.offsetY + (centerBeforeZoom.y - centerAfterZoom.y - viewport.offsetY);
-    
+
+    const newOffsetX =
+      viewport.offsetX + (centerBeforeZoom.x - centerAfterZoom.x - viewport.offsetX);
+    const newOffsetY =
+      viewport.offsetY + (centerBeforeZoom.y - centerAfterZoom.y - viewport.offsetY);
+
     // Clamp to canvas boundaries (with 20% padding)
     const clamped = clampPanOffset(
       newOffsetX,
@@ -1527,7 +1722,7 @@ function Canvas({
       CANVAS_HEIGHT,
       PAN_PADDING_PERCENT
     );
-    
+
     setViewport({
       offsetX: clamped.offsetX,
       offsetY: clamped.offsetY,
@@ -1542,67 +1737,70 @@ function Canvas({
       offsetY: 0,
     });
   }, []);
-  
+
   // Set specific zoom level
-  const handleZoomSet = useCallback((newZoom) => {
-    if (!svgRef.current) return;
-    
-    const rect = svgRef.current.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    
-    // Get current center point in canvas coordinates
-    const centerBeforeZoom = screenToCanvas(centerX, centerY, viewport, rect);
-    
-    // Clamp zoom to valid range
-    const clampedZoom = clamp(newZoom, MIN_ZOOM, MAX_ZOOM);
-    
-    // Calculate new offset to keep center point in same position
-    const centerAfterZoom = {
-      x: (centerX - rect.left) / clampedZoom,
-      y: (centerY - rect.top) / clampedZoom,
-    };
-    
-    const newOffsetX = viewport.offsetX + (centerBeforeZoom.x - centerAfterZoom.x);
-    const newOffsetY = viewport.offsetY + (centerBeforeZoom.y - centerAfterZoom.y);
-    
-    // Clamp to canvas boundaries (with 20% padding)
-    const clamped = clampPanOffset(
-      newOffsetX,
-      newOffsetY,
-      clampedZoom,
-      containerSize.width,
-      containerSize.height,
-      CANVAS_WIDTH,
-      CANVAS_HEIGHT,
-      PAN_PADDING_PERCENT
-    );
-    
-    setViewport({
-      zoom: clampedZoom,
-      offsetX: clamped.offsetX,
-      offsetY: clamped.offsetY,
-    });
-  }, [viewport, containerSize]);
-  
+  const handleZoomSet = useCallback(
+    (newZoom) => {
+      if (!svgRef.current) return;
+
+      const rect = svgRef.current.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+
+      // Get current center point in canvas coordinates
+      const centerBeforeZoom = screenToCanvas(centerX, centerY, viewport, rect);
+
+      // Clamp zoom to valid range
+      const clampedZoom = clamp(newZoom, MIN_ZOOM, MAX_ZOOM);
+
+      // Calculate new offset to keep center point in same position
+      const centerAfterZoom = {
+        x: (centerX - rect.left) / clampedZoom,
+        y: (centerY - rect.top) / clampedZoom,
+      };
+
+      const newOffsetX = viewport.offsetX + (centerBeforeZoom.x - centerAfterZoom.x);
+      const newOffsetY = viewport.offsetY + (centerBeforeZoom.y - centerAfterZoom.y);
+
+      // Clamp to canvas boundaries (with 20% padding)
+      const clamped = clampPanOffset(
+        newOffsetX,
+        newOffsetY,
+        clampedZoom,
+        containerSize.width,
+        containerSize.height,
+        CANVAS_WIDTH,
+        CANVAS_HEIGHT,
+        PAN_PADDING_PERCENT
+      );
+
+      setViewport({
+        zoom: clampedZoom,
+        offsetX: clamped.offsetX,
+        offsetY: clamped.offsetY,
+      });
+    },
+    [viewport, containerSize]
+  );
+
   // Fit entire canvas in view
   const handleFitCanvas = useCallback(() => {
     if (!svgRef.current) return;
-    
+
     const rect = svgRef.current.getBoundingClientRect();
     const viewportWidth = rect.width;
     const viewportHeight = rect.height;
-    
+
     // Calculate zoom level needed to fit entire canvas (with 10% padding)
     const padding = 0.9; // 90% of viewport to leave some margin
     const zoomX = (viewportWidth * padding) / CANVAS_WIDTH;
     const zoomY = (viewportHeight * padding) / CANVAS_HEIGHT;
     const fitZoom = Math.min(zoomX, zoomY, MAX_ZOOM);
-    
+
     // Center the canvas in the viewport
     const newOffsetX = (CANVAS_WIDTH - viewportWidth / fitZoom) / 2;
     const newOffsetY = (CANVAS_HEIGHT - viewportHeight / fitZoom) / 2;
-    
+
     setViewport({
       zoom: fitZoom,
       offsetX: newOffsetX,
@@ -1613,11 +1811,11 @@ function Canvas({
   // Handle send to front (z-order)
   const handleSendToFront = useCallback(async () => {
     if (!user || (!selectedShapeId && selectedShapeIds.length === 0)) return;
-    
+
     const shapesToBringForward = selectedShapeIds.length > 0 ? selectedShapeIds : [selectedShapeId];
-    const maxZIndex = shapes.length > 0 ? Math.max(...shapes.map(s => s.zIndex || 0)) : 0;
+    const maxZIndex = shapes.length > 0 ? Math.max(...shapes.map((s) => s.zIndex || 0)) : 0;
     const newZIndex = maxZIndex + 1;
-    
+
     try {
       for (const shapeId of shapesToBringForward) {
         await updateShape(canvasId, shapeId, { zIndex: newZIndex });
@@ -1632,11 +1830,11 @@ function Canvas({
   // Handle send to back (z-order)
   const handleSendToBack = useCallback(async () => {
     if (!user || (!selectedShapeId && selectedShapeIds.length === 0)) return;
-    
+
     const shapesToSendBack = selectedShapeIds.length > 0 ? selectedShapeIds : [selectedShapeId];
-    const minZIndex = shapes.length > 0 ? Math.min(...shapes.map(s => s.zIndex || 0)) : 0;
+    const minZIndex = shapes.length > 0 ? Math.min(...shapes.map((s) => s.zIndex || 0)) : 0;
     const newZIndex = minZIndex - 1;
-    
+
     try {
       for (const shapeId of shapesToSendBack) {
         await updateShape(canvasId, shapeId, { zIndex: newZIndex });
@@ -1649,109 +1847,117 @@ function Canvas({
   }, [user, selectedShapeId, selectedShapeIds, shapes, canvasId, notifyFirestoreActivity]);
 
   // Handle visibility toggle from layers panel
-  const handleToggleVisibility = useCallback(async (shapeId) => {
-    if (!user || userRole === 'viewer') return;
-    
-    const shape = shapes.find(s => s.id === shapeId);
-    if (!shape) return;
-    
-    const newVisibility = shape.visible === false ? true : false;
-    
-    try {
-      await updateShape(canvasId, shapeId, { visible: newVisibility });
-      console.log(`👁️ Toggled visibility for shape ${shapeId}: ${newVisibility}`);
-      notifyFirestoreActivity();
-    } catch (error) {
-      console.error('❌ Failed to toggle visibility:', error);
-    }
-  }, [user, userRole, shapes, canvasId, updateShape, notifyFirestoreActivity]);
+  const handleToggleVisibility = useCallback(
+    async (shapeId) => {
+      if (!user || userRole === 'viewer') return;
+
+      const shape = shapes.find((s) => s.id === shapeId);
+      if (!shape) return;
+
+      const newVisibility = shape.visible === false ? true : false;
+
+      try {
+        await updateShape(canvasId, shapeId, { visible: newVisibility });
+        console.log(`👁️ Toggled visibility for shape ${shapeId}: ${newVisibility}`);
+        notifyFirestoreActivity();
+      } catch (error) {
+        console.error('❌ Failed to toggle visibility:', error);
+      }
+    },
+    [user, userRole, shapes, canvasId, updateShape, notifyFirestoreActivity]
+  );
 
   // Handle rename from layers panel
-  const handleRenameShape = useCallback(async (shapeId, newName) => {
-    if (!user || userRole === 'viewer') return;
-    
-    try {
-      await updateShape(canvasId, shapeId, { name: newName });
-      console.log(`✏️ Renamed shape ${shapeId} to "${newName}"`);
-      notifyFirestoreActivity();
-    } catch (error) {
-      console.error('❌ Failed to rename shape:', error);
-    }
-  }, [user, userRole, canvasId, updateShape, notifyFirestoreActivity]);
+  const handleRenameShape = useCallback(
+    async (shapeId, newName) => {
+      if (!user || userRole === 'viewer') return;
+
+      try {
+        await updateShape(canvasId, shapeId, { name: newName });
+        console.log(`✏️ Renamed shape ${shapeId} to "${newName}"`);
+        notifyFirestoreActivity();
+      } catch (error) {
+        console.error('❌ Failed to rename shape:', error);
+      }
+    },
+    [user, userRole, canvasId, updateShape, notifyFirestoreActivity]
+  );
 
   // Handle clearing all shapes
   const handleClearAll = useCallback(async () => {
     if (!user) return;
-    
+
     console.log('🗑️ CLEAR ALL initiated');
     console.log(`  Total shapes on canvas: ${shapes.length}`);
-    
+
     const confirmed = window.confirm(
       `Are you sure you want to delete ALL ${shapes.length} shapes?\n\n` +
-      `This action cannot be undone!`
+        `This action cannot be undone!`
     );
-    
+
     if (!confirmed) {
       console.log('❌ Clear All cancelled by user');
       return;
     }
-    
+
     try {
       console.log('🔍 Checking which shapes can be deleted...');
-      
+
       // Delete all shapes that aren't locked by other users
-      const deletableShapes = shapes.filter(shape => 
-        !shape.lockedBy || shape.lockedBy === user.uid
+      const deletableShapes = shapes.filter(
+        (shape) => !shape.lockedBy || shape.lockedBy === user.uid
       );
-      
+
       console.log(`  ✅ Deletable shapes: ${deletableShapes.length}`);
       console.log(`  🔒 Locked by others: ${shapes.length - deletableShapes.length}`);
-      
+
       if (deletableShapes.length === 0) {
         console.log('❌ All shapes are locked by other users');
         alert('All shapes are locked by other users.');
         return;
       }
-      
+
       if (deletableShapes.length < shapes.length) {
         const lockedCount = shapes.length - deletableShapes.length;
         const proceed = window.confirm(
           `${lockedCount} shape(s) are locked by other users and cannot be deleted.\n\n` +
-          `Delete the remaining ${deletableShapes.length} shape(s)?`
+            `Delete the remaining ${deletableShapes.length} shape(s)?`
         );
-        
+
         if (!proceed) {
           console.log('❌ Clear All cancelled - user chose not to delete remaining shapes');
           return;
         }
       }
-      
+
       // Clear selection first
       console.log('🔓 Clearing selections...');
       deselectShape();
       setSelectedShapeIds([]);
-      
+
       // CRITICAL: Enable batch delete mode to prevent race condition
       console.log('🚨 Enabling batch delete mode (prevents merge logic)');
       setBatchDeleting(true);
-      
+
       // Delete shapes in batches from Firestore
       console.log('🗑️ Starting batch deletion from Firestore...');
       const batchSize = 25;
       let successCount = 0;
       let failCount = 0;
-      
+
       for (let i = 0; i < deletableShapes.length; i += batchSize) {
         const batch = deletableShapes.slice(i, i + batchSize);
-        console.log(`  Deleting batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(deletableShapes.length / batchSize)} (${batch.length} shapes)...`);
-        
+        console.log(
+          `  Deleting batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(deletableShapes.length / batchSize)} (${batch.length} shapes)...`
+        );
+
         const results = await Promise.allSettled(
-          batch.map(shape => {
+          batch.map((shape) => {
             console.log(`    Deleting shape ${shape.id} from Firestore...`);
             return deleteShape(canvasId, shape.id);
           })
         );
-        
+
         // Count successes and failures
         results.forEach((result, idx) => {
           if (result.status === 'fulfilled') {
@@ -1762,35 +1968,39 @@ function Canvas({
             console.error(`    ❌ Failed to delete shape ${batch[idx].id}:`, result.reason);
           }
         });
-        
-        console.log(`  ✓ Batch ${Math.floor(i / batchSize) + 1} complete: ${successCount}/${deletableShapes.length} deleted`);
+
+        console.log(
+          `  ✓ Batch ${Math.floor(i / batchSize) + 1} complete: ${successCount}/${deletableShapes.length} deleted`
+        );
       }
-      
+
       console.log(`✅ Clear All complete!`);
       console.log(`  Successfully deleted from database: ${successCount} shapes`);
       if (failCount > 0) {
         console.warn(`  Failed to delete: ${failCount} shapes`);
       }
-      
+
       // CRITICAL: Disable batch delete mode after a delay to allow Firestore to sync
       setTimeout(() => {
         console.log('🔓 Disabling batch delete mode');
         setBatchDeleting(false);
       }, 1000);
-      
+
       notifyFirestoreActivity();
-      
+
       // Show success message
       if (successCount > 0) {
-        alert(`Successfully deleted ${successCount} shape(s) from the database!${failCount > 0 ? `\n\n${failCount} shape(s) failed to delete.` : ''}`);
+        alert(
+          `Successfully deleted ${successCount} shape(s) from the database!${failCount > 0 ? `\n\n${failCount} shape(s) failed to delete.` : ''}`
+        );
       }
     } catch (error) {
       console.error('❌ CRITICAL ERROR during Clear All:', error);
-      
+
       // Make sure to disable batch delete mode even on error
       console.log('🔓 Disabling batch delete mode (error cleanup)');
       setBatchDeleting(false);
-      
+
       alert('Failed to clear shapes. Please check the console and try again.');
     }
   }, [shapes, user, deselectShape, setSelectedShapeIds, notifyFirestoreActivity, setBatchDeleting]);
@@ -1799,31 +2009,31 @@ function Canvas({
   const handleDuplicate = useCallback(async () => {
     if (!user) return;
     if (!selectedShapeId && selectedShapeIds.length === 0) return;
-    
+
     // ⛔ Viewers can't duplicate
     if (userRole === 'viewer') {
       console.log('👁️ Viewer mode: Cannot duplicate shapes');
       return;
     }
-    
+
     // Determine which shapes to duplicate
     const shapesToDuplicate = selectedShapeIds.length > 0 ? selectedShapeIds : [selectedShapeId];
-    
+
     try {
       const newShapeIds = [];
       const duplicateOffset = 20; // Offset for duplicated shapes
-      
+
       // Deselect current shapes first
       if (selectedShapeId) {
         await deselectShape();
       }
       setSelectedShapeIds([]);
-      
+
       // Create duplicates
       for (const shapeId of shapesToDuplicate) {
-        const shape = shapes.find(s => s.id === shapeId);
+        const shape = shapes.find((s) => s.id === shapeId);
         if (!shape) continue;
-        
+
         // Create a copy with offset position
         const duplicatedShape = {
           ...shape,
@@ -1834,15 +2044,15 @@ function Canvas({
           lockedBy: null,
           lockedByUserName: null,
         };
-        
+
         // Remove id so a new one will be generated
         delete duplicatedShape.id;
         delete duplicatedShape.timestamp;
-        
+
         const newId = await createShape(canvasId, duplicatedShape);
         newShapeIds.push(newId);
       }
-      
+
       // Select the new duplicates
       if (newShapeIds.length === 1) {
         // Single shape - use normal selection
@@ -1851,136 +2061,170 @@ function Canvas({
         // Multiple shapes - use multi-selection
         setTimeout(() => setSelectedShapeIds(newShapeIds), 100);
       }
-      
+
       notifyFirestoreActivity();
     } catch (error) {
       console.error('❌ Failed to duplicate shapes:', error);
     }
-  }, [selectedShapeId, selectedShapeIds, shapes, user, deselectShape, selectShape, canvasId, notifyFirestoreActivity, setSelectedShapeIds, userRole]);
+  }, [
+    selectedShapeId,
+    selectedShapeIds,
+    shapes,
+    user,
+    deselectShape,
+    selectShape,
+    canvasId,
+    notifyFirestoreActivity,
+    setSelectedShapeIds,
+    userRole,
+  ]);
 
   // Handle aligning selected shapes
-  const handleAlign = useCallback((alignment) => {
-    if (!user) return;
-    if (!selectedShapeId && selectedShapeIds.length === 0) return;
-    
-    // ⛔ Viewers can't align
-    if (userRole === 'viewer') {
-      console.log('👁️ Viewer mode: Cannot align shapes');
-      return;
-    }
-    
-    // Build context for the tool
-    const context = {
-      shapes,
-      selectedShapeIds: selectedShapeIds.length > 0 ? selectedShapeIds : (selectedShapeId ? [selectedShapeId] : []),
-      updateShape: (shapeId, updates) => updateShape(canvasId, shapeId, updates),
+  const handleAlign = useCallback(
+    (alignment) => {
+      if (!user) return;
+      if (!selectedShapeId && selectedShapeIds.length === 0) return;
+
+      // ⛔ Viewers can't align
+      if (userRole === 'viewer') {
+        console.log('👁️ Viewer mode: Cannot align shapes');
+        return;
+      }
+
+      // Build context for the tool
+      const context = {
+        shapes,
+        selectedShapeIds:
+          selectedShapeIds.length > 0 ? selectedShapeIds : selectedShapeId ? [selectedShapeId] : [],
+        updateShape: (shapeId, updates) => updateShape(canvasId, shapeId, updates),
+        canvasId,
+        userId: user.uid,
+        viewport,
+      };
+
+      // Execute the alignment tool
+      const result = executeCanvasTool('alignShapes', { alignment, useSelected: true }, context);
+
+      if (result.success) {
+        console.log(`✅ ${result.message}`);
+        notifyFirestoreActivity();
+      } else {
+        console.error(`❌ ${result.message}`);
+      }
+    },
+    [
+      user,
       canvasId,
-      userId: user.uid,
-      viewport
-    };
-    
-    // Execute the alignment tool
-    const result = executeCanvasTool('alignShapes', { alignment, useSelected: true }, context);
-    
-    if (result.success) {
-      console.log(`✅ ${result.message}`);
-      notifyFirestoreActivity();
-    } else {
-      console.error(`❌ ${result.message}`);
-    }
-  }, [user, canvasId, shapes, selectedShapeId, selectedShapeIds, updateShape, userRole, viewport, notifyFirestoreActivity]);
+      shapes,
+      selectedShapeId,
+      selectedShapeIds,
+      updateShape,
+      userRole,
+      viewport,
+      notifyFirestoreActivity,
+    ]
+  );
 
   // ===== Canny AI Tool Wrappers =====
   // These functions wrap canvas operations for use by Canny AI
-  
+
   /**
    * Create a shape for Canny
    * Returns the created shape data
    */
-  const handleCreateShapeForCanny = useCallback((shapeData) => {
-    console.log('🤖 Canny requesting shape creation:', shapeData);
-    
-    if (!user || !canvasId) {
-      console.error('❌ Cannot create shape: missing user or canvasId');
-      return null;
-    }
-    
-    try {
-      const shape = {
-        ...shapeData,
-        id: `${user.uid}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        createdBy: user.uid,
-        timestamp: Date.now(),
-        rotation: shapeData.rotation || 0,
-        zIndex: Date.now()
-      };
-      
-      console.log('✅ Creating shape with data:', shape);
-      
-      // Add to Firebase
-      createShape(canvasId, shape);
-      
-      console.log('✅ Shape created successfully:', shape.id);
-      return shape;
-    } catch (error) {
-      console.error('❌ Failed to create shape for Canny:', error);
-      return null;
-    }
-  }, [user, canvasId, createShape]);
-  
+  const handleCreateShapeForCanny = useCallback(
+    (shapeData) => {
+      console.log('🤖 Canny requesting shape creation:', shapeData);
+
+      if (!user || !canvasId) {
+        console.error('❌ Cannot create shape: missing user or canvasId');
+        return null;
+      }
+
+      try {
+        const shape = {
+          ...shapeData,
+          id: `${user.uid}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          createdBy: user.uid,
+          timestamp: Date.now(),
+          rotation: shapeData.rotation || 0,
+          zIndex: Date.now(),
+        };
+
+        console.log('✅ Creating shape with data:', shape);
+
+        // Add to Firebase
+        createShape(canvasId, shape);
+
+        console.log('✅ Shape created successfully:', shape.id);
+        return shape;
+      } catch (error) {
+        console.error('❌ Failed to create shape for Canny:', error);
+        return null;
+      }
+    },
+    [user, canvasId, createShape]
+  );
+
   /**
    * Update a shape for Canny
    */
-  const handleUpdateShapeForCanny = useCallback((shapeId, updates) => {
-    if (!canvasId) return false;
-    
-    try {
-      updateShape(canvasId, shapeId, updates);
-      return true;
-    } catch (error) {
-      console.error('Failed to update shape for Canny:', error);
-      return false;
-    }
-  }, [canvasId, updateShape]);
-  
+  const handleUpdateShapeForCanny = useCallback(
+    (shapeId, updates) => {
+      if (!canvasId) return false;
+
+      try {
+        updateShape(canvasId, shapeId, updates);
+        return true;
+      } catch (error) {
+        console.error('Failed to update shape for Canny:', error);
+        return false;
+      }
+    },
+    [canvasId, updateShape]
+  );
+
   /**
    * Delete a shape for Canny
    */
-  const handleDeleteShapeForCanny = useCallback((shapeId) => {
-    if (!canvasId) return false;
-    
-    try {
-      deleteShape(canvasId, shapeId);
-      return true;
-    } catch (error) {
-      console.error('Failed to delete shape for Canny:', error);
-      return false;
-    }
-  }, [canvasId, deleteShape]);
+  const handleDeleteShapeForCanny = useCallback(
+    (shapeId) => {
+      if (!canvasId) return false;
+
+      try {
+        deleteShape(canvasId, shapeId);
+        return true;
+      } catch (error) {
+        console.error('Failed to delete shape for Canny:', error);
+        return false;
+      }
+    },
+    [canvasId, deleteShape]
+  );
 
   // Handle generating 10 random shapes
   const handleGenerate500 = useCallback(async () => {
     console.log('🔥 handleGenerate500 called!');
     console.log('User:', user);
-    
+
     if (!user) {
       console.warn('⚠️ No user found, cannot generate shapes');
       alert('Please sign in to generate shapes');
       return;
     }
-    
+
     try {
       const shapesBefore = shapes.length;
       console.log('🎨 Starting to generate 10 random shapes...');
       console.log('User ID:', user.uid);
       console.log('Current shapes in state:', shapesBefore);
-      
+
       // Generate shapes (this will take ~500ms with delays)
       await generateTestShapes(10, user.uid, canvasId);
-      
+
       console.log('✅ generateTestShapes completed');
       notifyFirestoreActivity();
-      
+
       // Wait for Realtime Database to sync
       setTimeout(() => {
         const shapesAfter = shapes.length;
@@ -1993,91 +2237,38 @@ function Canvas({
       alert(`Failed to generate shapes: ${error.message}`);
     }
   }, [user, notifyFirestoreActivity, shapes]);
-  
+
   // Handle image upload button click
   const handleImageUpload = useCallback(() => {
     if (!user) {
       alert('Please sign in to upload images');
       return;
     }
-    
+
     // Trigger file input click
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
   }, [user]);
-  
+
   // Handle file selection
-  const handleFileChange = useCallback(async (e) => {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
-    
-    try {
-      console.log('📤 Converting image:', file.name);
-      
-      // Convert image to base64 data URL
-      const { url, width, height } = await uploadImage(file, user.uid);
-      
-      console.log('✅ Image converted:', url.substring(0, 50) + '...');
-      
-      // Create image shape in center of visible viewport
-      const viewportCenterX = -viewport.offsetX + (containerSize.width / 2) / viewport.zoom;
-      const viewportCenterY = -viewport.offsetY + (containerSize.height / 2) / viewport.zoom;
-      
-      // Use actual image dimensions
-      const imageData = {
-        type: SHAPE_TYPES.IMAGE,
-        x: viewportCenterX,
-        y: viewportCenterY,
-        width,
-        height,
-        imageUrl: url, // Base64 data URL
-        color: getRandomColor(user.uid),
-        createdBy: user.uid,
-        rotation: 0,
-        zIndex: Date.now(),
-      };
-      
-      const shapeId = await createShape(canvasId, imageData);
-      recordAction({ type: 'create', shapeId, shapeData: imageData });
-      console.log('✅ Image shape created');
-      notifyFirestoreActivity();
-    } catch (error) {
-      console.error('❌ Failed to upload image:', error);
-      alert(`Failed to upload image: ${error.message}`);
-    } finally {
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  }, [user, viewport, containerSize, notifyFirestoreActivity]);
-  
-  // Handle paste event (Ctrl+V) for images
-  const handlePaste = useCallback(async (e) => {
-    if (!user) return;
-    
-    // Check if we're in a text input (don't intercept normal paste)
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
-      return;
-    }
-    
-    try {
-      const imageFile = await handlePasteEvent(e);
-      
-      if (imageFile) {
-        e.preventDefault();
-        console.log('📋 Image pasted from clipboard:', imageFile.name);
-        
+  const handleFileChange = useCallback(
+    async (e) => {
+      const file = e.target.files?.[0];
+      if (!file || !user) return;
+
+      try {
+        console.log('📤 Converting image:', file.name);
+
         // Convert image to base64 data URL
-        const { url, width, height } = await uploadImage(imageFile, user.uid);
-        
-        console.log('✅ Pasted image converted:', url.substring(0, 50) + '...');
-        
-        // Create image shape at mouse position or center of viewport
-        const viewportCenterX = -viewport.offsetX + (containerSize.width / 2) / viewport.zoom;
-        const viewportCenterY = -viewport.offsetY + (containerSize.height / 2) / viewport.zoom;
-        
+        const { url, width, height } = await uploadImage(file, user.uid);
+
+        console.log('✅ Image converted:', url.substring(0, 50) + '...');
+
+        // Create image shape in center of visible viewport
+        const viewportCenterX = -viewport.offsetX + containerSize.width / 2 / viewport.zoom;
+        const viewportCenterY = -viewport.offsetY + containerSize.height / 2 / viewport.zoom;
+
         // Use actual image dimensions
         const imageData = {
           type: SHAPE_TYPES.IMAGE,
@@ -2091,18 +2282,81 @@ function Canvas({
           rotation: 0,
           zIndex: Date.now(),
         };
-        
+
         const shapeId = await createShape(canvasId, imageData);
         recordAction({ type: 'create', shapeId, shapeData: imageData });
-        console.log('✅ Pasted image shape created');
+        console.log('✅ Image shape created');
         notifyFirestoreActivity();
+      } catch (error) {
+        console.error('❌ Failed to upload image:', error);
+        alert(`Failed to upload image: ${error.message}`);
+      } finally {
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
       }
-    } catch (error) {
-      console.error('❌ Failed to paste image:', error);
-      alert(`Failed to paste image: ${error.message}`);
-    }
-  }, [user, viewport, containerSize, notifyFirestoreActivity]);
-  
+    },
+    [user, viewport, containerSize, notifyFirestoreActivity]
+  );
+
+  // Handle paste event (Ctrl+V) for images
+  const handlePaste = useCallback(
+    async (e) => {
+      if (!user) return;
+
+      // Check if we're in a text input (don't intercept normal paste)
+      if (
+        e.target.tagName === 'INPUT' ||
+        e.target.tagName === 'TEXTAREA' ||
+        e.target.isContentEditable
+      ) {
+        return;
+      }
+
+      try {
+        const imageFile = await handlePasteEvent(e);
+
+        if (imageFile) {
+          e.preventDefault();
+          console.log('📋 Image pasted from clipboard:', imageFile.name);
+
+          // Convert image to base64 data URL
+          const { url, width, height } = await uploadImage(imageFile, user.uid);
+
+          console.log('✅ Pasted image converted:', url.substring(0, 50) + '...');
+
+          // Create image shape at mouse position or center of viewport
+          const viewportCenterX = -viewport.offsetX + containerSize.width / 2 / viewport.zoom;
+          const viewportCenterY = -viewport.offsetY + containerSize.height / 2 / viewport.zoom;
+
+          // Use actual image dimensions
+          const imageData = {
+            type: SHAPE_TYPES.IMAGE,
+            x: viewportCenterX,
+            y: viewportCenterY,
+            width,
+            height,
+            imageUrl: url, // Base64 data URL
+            color: getRandomColor(user.uid),
+            createdBy: user.uid,
+            rotation: 0,
+            zIndex: Date.now(),
+          };
+
+          const shapeId = await createShape(canvasId, imageData);
+          recordAction({ type: 'create', shapeId, shapeData: imageData });
+          console.log('✅ Pasted image shape created');
+          notifyFirestoreActivity();
+        }
+      } catch (error) {
+        console.error('❌ Failed to paste image:', error);
+        alert(`Failed to paste image: ${error.message}`);
+      }
+    },
+    [user, viewport, containerSize, notifyFirestoreActivity]
+  );
+
   // Add paste event listener (non-passive to allow preventDefault)
   useEffect(() => {
     window.addEventListener('paste', handlePaste, { passive: false });
@@ -2110,26 +2364,35 @@ function Canvas({
       window.removeEventListener('paste', handlePaste);
     };
   }, [handlePaste]);
-  
+
   // Add global mouse event listeners for panning, selecting, drawing, dragging, resizing, and rotating
   useEffect(() => {
     if (isPanning || isSelecting || isDrawing || isDragging || isResizing || isRotating) {
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
-      
+
       return () => {
         window.removeEventListener('mousemove', handleMouseMove);
         window.removeEventListener('mouseup', handleMouseUp);
       };
     }
-  }, [isPanning, isSelecting, isDrawing, isDragging, isResizing, isRotating, handleMouseMove, handleMouseUp]);
-  
+  }, [
+    isPanning,
+    isSelecting,
+    isDrawing,
+    isDragging,
+    isResizing,
+    isRotating,
+    handleMouseMove,
+    handleMouseUp,
+  ]);
+
   // Add keyboard event listener for Delete key
   useEffect(() => {
     const handleKeyDown = async (e) => {
       // Track activity on any keypress
       trackActivity();
-      
+
       // Custom polygon: Enter to finish, Escape to cancel
       if (isDrawingCustomPolygon) {
         if (e.key === 'Enter' && customPolygonVertices.length >= 3) {
@@ -2146,7 +2409,7 @@ function Canvas({
           return;
         }
       }
-      
+
       // Zoom keyboard shortcuts (Ctrl/Cmd + +/- and Ctrl/Cmd + 0)
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
         if (e.key === '=' || e.key === '+') {
@@ -2165,55 +2428,75 @@ function Canvas({
       }
 
       // Copy selected shapes (Ctrl/Cmd + C)
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c' && (selectedShapeId || selectedShapeIds.length > 0) && !isDrawing && !isDragging && !isResizing && !isRotating && !isSelecting) {
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        e.key.toLowerCase() === 'c' &&
+        (selectedShapeId || selectedShapeIds.length > 0) &&
+        !isDrawing &&
+        !isDragging &&
+        !isResizing &&
+        !isRotating &&
+        !isSelecting
+      ) {
         e.preventDefault();
-        
+
         console.log('📋 COPY KEY PRESSED');
-        
+
         // Determine which shapes to copy
         const shapesToCopy = selectedShapeIds.length > 0 ? selectedShapeIds : [selectedShapeId];
         console.log('  shapesToCopy:', shapesToCopy);
-        
+
         // Get the actual shape objects
-        const copiedShapes = shapes.filter(s => shapesToCopy.includes(s.id)).map(shape => ({
-          ...shape,
-          // Remove id and timestamp so new ones will be generated on paste
-          id: undefined,
-          timestamp: undefined,
-          // Remove lock-related fields
-          lockedBy: null,
-          lockedByUserName: null,
-        }));
-        
+        const copiedShapes = shapes
+          .filter((s) => shapesToCopy.includes(s.id))
+          .map((shape) => ({
+            ...shape,
+            // Remove id and timestamp so new ones will be generated on paste
+            id: undefined,
+            timestamp: undefined,
+            // Remove lock-related fields
+            lockedBy: null,
+            lockedByUserName: null,
+          }));
+
         setClipboard(copiedShapes);
         console.log(`✅ ${copiedShapes.length} shape(s) copied to clipboard`);
-        
+
         return;
       }
 
       // Paste shapes from clipboard (Ctrl/Cmd + V)
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v' && clipboard.length > 0 && !isDrawing && !isDragging && !isResizing && !isRotating && !isSelecting) {
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        e.key.toLowerCase() === 'v' &&
+        clipboard.length > 0 &&
+        !isDrawing &&
+        !isDragging &&
+        !isResizing &&
+        !isRotating &&
+        !isSelecting
+      ) {
         e.preventDefault();
-        
+
         // ⛔ Viewers can't paste
         if (userRole === 'viewer') {
           console.log('👁️ Viewer mode: Cannot paste shapes');
           return;
         }
-        
+
         console.log('📋 PASTE KEY PRESSED');
         console.log('  clipboard:', clipboard);
-        
+
         try {
           const newShapeIds = [];
           const pasteOffset = 20; // Offset for pasted shapes
-          
+
           // Deselect current shapes first
           if (selectedShapeId) {
             await deselectShape();
           }
           setSelectedShapeIds([]);
-          
+
           // Create pasted shapes with offset
           for (const shapeData of clipboard) {
             // Create a copy with offset position
@@ -2223,14 +2506,14 @@ function Canvas({
               y: shapeData.y + pasteOffset,
               createdBy: user.uid,
             };
-            
+
             const newId = await createShape(canvasId, pastedShape);
             newShapeIds.push(newId);
             console.log(`  ✅ Pasted shape -> ${newId}`);
           }
-          
+
           console.log(`✅ ${newShapeIds.length} shape(s) pasted successfully`);
-          
+
           // Select the new pasted shapes
           if (newShapeIds.length === 1) {
             // Single shape - use normal selection
@@ -2239,48 +2522,58 @@ function Canvas({
             // Multiple shapes - use multi-selection
             setTimeout(() => setSelectedShapeIds(newShapeIds), 100);
           }
-          
+
           // Update clipboard to paste again at new offset
-          const updatedClipboard = clipboard.map(shape => ({
+          const updatedClipboard = clipboard.map((shape) => ({
             ...shape,
             x: shape.x + pasteOffset,
             y: shape.y + pasteOffset,
           }));
           setClipboard(updatedClipboard);
-          
+
           notifyFirestoreActivity();
         } catch (error) {
           console.error('❌ Failed to paste shapes:', error);
         }
-        
+
         return;
       }
 
       // Duplicate selected shapes (Ctrl/Cmd + D)
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd' && (selectedShapeId || selectedShapeIds.length > 0) && !isDrawing && !isDragging && !isResizing && !isRotating && !isSelecting) {
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        e.key.toLowerCase() === 'd' &&
+        (selectedShapeId || selectedShapeIds.length > 0) &&
+        !isDrawing &&
+        !isDragging &&
+        !isResizing &&
+        !isRotating &&
+        !isSelecting
+      ) {
         e.preventDefault();
-        
+
         console.log('📋 DUPLICATE KEY PRESSED');
-        
+
         // Determine which shapes to duplicate
-        const shapesToDuplicate = selectedShapeIds.length > 0 ? selectedShapeIds : [selectedShapeId];
+        const shapesToDuplicate =
+          selectedShapeIds.length > 0 ? selectedShapeIds : [selectedShapeId];
         console.log('  shapesToDuplicate:', shapesToDuplicate);
-        
+
         try {
           const newShapeIds = [];
           const duplicateOffset = 20; // Offset for duplicated shapes
-          
+
           // Deselect current shapes first
           if (selectedShapeId) {
             await deselectShape();
           }
           setSelectedShapeIds([]);
-          
+
           // Create duplicates
           for (const shapeId of shapesToDuplicate) {
-            const shape = shapes.find(s => s.id === shapeId);
+            const shape = shapes.find((s) => s.id === shapeId);
             if (!shape) continue;
-            
+
             // Create a copy with offset position
             const duplicatedShape = {
               ...shape,
@@ -2291,18 +2584,18 @@ function Canvas({
               lockedBy: null,
               lockedByUserName: null,
             };
-            
+
             // Remove id so a new one will be generated
             delete duplicatedShape.id;
             delete duplicatedShape.timestamp;
-            
+
             const newId = await createShape(canvasId, duplicatedShape);
             newShapeIds.push(newId);
             console.log(`  ✅ Duplicated shape ${shapeId} -> ${newId}`);
           }
-          
+
           console.log(`✅ ${newShapeIds.length} shape(s) duplicated successfully`);
-          
+
           // Select the new duplicates
           if (newShapeIds.length === 1) {
             // Single shape - use normal selection
@@ -2311,63 +2604,76 @@ function Canvas({
             // Multiple shapes - use multi-selection
             setTimeout(() => setSelectedShapeIds(newShapeIds), 100);
           }
-          
+
           notifyFirestoreActivity();
         } catch (error) {
           console.error('❌ Failed to duplicate shapes:', error);
         }
-        
+
         return;
       }
 
       // Delete selected shapes when Delete or Backspace is pressed
-      if ((e.key === 'Delete' || e.key === 'Backspace') && (selectedShapeId || selectedShapeIds.length > 0) && !isDrawing && !isDragging && !isResizing && !isRotating && !isSelecting) {
+      if (
+        (e.key === 'Delete' || e.key === 'Backspace') &&
+        (selectedShapeId || selectedShapeIds.length > 0) &&
+        !isDrawing &&
+        !isDragging &&
+        !isResizing &&
+        !isRotating &&
+        !isSelecting
+      ) {
         e.preventDefault(); // Prevent browser back navigation on Backspace
-        
+
         // ⛔ Viewers can't delete
         if (userRole === 'viewer') {
           console.log('👁️ Viewer mode: Cannot delete shapes');
           return;
         }
-        
+
         console.log('🗑️ DELETE KEY PRESSED');
         console.log('  selectedShapeId:', selectedShapeId);
         console.log('  selectedShapeIds:', selectedShapeIds);
-        
+
         // Determine which shapes to delete
         const shapesToDelete = selectedShapeIds.length > 0 ? selectedShapeIds : [selectedShapeId];
         console.log('  shapesToDelete:', shapesToDelete);
-        
+
         // Get full shape details
-        const shapeDetails = shapesToDelete.map(id => {
-          const shape = shapes.find(s => s.id === id);
+        const shapeDetails = shapesToDelete.map((id) => {
+          const shape = shapes.find((s) => s.id === id);
           return { id, shape: shape || 'NOT_FOUND' };
         });
         console.log('  Shape details:', JSON.stringify(shapeDetails, null, 2));
-        
+
         // Filter out locked shapes
-        const deletableShapes = shapesToDelete.filter(id => {
-          const shape = shapes.find(s => s.id === id);
+        const deletableShapes = shapesToDelete.filter((id) => {
+          const shape = shapes.find((s) => s.id === id);
           const canDelete = shape && (!shape.lockedBy || shape.lockedBy === user?.uid);
-          
+
           if (!shape) {
             console.warn(`  ❌ Shape ${id} not found in shapes array`);
           } else if (shape.lockedBy && shape.lockedBy !== user?.uid) {
-            console.warn(`  🔒 Shape ${id} locked by another user:`, shape.lockedBy, 'Current user:', user?.uid);
+            console.warn(
+              `  🔒 Shape ${id} locked by another user:`,
+              shape.lockedBy,
+              'Current user:',
+              user?.uid
+            );
           } else {
             console.log(`  ✅ Shape ${id} can be deleted`);
           }
-          
+
           return canDelete;
         });
-        
+
         console.log('  deletableShapes:', deletableShapes);
-        
+
         if (deletableShapes.length === 0) {
           console.log('❌ Cannot delete - all shapes are locked by other users or not found');
           return;
         }
-        
+
         try {
           console.log('🔓 Deselecting shapes...');
           // Deselect first (will unlock)
@@ -2375,15 +2681,15 @@ function Canvas({
             await deselectShape();
           }
           setSelectedShapeIds([]);
-          
+
           console.log('🗑️ Deleting shapes from Firestore...');
           // Delete all deletable shapes from Firestore (and Storage for images)
-          const deletePromises = deletableShapes.map(async id => {
+          const deletePromises = deletableShapes.map(async (id) => {
             try {
               console.log(`  Deleting shape ${id}...`);
-              
+
               // Images are stored as base64 data URLs in the DB, no separate cleanup needed
-              const shapeToDelete = shapes.find(s => s.id === id);
+              const shapeToDelete = shapes.find((s) => s.id === id);
               await deleteShape(canvasId, id);
               if (shapeToDelete) {
                 recordAction({ type: 'delete', shapeId: id, shapeData: shapeToDelete });
@@ -2394,43 +2700,70 @@ function Canvas({
               throw err;
             }
           });
-          
+
           await Promise.all(deletePromises);
           console.log(`✅ ${deletableShapes.length} shape(s) deleted successfully`);
           notifyFirestoreActivity();
         } catch (error) {
           console.error('❌ Failed to delete shapes:', error);
         }
-        
+
         return;
       }
-      
+
       // Bring to front (Cmd/Ctrl + ])
-      if ((e.ctrlKey || e.metaKey) && e.key === ']' && (selectedShapeId || selectedShapeIds.length > 0) && !isDrawing && !isDragging && !isResizing && !isRotating && !isSelecting) {
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        e.key === ']' &&
+        (selectedShapeId || selectedShapeIds.length > 0) &&
+        !isDrawing &&
+        !isDragging &&
+        !isResizing &&
+        !isRotating &&
+        !isSelecting
+      ) {
         e.preventDefault();
         handleSendToFront();
         return;
       }
-      
+
       // Send to back (Ctrl/Cmd + [)
-      if ((e.ctrlKey || e.metaKey) && e.key === '[' && (selectedShapeId || selectedShapeIds.length > 0) && !isDrawing && !isDragging && !isResizing && !isRotating && !isSelecting) {
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        e.key === '[' &&
+        (selectedShapeId || selectedShapeIds.length > 0) &&
+        !isDrawing &&
+        !isDragging &&
+        !isResizing &&
+        !isRotating &&
+        !isSelecting
+      ) {
         e.preventDefault();
         handleSendToBack();
         return;
       }
-      
+
       // Undo (Ctrl/Cmd + Z) - Deletes/restores last created/deleted shape
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey && !isDrawing && !isDragging && !isResizing && !isRotating && !isSelecting) {
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        e.key === 'z' &&
+        !e.shiftKey &&
+        !isDrawing &&
+        !isDragging &&
+        !isResizing &&
+        !isRotating &&
+        !isSelecting
+      ) {
         e.preventDefault();
-        
+
         const action = popUndo();
         if (!action) {
           console.log('⏮️ Nothing to undo');
           return;
         }
-        
+
         console.log('⏮️ UNDO:', action.type, action.shapeId);
-        
+
         try {
           if (action.type === 'create') {
             // Undo create = delete the shape
@@ -2445,24 +2778,32 @@ function Canvas({
         } catch (error) {
           console.error('❌ Failed to undo:', error);
         }
-        
+
         return;
       }
-      
+
       // Redo (Ctrl/Cmd + R or Ctrl/Cmd + Shift + Z)
-      if (((e.ctrlKey || e.metaKey) && e.key === 'r') || 
-          ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'z') && 
-          !isDrawing && !isDragging && !isResizing && !isRotating && !isSelecting) {
+      if (
+        ((e.ctrlKey || e.metaKey) && e.key === 'r') ||
+        ((e.ctrlKey || e.metaKey) &&
+          e.shiftKey &&
+          e.key === 'z' &&
+          !isDrawing &&
+          !isDragging &&
+          !isResizing &&
+          !isRotating &&
+          !isSelecting)
+      ) {
         e.preventDefault();
-        
+
         const action = popRedo();
         if (!action) {
           console.log('⏭️ Nothing to redo');
           return;
         }
-        
+
         console.log('⏭️ REDO:', action.type, action.shapeId);
-        
+
         try {
           if (action.type === 'create') {
             // Redo create = recreate the shape
@@ -2477,24 +2818,46 @@ function Canvas({
         } catch (error) {
           console.error('❌ Failed to redo:', error);
         }
-        
+
         return;
       }
     };
-    
+
     window.addEventListener('keydown', handleKeyDown);
-    
+
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [selectedShapeId, selectedShapeIds, shapes, user, isDrawing, isDragging, isResizing, isRotating, isSelecting, isDrawingCustomPolygon, customPolygonVertices, deselectShape, selectShape, notifyFirestoreActivity, handleZoomIn, handleZoomOut, handleZoomReset, handleFinishCustomPolygon, trackActivity, userRole]);
-  
+  }, [
+    selectedShapeId,
+    selectedShapeIds,
+    shapes,
+    user,
+    isDrawing,
+    isDragging,
+    isResizing,
+    isRotating,
+    isSelecting,
+    isDrawingCustomPolygon,
+    customPolygonVertices,
+    deselectShape,
+    selectShape,
+    notifyFirestoreActivity,
+    handleZoomIn,
+    handleZoomOut,
+    handleZoomReset,
+    handleFinishCustomPolygon,
+    trackActivity,
+    userRole,
+  ]);
+
   // Calculate viewBox for SVG (memoized)
-  const viewBox = useMemo(() => 
-    `${viewport.offsetX} ${viewport.offsetY} ${containerSize.width / viewport.zoom} ${containerSize.height / viewport.zoom}`,
+  const viewBox = useMemo(
+    () =>
+      `${viewport.offsetX} ${viewport.offsetY} ${containerSize.width / viewport.zoom} ${containerSize.height / viewport.zoom}`,
     [viewport.offsetX, viewport.offsetY, viewport.zoom, containerSize.width, containerSize.height]
   );
-  
+
   // Calculate preview rectangle during drawing (memoized)
   const previewRect = useMemo(() => {
     if (!isDrawing) return null;
@@ -2505,14 +2868,14 @@ function Canvas({
       height: Math.abs(drawCurrent.y - drawStart.y),
     };
   }, [isDrawing, drawStart.x, drawStart.y, drawCurrent.x, drawCurrent.y]);
-  
+
   // Generate grid lines (memoized - only recalculate when zoom changes)
   // Calculate grid color based on background color for better contrast
   const dynamicGridColor = useMemo(() => getGridColor(backgroundColor), [backgroundColor]);
-  
+
   const gridLines = useMemo(() => {
     const lines = [];
-    
+
     // Vertical lines
     for (let x = 0; x <= CANVAS_WIDTH; x += GRID_SIZE) {
       lines.push(
@@ -2527,7 +2890,7 @@ function Canvas({
         />
       );
     }
-    
+
     // Horizontal lines
     for (let y = 0; y <= CANVAS_HEIGHT; y += GRID_SIZE) {
       lines.push(
@@ -2542,28 +2905,32 @@ function Canvas({
         />
       );
     }
-    
+
     return lines;
   }, [viewport.zoom, dynamicGridColor]);
-  
+
   // Viewport culling: only render shapes visible in current viewport (memoized)
   const visibleShapes = useMemo(() => {
     // Calculate visible area with buffer for smooth panning
     const bufferSize = 200; // pixels of buffer around viewport
     const viewportLeft = viewport.offsetX - bufferSize;
     const viewportTop = viewport.offsetY - bufferSize;
-    const viewportRight = viewport.offsetX + (containerSize.width / viewport.zoom) + bufferSize;
-    const viewportBottom = viewport.offsetY + (containerSize.height / viewport.zoom) + bufferSize;
-    
+    const viewportRight = viewport.offsetX + containerSize.width / viewport.zoom + bufferSize;
+    const viewportBottom = viewport.offsetY + containerSize.height / viewport.zoom + bufferSize;
+
     // Filter shapes that are marked as visible and intersect with viewport
-    const visible = shapes.filter(shape => {
+    const visible = shapes.filter((shape) => {
       // Skip shapes that are explicitly hidden
       if (shape.visible === false) return false;
-      
+
       // Calculate bounding box based on shape type
       let shapeLeft, shapeTop, shapeRight, shapeBottom;
-      
-      if (shape.type === SHAPE_TYPES.RECTANGLE || shape.type === SHAPE_TYPES.TEXT || shape.type === SHAPE_TYPES.IMAGE) {
+
+      if (
+        shape.type === SHAPE_TYPES.RECTANGLE ||
+        shape.type === SHAPE_TYPES.TEXT ||
+        shape.type === SHAPE_TYPES.IMAGE
+      ) {
         shapeLeft = shape.x;
         shapeTop = shape.y;
         shapeRight = shape.x + (shape.width || 0);
@@ -2575,8 +2942,8 @@ function Canvas({
         shapeRight = shape.x + radius;
         shapeBottom = shape.y + radius;
       } else if (shape.type === SHAPE_TYPES.CUSTOM_POLYGON && shape.vertices) {
-        const xs = shape.vertices.map(v => v.x);
-        const ys = shape.vertices.map(v => v.y);
+        const xs = shape.vertices.map((v) => v.x);
+        const ys = shape.vertices.map((v) => v.y);
         shapeLeft = Math.min(...xs);
         shapeTop = Math.min(...ys);
         shapeRight = Math.max(...xs);
@@ -2585,7 +2952,7 @@ function Canvas({
         // Default fallback
         return true;
       }
-      
+
       // Check if shape's bounding box intersects with viewport
       return !(
         shapeLeft > viewportRight ||
@@ -2594,37 +2961,43 @@ function Canvas({
         shapeBottom < viewportTop
       );
     });
-    
+
     // Sort by z-index (back to front) for proper rendering order
     return visible.sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
-  }, [shapes, viewport.offsetX, viewport.offsetY, viewport.zoom, containerSize.width, containerSize.height]);
-  
+  }, [
+    shapes,
+    viewport.offsetX,
+    viewport.offsetY,
+    viewport.zoom,
+    containerSize.width,
+    containerSize.height,
+  ]);
+
   return (
     <div className="canvas-container" ref={containerRef}>
       {/* Header */}
       <div className="canvas-header">
         <div className="canvas-header-left">
           <span className="canvas-header-stats">
-            {shapes.length} objects • {onlineUsersCount} {onlineUsersCount === 1 ? 'user' : 'users'} online
+            {shapes.length} objects • {onlineUsersCount} {onlineUsersCount === 1 ? 'user' : 'users'}{' '}
+            online
           </span>
         </div>
         <span className="canvas-header-hint">Hold Shift/Cmd to pan • Scroll to zoom</span>
         <div className="canvas-header-right">
           {SHOW_FPS_COUNTER && (
-            <span className="canvas-header-fps">{fps} FPS • {connectionStatus}</span>
+            <span className="canvas-header-fps">
+              {fps} FPS • {connectionStatus}
+            </span>
           )}
-          <button
-            className="btn btn-secondary btn-small"
-            onClick={signOut}
-            title="Sign out"
-          >
+          <button className="btn btn-secondary btn-small" onClick={signOut} title="Sign out">
             Sign Out
           </button>
         </div>
       </div>
-      
+
       {/* Shape Palette */}
-      <ShapePalette 
+      <ShapePalette
         selectedTool={selectedTool}
         onSelectTool={setSelectedTool}
         onClearAll={handleClearAll}
@@ -2634,7 +3007,7 @@ function Canvas({
         onAlign={handleAlign}
         hasSelection={selectedShapeId || selectedShapeIds.length > 0}
       />
-      
+
       {/* Hidden file input for image uploads */}
       <input
         ref={fileInputRef}
@@ -2643,7 +3016,7 @@ function Canvas({
         style={{ display: 'none' }}
         onChange={handleFileChange}
       />
-      
+
       {/* Loading overlay */}
       {canvasLoading && (
         <div className="canvas-loading-overlay">
@@ -2651,7 +3024,7 @@ function Canvas({
           <p>Loading canvas...</p>
         </div>
       )}
-      
+
       {/* Error overlay */}
       {canvasError && (
         <div className="canvas-error-overlay">
@@ -2659,36 +3032,34 @@ function Canvas({
             <div className="error-icon">⚠️</div>
             <h3>Connection Error</h3>
             <p>{canvasError}</p>
-            <p className="error-hint">Please check your internet connection and refresh the page.</p>
+            <p className="error-hint">
+              Please check your internet connection and refresh the page.
+            </p>
           </div>
         </div>
       )}
-      
+
       <svg
         ref={svgRef}
         className="canvas-svg"
         viewBox={viewBox}
         onMouseDown={handleCanvasMouseDown}
-        style={{ 
-          cursor: isPanning ? 'grabbing' : isDragging ? 'move' : isDrawing ? 'crosshair' : 'crosshair'
+        style={{
+          cursor: isPanning
+            ? 'grabbing'
+            : isDragging
+              ? 'move'
+              : isDrawing
+                ? 'crosshair'
+                : 'crosshair',
         }}
       >
         {/* Canvas background */}
-        <rect
-          x={0}
-          y={0}
-          width={CANVAS_WIDTH}
-          height={CANVAS_HEIGHT}
-          fill={backgroundColor}
-        />
-        
+        <rect x={0} y={0} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} fill={backgroundColor} />
+
         {/* Grid */}
-        {gridVisible && (
-          <g className="canvas-grid">
-            {gridLines}
-          </g>
-        )}
-        
+        {gridVisible && <g className="canvas-grid">{gridLines}</g>}
+
         {/* Canvas boundary */}
         <rect
           x={0}
@@ -2699,20 +3070,20 @@ function Canvas({
           stroke={BOUNDARY_COLOR}
           strokeWidth={BOUNDARY_WIDTH / viewport.zoom}
         />
-        
+
         {/* Canvas content */}
         <g className="canvas-content">
           {/* Render only visible shapes (viewport culling for performance) */}
           {visibleShapes.map((shape) => {
             const handleShapeDoubleClick = (e) => {
               e.stopPropagation();
-              
+
               // ⛔ Viewers can't edit text
               if (userRole === 'viewer') {
                 console.log('👁️ Viewer mode: Cannot edit text');
                 return;
               }
-              
+
               if (!shape.lockedBy || shape.lockedBy === user?.uid) {
                 selectShape(shape.id);
                 // Start inline editing
@@ -2720,28 +3091,28 @@ function Canvas({
                 setEditingText(shape.text || '');
               }
             };
-            
+
             const handleShapeContextMenu = (e) => {
               e.preventDefault();
               e.stopPropagation();
-              
+
               // ⛔ Viewers can't manipulate z-order
               if (userRole === 'viewer') {
                 console.log('👁️ Viewer mode: Cannot change z-order');
                 return;
               }
-              
+
               // Don't show context menu if shape is locked by another user
               if (shape.lockedBy && shape.lockedBy !== user?.uid) {
                 console.log('🔒 Cannot show context menu - shape locked by another user');
                 return;
               }
-              
+
               // If shape is not selected, select it first
               if (!selectedShapeIds.includes(shape.id) && shape.id !== selectedShapeId) {
                 selectShape(shape.id);
               }
-              
+
               // Show context menu at mouse position
               setContextMenu({
                 x: e.clientX,
@@ -2749,7 +3120,7 @@ function Canvas({
                 shapeIds: selectedShapeIds.length > 0 ? selectedShapeIds : [shape.id],
               });
             };
-            
+
             const shapeProps = {
               ...shape,
               isSelected: shape.id === selectedShapeId || selectedShapeIds.includes(shape.id),
@@ -2760,7 +3131,7 @@ function Canvas({
               onDoubleClick: handleShapeDoubleClick,
               onContextMenu: handleShapeContextMenu,
             };
-            
+
             // Render appropriate component based on shape type
             if (shape.type === SHAPE_TYPES.CIRCLE) {
               return <Circle key={shape.id} {...shapeProps} />;
@@ -2770,7 +3141,7 @@ function Canvas({
               return <CustomPolygon key={shape.id} {...shapeProps} />;
             } else if (shape.type === SHAPE_TYPES.TEXT) {
               return (
-                <TextBox 
+                <TextBox
                   key={shape.id}
                   {...shapeProps}
                   text={shape.text || 'Double-click to edit'}
@@ -2785,7 +3156,7 @@ function Canvas({
               );
             } else if (shape.type === SHAPE_TYPES.IMAGE) {
               return (
-                <Image 
+                <Image
                   key={shape.id}
                   {...shapeProps}
                   imageUrl={shape.imageUrl}
@@ -2798,371 +3169,391 @@ function Canvas({
               return <Rectangle key={shape.id} {...shapeProps} />;
             }
           })}
-          
+
           {/* Selection box with resize and rotation handles (single selection) */}
           {selectedShapeId && !isDrawing && selectedShapeIds.length === 0 && (
             <SelectionBox
-              shape={shapes.find(s => s.id === selectedShapeId)}
+              shape={shapes.find((s) => s.id === selectedShapeId)}
               zoom={viewport.zoom}
               onResizeStart={handleResizeStart}
               onRotateStart={handleRotateStart}
             />
           )}
-          
+
           {/* Multi-selection bounding box */}
-          {selectedShapeIds.length > 1 && !isDrawing && (() => {
-            // Calculate bounding box that encompasses all selected shapes
-            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-            
-            selectedShapeIds.forEach(id => {
-              const shape = shapes.find(s => s.id === id);
-              if (!shape) return;
-              
-              let left, right, top, bottom;
-              
-              if (shape.type === SHAPE_TYPES.IMAGE) {
-                // IMAGE uses center coordinates (x, y), convert to bounds
-                const width = shape.width || 200;
-                const height = shape.height || 200;
-                left = shape.x - width / 2;
-                right = shape.x + width / 2;
-                top = shape.y - height / 2;
-                bottom = shape.y + height / 2;
-              } else if (shape.type === SHAPE_TYPES.RECTANGLE || shape.type === SHAPE_TYPES.TEXT) {
-                // RECTANGLE and TEXT use top-left coordinates (x, y)
-                left = shape.x;
-                right = shape.x + shape.width;
-                top = shape.y;
-                bottom = shape.y + shape.height;
-              } else if (shape.type === SHAPE_TYPES.CIRCLE || shape.type === SHAPE_TYPES.POLYGON) {
-                left = shape.x - shape.radius;
-                right = shape.x + shape.radius;
-                top = shape.y - shape.radius;
-                bottom = shape.y + shape.radius;
-              } else if (shape.type === SHAPE_TYPES.CUSTOM_POLYGON && shape.vertices) {
-                // CUSTOM_POLYGON uses array of vertices
-                const vertices = shape.vertices;
-                left = Math.min(...vertices.map(v => v.x));
-                right = Math.max(...vertices.map(v => v.x));
-                top = Math.min(...vertices.map(v => v.y));
-                bottom = Math.max(...vertices.map(v => v.y));
-              } else {
-                // Legacy shape (assume rectangle)
-                left = shape.x;
-                right = shape.x + (shape.width || 0);
-                top = shape.y;
-                bottom = shape.y + (shape.height || 0);
-              }
-              
-              minX = Math.min(minX, left);
-              maxX = Math.max(maxX, right);
-              minY = Math.min(minY, top);
-              maxY = Math.max(maxY, bottom);
-            });
-            
-            const boundingBoxWidth = maxX - minX;
-            const boundingBoxHeight = maxY - minY;
-            
-            // Add padding around the bounding box
-            const padding = 10 / viewport.zoom;
-            
-            return (
-              <g className="multi-selection-box">
-                {/* Outer bounding box with distinct style */}
-                <rect
-                  x={minX - padding}
-                  y={minY - padding}
-                  width={boundingBoxWidth + padding * 2}
-                  height={boundingBoxHeight + padding * 2}
-                  fill="none"
-                  stroke="#ffa500"
-                  strokeWidth={2.5 / viewport.zoom}
-                  strokeDasharray={`${8 / viewport.zoom} ${4 / viewport.zoom}`}
-                  style={{ pointerEvents: 'none' }}
-                />
-                
-                {/* Corner indicators for multi-selection */}
-                {[
-                  { x: minX - padding, y: minY - padding },
-                  { x: maxX + padding, y: minY - padding },
-                  { x: minX - padding, y: maxY + padding },
-                  { x: maxX + padding, y: maxY + padding },
-                ].map((corner, i) => (
-                  <rect
-                    key={i}
-                    x={corner.x - (6 / viewport.zoom) / 2}
-                    y={corner.y - (6 / viewport.zoom) / 2}
-                    width={6 / viewport.zoom}
-                    height={6 / viewport.zoom}
-                    fill="#ffa500"
-                    stroke="#fff"
-                    strokeWidth={1 / viewport.zoom}
-                    style={{ pointerEvents: 'none' }}
-                  />
-                ))}
-                
-                {/* Selection count label */}
-                <g transform={`translate(${minX - padding}, ${minY - padding - 25 / viewport.zoom})`}>
-                  {(() => {
-                    const text = `${selectedShapeIds.length} selected`;
-                    // Calculate width based on actual text length (~7px per character)
-                    const textWidth = text.length * 7 / viewport.zoom;
-                    const paddingX = 12 / viewport.zoom;
-                    const bgWidth = textWidth + paddingX;
-                    
-                    return (
-                      <>
-                        <rect
-                          x="0"
-                          y="0"
-                          width={bgWidth}
-                          height={20 / viewport.zoom}
-                          fill="rgba(255, 165, 0, 0.95)"
-                          rx={4 / viewport.zoom}
-                          stroke="#fff"
-                          strokeWidth={0.5 / viewport.zoom}
-                          style={{ pointerEvents: 'none' }}
-                        />
-                        <text
-                          x={bgWidth / 2}
-                          y={14 / viewport.zoom}
-                          fill="#fff"
-                          fontSize={11 / viewport.zoom}
-                          fontWeight="600"
-                          fontFamily="system-ui, -apple-system, sans-serif"
-                          textAnchor="middle"
-                          style={{ pointerEvents: 'none', userSelect: 'none' }}
-                        >
-                          {text}
-                        </text>
-                      </>
-                    );
-                  })()}
-                </g>
-              </g>
-            );
-          })()}
-          
-          {/* Preview shape while drawing */}
-          {isDrawing && previewRect && (() => {
-            const dx = Math.abs(drawCurrent.x - drawStart.x);
-            const dy = Math.abs(drawCurrent.y - drawStart.y);
-            
-            if (selectedTool === SHAPE_TYPES.RECTANGLE && 
-                previewRect.width >= MIN_RECTANGLE_SIZE && 
-                previewRect.height >= MIN_RECTANGLE_SIZE) {
-              return (
-            <rect
-              x={previewRect.x}
-              y={previewRect.y}
-              width={previewRect.width}
-              height={previewRect.height}
-              fill={getRandomColor()}
-              opacity={0.5}
-              stroke="#fff"
-              strokeWidth={2 / viewport.zoom}
-              strokeDasharray={`${10 / viewport.zoom} ${5 / viewport.zoom}`}
-                  className="preview-shape"
-              style={{ pointerEvents: 'none' }}
-            />
-              );
-            } else if (selectedTool === SHAPE_TYPES.CIRCLE) {
-              const radius = Math.sqrt(dx * dx + dy * dy) / 2;
-              const centerX = (drawStart.x + drawCurrent.x) / 2;
-              const centerY = (drawStart.y + drawCurrent.y) / 2;
-              
-              if (radius >= MIN_CIRCLE_RADIUS) {
-                return (
-                  <circle
-                    cx={centerX}
-                    cy={centerY}
-                    r={radius}
-                    fill={getRandomColor()}
-                    opacity={0.5}
-                    stroke="#fff"
-                    strokeWidth={2 / viewport.zoom}
-                    strokeDasharray={`${10 / viewport.zoom} ${5 / viewport.zoom}`}
-                    className="preview-shape"
-                    style={{ pointerEvents: 'none' }}
-                  />
-                );
-              }
-            } else if (selectedTool === SHAPE_TYPES.POLYGON) {
-              const radius = Math.sqrt(dx * dx + dy * dy) / 2;
-              const centerX = (drawStart.x + drawCurrent.x) / 2;
-              const centerY = (drawStart.y + drawCurrent.y) / 2;
-              
-              if (radius >= MIN_POLYGON_RADIUS) {
-                // Calculate polygon points
-                const points = [];
-                const angleStep = (Math.PI * 2) / DEFAULT_POLYGON_SIDES;
-                const startAngle = -Math.PI / 2;
-                
-                for (let i = 0; i < DEFAULT_POLYGON_SIDES; i++) {
-                  const angle = startAngle + angleStep * i;
-                  const px = centerX + radius * Math.cos(angle);
-                  const py = centerY + radius * Math.sin(angle);
-                  points.push(`${px},${py}`);
+          {selectedShapeIds.length > 1 &&
+            !isDrawing &&
+            (() => {
+              // Calculate bounding box that encompasses all selected shapes
+              let minX = Infinity,
+                minY = Infinity,
+                maxX = -Infinity,
+                maxY = -Infinity;
+
+              selectedShapeIds.forEach((id) => {
+                const shape = shapes.find((s) => s.id === id);
+                if (!shape) return;
+
+                let left, right, top, bottom;
+
+                if (shape.type === SHAPE_TYPES.IMAGE) {
+                  // IMAGE uses center coordinates (x, y), convert to bounds
+                  const width = shape.width || 200;
+                  const height = shape.height || 200;
+                  left = shape.x - width / 2;
+                  right = shape.x + width / 2;
+                  top = shape.y - height / 2;
+                  bottom = shape.y + height / 2;
+                } else if (
+                  shape.type === SHAPE_TYPES.RECTANGLE ||
+                  shape.type === SHAPE_TYPES.TEXT
+                ) {
+                  // RECTANGLE and TEXT use top-left coordinates (x, y)
+                  left = shape.x;
+                  right = shape.x + shape.width;
+                  top = shape.y;
+                  bottom = shape.y + shape.height;
+                } else if (
+                  shape.type === SHAPE_TYPES.CIRCLE ||
+                  shape.type === SHAPE_TYPES.POLYGON
+                ) {
+                  left = shape.x - shape.radius;
+                  right = shape.x + shape.radius;
+                  top = shape.y - shape.radius;
+                  bottom = shape.y + shape.radius;
+                } else if (shape.type === SHAPE_TYPES.CUSTOM_POLYGON && shape.vertices) {
+                  // CUSTOM_POLYGON uses array of vertices
+                  const vertices = shape.vertices;
+                  left = Math.min(...vertices.map((v) => v.x));
+                  right = Math.max(...vertices.map((v) => v.x));
+                  top = Math.min(...vertices.map((v) => v.y));
+                  bottom = Math.max(...vertices.map((v) => v.y));
+                } else {
+                  // Legacy shape (assume rectangle)
+                  left = shape.x;
+                  right = shape.x + (shape.width || 0);
+                  top = shape.y;
+                  bottom = shape.y + (shape.height || 0);
                 }
-                
-                return (
-                  <polygon
-                    points={points.join(' ')}
-                    fill={getRandomColor()}
-                    opacity={0.5}
-                    stroke="#fff"
-                    strokeWidth={2 / viewport.zoom}
-                    strokeDasharray={`${10 / viewport.zoom} ${5 / viewport.zoom}`}
-                    className="preview-shape"
+
+                minX = Math.min(minX, left);
+                maxX = Math.max(maxX, right);
+                minY = Math.min(minY, top);
+                maxY = Math.max(maxY, bottom);
+              });
+
+              const boundingBoxWidth = maxX - minX;
+              const boundingBoxHeight = maxY - minY;
+
+              // Add padding around the bounding box
+              const padding = 10 / viewport.zoom;
+
+              return (
+                <g className="multi-selection-box">
+                  {/* Outer bounding box with distinct style */}
+                  <rect
+                    x={minX - padding}
+                    y={minY - padding}
+                    width={boundingBoxWidth + padding * 2}
+                    height={boundingBoxHeight + padding * 2}
+                    fill="none"
+                    stroke="#ffa500"
+                    strokeWidth={2.5 / viewport.zoom}
+                    strokeDasharray={`${8 / viewport.zoom} ${4 / viewport.zoom}`}
                     style={{ pointerEvents: 'none' }}
                   />
-                );
-              }
-            } else if (selectedTool === SHAPE_TYPES.TEXT && previewRect) {
+
+                  {/* Corner indicators for multi-selection */}
+                  {[
+                    { x: minX - padding, y: minY - padding },
+                    { x: maxX + padding, y: minY - padding },
+                    { x: minX - padding, y: maxY + padding },
+                    { x: maxX + padding, y: maxY + padding },
+                  ].map((corner, i) => (
+                    <rect
+                      key={i}
+                      x={corner.x - 6 / viewport.zoom / 2}
+                      y={corner.y - 6 / viewport.zoom / 2}
+                      width={6 / viewport.zoom}
+                      height={6 / viewport.zoom}
+                      fill="#ffa500"
+                      stroke="#fff"
+                      strokeWidth={1 / viewport.zoom}
+                      style={{ pointerEvents: 'none' }}
+                    />
+                  ))}
+
+                  {/* Selection count label */}
+                  <g
+                    transform={`translate(${minX - padding}, ${minY - padding - 25 / viewport.zoom})`}
+                  >
+                    {(() => {
+                      const text = `${selectedShapeIds.length} selected`;
+                      // Calculate width based on actual text length (~7px per character)
+                      const textWidth = (text.length * 7) / viewport.zoom;
+                      const paddingX = 12 / viewport.zoom;
+                      const bgWidth = textWidth + paddingX;
+
+                      return (
+                        <>
+                          <rect
+                            x="0"
+                            y="0"
+                            width={bgWidth}
+                            height={20 / viewport.zoom}
+                            fill="rgba(255, 165, 0, 0.95)"
+                            rx={4 / viewport.zoom}
+                            stroke="#fff"
+                            strokeWidth={0.5 / viewport.zoom}
+                            style={{ pointerEvents: 'none' }}
+                          />
+                          <text
+                            x={bgWidth / 2}
+                            y={14 / viewport.zoom}
+                            fill="#fff"
+                            fontSize={11 / viewport.zoom}
+                            fontWeight="600"
+                            fontFamily="system-ui, -apple-system, sans-serif"
+                            textAnchor="middle"
+                            style={{ pointerEvents: 'none', userSelect: 'none' }}
+                          >
+                            {text}
+                          </text>
+                        </>
+                      );
+                    })()}
+                  </g>
+                </g>
+              );
+            })()}
+
+          {/* Preview shape while drawing */}
+          {isDrawing &&
+            previewRect &&
+            (() => {
               const dx = Math.abs(drawCurrent.x - drawStart.x);
               const dy = Math.abs(drawCurrent.y - drawStart.y);
-              let width = Math.max(dx, 200);
-              let height = Math.max(dy, 60);
-              
-              return (
-                <g>
+
+              if (
+                selectedTool === SHAPE_TYPES.RECTANGLE &&
+                previewRect.width >= MIN_RECTANGLE_SIZE &&
+                previewRect.height >= MIN_RECTANGLE_SIZE
+              ) {
+                return (
                   <rect
                     x={previewRect.x}
                     y={previewRect.y}
-                    width={width}
-                    height={height}
-                    fill="rgba(30, 30, 30, 0.7)"
-                    stroke={getRandomColor()}
+                    width={previewRect.width}
+                    height={previewRect.height}
+                    fill={getRandomColor()}
+                    opacity={0.5}
+                    stroke="#fff"
                     strokeWidth={2 / viewport.zoom}
                     strokeDasharray={`${10 / viewport.zoom} ${5 / viewport.zoom}`}
-                    rx={4}
                     className="preview-shape"
                     style={{ pointerEvents: 'none' }}
                   />
-                  <text
-                    x={previewRect.x + width / 2}
-                    y={previewRect.y + height / 2}
-                    fill="#888"
-                    fontSize={16}
-                    fontFamily="Arial, sans-serif"
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    opacity={0.7}
-                    style={{ pointerEvents: 'none' }}
-                  >
-                    Text Box
-                  </text>
-                </g>
-              );
-            }
-            return null;
-          })()}
-          
-          {/* Selection rectangle while multi-selecting */}
-          {isSelecting && (() => {
-            const x = Math.min(selectStart.x, selectCurrent.x);
-            const y = Math.min(selectStart.y, selectCurrent.y);
-            const width = Math.abs(selectCurrent.x - selectStart.x);
-            const height = Math.abs(selectCurrent.y - selectStart.y);
-            
-            return (
-              <rect
-                x={x}
-                y={y}
-                width={width}
-                height={height}
-                fill="rgba(100, 108, 255, 0.1)"
-                stroke="#646cff"
-                strokeWidth={2 / viewport.zoom}
-                strokeDasharray={`${5 / viewport.zoom} ${3 / viewport.zoom}`}
-                className="selection-rectangle"
-                style={{ pointerEvents: 'none' }}
-              />
-            );
-          })()}
-          
-          {/* Custom polygon preview while drawing */}
-          {isDrawingCustomPolygon && customPolygonVertices.length > 0 && (() => {
-            const vertices = customPolygonVertices;
-            const points = vertices.map(v => `${v.x},${v.y}`).join(' ');
-            const firstVertex = vertices[0];
-            
-            return (
-              <g className="custom-polygon-preview">
-                {/* Preview lines connecting vertices */}
-                {vertices.length > 1 && (
-                  <polyline
-                    points={points}
-                    fill="none"
-                    stroke={getRandomColor()}
-                    strokeWidth={3 / viewport.zoom}
-                    strokeDasharray={`${10 / viewport.zoom} ${5 / viewport.zoom}`}
-                    style={{ pointerEvents: 'none' }}
-                  />
-                )}
-                
-                {/* Show closing line if enough vertices */}
-                {vertices.length >= 3 && (
-                  <line
-                    x1={vertices[vertices.length - 1].x}
-                    y1={vertices[vertices.length - 1].y}
-                    x2={firstVertex.x}
-                    y2={firstVertex.y}
-                    stroke="rgba(100, 108, 255, 0.5)"
-                    strokeWidth={2 / viewport.zoom}
-                    strokeDasharray={`${5 / viewport.zoom} ${5 / viewport.zoom}`}
-                    style={{ pointerEvents: 'none' }}
-                  />
-                )}
-                
-                {/* Draw vertex points */}
-                {vertices.map((vertex, i) => (
-                  <g key={i}>
-                    {/* Vertex circle */}
+                );
+              } else if (selectedTool === SHAPE_TYPES.CIRCLE) {
+                const radius = Math.sqrt(dx * dx + dy * dy) / 2;
+                const centerX = (drawStart.x + drawCurrent.x) / 2;
+                const centerY = (drawStart.y + drawCurrent.y) / 2;
+
+                if (radius >= MIN_CIRCLE_RADIUS) {
+                  return (
                     <circle
-                      cx={vertex.x}
-                      cy={vertex.y}
-                      r={6 / viewport.zoom}
-                      fill={i === 0 ? '#646cff' : '#fff'}
-                      stroke={i === 0 ? '#fff' : '#646cff'}
+                      cx={centerX}
+                      cy={centerY}
+                      r={radius}
+                      fill={getRandomColor()}
+                      opacity={0.5}
+                      stroke="#fff"
                       strokeWidth={2 / viewport.zoom}
+                      strokeDasharray={`${10 / viewport.zoom} ${5 / viewport.zoom}`}
+                      className="preview-shape"
                       style={{ pointerEvents: 'none' }}
                     />
-                    {/* First vertex indicator (larger) */}
-                    {i === 0 && vertices.length >= 3 && (
+                  );
+                }
+              } else if (selectedTool === SHAPE_TYPES.POLYGON) {
+                const radius = Math.sqrt(dx * dx + dy * dy) / 2;
+                const centerX = (drawStart.x + drawCurrent.x) / 2;
+                const centerY = (drawStart.y + drawCurrent.y) / 2;
+
+                if (radius >= MIN_POLYGON_RADIUS) {
+                  // Calculate polygon points
+                  const points = [];
+                  const angleStep = (Math.PI * 2) / DEFAULT_POLYGON_SIDES;
+                  const startAngle = -Math.PI / 2;
+
+                  for (let i = 0; i < DEFAULT_POLYGON_SIDES; i++) {
+                    const angle = startAngle + angleStep * i;
+                    const px = centerX + radius * Math.cos(angle);
+                    const py = centerY + radius * Math.sin(angle);
+                    points.push(`${px},${py}`);
+                  }
+
+                  return (
+                    <polygon
+                      points={points.join(' ')}
+                      fill={getRandomColor()}
+                      opacity={0.5}
+                      stroke="#fff"
+                      strokeWidth={2 / viewport.zoom}
+                      strokeDasharray={`${10 / viewport.zoom} ${5 / viewport.zoom}`}
+                      className="preview-shape"
+                      style={{ pointerEvents: 'none' }}
+                    />
+                  );
+                }
+              } else if (selectedTool === SHAPE_TYPES.TEXT && previewRect) {
+                const dx = Math.abs(drawCurrent.x - drawStart.x);
+                const dy = Math.abs(drawCurrent.y - drawStart.y);
+                const width = Math.max(dx, 200);
+                const height = Math.max(dy, 60);
+
+                return (
+                  <g>
+                    <rect
+                      x={previewRect.x}
+                      y={previewRect.y}
+                      width={width}
+                      height={height}
+                      fill="rgba(30, 30, 30, 0.7)"
+                      stroke={getRandomColor()}
+                      strokeWidth={2 / viewport.zoom}
+                      strokeDasharray={`${10 / viewport.zoom} ${5 / viewport.zoom}`}
+                      rx={4}
+                      className="preview-shape"
+                      style={{ pointerEvents: 'none' }}
+                    />
+                    <text
+                      x={previewRect.x + width / 2}
+                      y={previewRect.y + height / 2}
+                      fill="#888"
+                      fontSize={16}
+                      fontFamily="Arial, sans-serif"
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      opacity={0.7}
+                      style={{ pointerEvents: 'none' }}
+                    >
+                      Text Box
+                    </text>
+                  </g>
+                );
+              }
+              return null;
+            })()}
+
+          {/* Selection rectangle while multi-selecting */}
+          {isSelecting &&
+            (() => {
+              const x = Math.min(selectStart.x, selectCurrent.x);
+              const y = Math.min(selectStart.y, selectCurrent.y);
+              const width = Math.abs(selectCurrent.x - selectStart.x);
+              const height = Math.abs(selectCurrent.y - selectStart.y);
+
+              return (
+                <rect
+                  x={x}
+                  y={y}
+                  width={width}
+                  height={height}
+                  fill="rgba(100, 108, 255, 0.1)"
+                  stroke="#646cff"
+                  strokeWidth={2 / viewport.zoom}
+                  strokeDasharray={`${5 / viewport.zoom} ${3 / viewport.zoom}`}
+                  className="selection-rectangle"
+                  style={{ pointerEvents: 'none' }}
+                />
+              );
+            })()}
+
+          {/* Custom polygon preview while drawing */}
+          {isDrawingCustomPolygon &&
+            customPolygonVertices.length > 0 &&
+            (() => {
+              const vertices = customPolygonVertices;
+              const points = vertices.map((v) => `${v.x},${v.y}`).join(' ');
+              const firstVertex = vertices[0];
+
+              return (
+                <g className="custom-polygon-preview">
+                  {/* Preview lines connecting vertices */}
+                  {vertices.length > 1 && (
+                    <polyline
+                      points={points}
+                      fill="none"
+                      stroke={getRandomColor()}
+                      strokeWidth={3 / viewport.zoom}
+                      strokeDasharray={`${10 / viewport.zoom} ${5 / viewport.zoom}`}
+                      style={{ pointerEvents: 'none' }}
+                    />
+                  )}
+
+                  {/* Show closing line if enough vertices */}
+                  {vertices.length >= 3 && (
+                    <line
+                      x1={vertices[vertices.length - 1].x}
+                      y1={vertices[vertices.length - 1].y}
+                      x2={firstVertex.x}
+                      y2={firstVertex.y}
+                      stroke="rgba(100, 108, 255, 0.5)"
+                      strokeWidth={2 / viewport.zoom}
+                      strokeDasharray={`${5 / viewport.zoom} ${5 / viewport.zoom}`}
+                      style={{ pointerEvents: 'none' }}
+                    />
+                  )}
+
+                  {/* Draw vertex points */}
+                  {vertices.map((vertex, i) => (
+                    <g key={i}>
+                      {/* Vertex circle */}
                       <circle
                         cx={vertex.x}
                         cy={vertex.y}
-                        r={12 / viewport.zoom}
-                        fill="none"
-                        stroke="#646cff"
+                        r={6 / viewport.zoom}
+                        fill={i === 0 ? '#646cff' : '#fff'}
+                        stroke={i === 0 ? '#fff' : '#646cff'}
                         strokeWidth={2 / viewport.zoom}
-                        opacity={0.5}
                         style={{ pointerEvents: 'none' }}
                       />
-                    )}
-                  </g>
-                ))}
-                
-                {/* Instruction text */}
-                <text
-                  x={firstVertex.x}
-                  y={firstVertex.y - 20 / viewport.zoom}
-                  fill="#646cff"
-                  fontSize={14 / viewport.zoom}
-                  fontWeight="600"
-                  fontFamily="system-ui, -apple-system, sans-serif"
-                  textAnchor="middle"
-                  style={{ pointerEvents: 'none', userSelect: 'none' }}
-                >
-                  {vertices.length < 3 
-                    ? 'Click to add vertices' 
-                    : 'Click first vertex or press Enter to finish'}
-                </text>
-              </g>
-            );
-          })()}
-          
+                      {/* First vertex indicator (larger) */}
+                      {i === 0 && vertices.length >= 3 && (
+                        <circle
+                          cx={vertex.x}
+                          cy={vertex.y}
+                          r={12 / viewport.zoom}
+                          fill="none"
+                          stroke="#646cff"
+                          strokeWidth={2 / viewport.zoom}
+                          opacity={0.5}
+                          style={{ pointerEvents: 'none' }}
+                        />
+                      )}
+                    </g>
+                  ))}
+
+                  {/* Instruction text */}
+                  <text
+                    x={firstVertex.x}
+                    y={firstVertex.y - 20 / viewport.zoom}
+                    fill="#646cff"
+                    fontSize={14 / viewport.zoom}
+                    fontWeight="600"
+                    fontFamily="system-ui, -apple-system, sans-serif"
+                    textAnchor="middle"
+                    style={{ pointerEvents: 'none', userSelect: 'none' }}
+                  >
+                    {vertices.length < 3
+                      ? 'Click to add vertices'
+                      : 'Click first vertex or press Enter to finish'}
+                  </text>
+                </g>
+              );
+            })()}
+
           {/* Other users' cursors - render in separate layer */}
           <g className="cursors-layer">
             {cursors.map((cursor) => (
@@ -3177,7 +3568,7 @@ function Canvas({
           </g>
         </g>
       </svg>
-      
+
       {/* Connection status indicator */}
       <div className={`connection-status connection-status-${connectionStatus}`}>
         {connectionStatus === 'connecting' && (
@@ -3211,7 +3602,7 @@ function Canvas({
           </>
         )}
       </div>
-      
+
       {/* FPS Counter */}
       {SHOW_FPS_COUNTER && (
         <div className="fps-counter">
@@ -3226,11 +3617,12 @@ function Canvas({
             Pos: ({Math.round(viewport.offsetX)}, {Math.round(viewport.offsetY)})
           </div>
           <div className={`fps-firestore ${firestoreStatus}`}>
-            Firestore: {firestoreStatus === 'connected' ? '✓' : firestoreStatus === 'error' ? '✗' : '...'}
+            Firestore:{' '}
+            {firestoreStatus === 'connected' ? '✓' : firestoreStatus === 'error' ? '✗' : '...'}
           </div>
         </div>
       )}
-      
+
       {/* Zoom Controls */}
       <ZoomControls
         zoom={viewport.zoom}
@@ -3242,7 +3634,7 @@ function Canvas({
         minZoom={MIN_ZOOM}
         maxZoom={MAX_ZOOM}
       />
-      
+
       {/* Layers Panel Toggle Button */}
       <button
         className="layers-toggle-btn"
@@ -3256,7 +3648,7 @@ function Canvas({
         </svg>
         <span className="layers-count">{shapes.length}</span>
       </button>
-      
+
       {/* Layers Panel */}
       <LayersPanel
         shapes={shapes}
@@ -3268,10 +3660,10 @@ function Canvas({
         isOpen={isLayersPanelOpen}
         onTogglePanel={() => setIsLayersPanelOpen(!isLayersPanelOpen)}
       />
-      
+
       {/* Chat Panel (Canvas Chat + Canny AI) */}
-      <ChatPanel 
-        canvasId={canvasId} 
+      <ChatPanel
+        canvasId={canvasId}
         user={user}
         shapes={shapes}
         selectedShapeIds={selectedShapeIds}
@@ -3284,39 +3676,38 @@ function Canvas({
           offsetX: viewport.offsetX,
           offsetY: viewport.offsetY,
           zoom: viewport.zoom,
-          centerX: viewport.offsetX + (containerSize.width / 2) / viewport.zoom,
-          centerY: viewport.offsetY + (containerSize.height / 2) / viewport.zoom
+          centerX: viewport.offsetX + containerSize.width / 2 / viewport.zoom,
+          centerY: viewport.offsetY + containerSize.height / 2 / viewport.zoom,
         }}
         svgRef={svgRef}
       />
-      
+
       {/* Inline Text Editor */}
       {editingTextId && (
         <InlineTextEditor
-          shape={shapes.find(s => s.id === editingTextId)}
+          shape={shapes.find((s) => s.id === editingTextId)}
           text={editingText}
           onTextChange={setEditingText}
           onFinish={(save, formattingUpdates) => {
             if (save) {
-              const currentShape = shapes.find(s => s.id === editingTextId);
+              const currentShape = shapes.find((s) => s.id === editingTextId);
               const updates = { text: editingText };
-              
+
               // Add formatting updates if provided
               if (formattingUpdates) {
                 Object.assign(updates, formattingUpdates);
               }
-              
+
               // Only update if something changed
-              const hasChanges = 
+              const hasChanges =
                 editingText !== currentShape?.text ||
-                (formattingUpdates && (
-                  formattingUpdates.fontSize !== currentShape?.fontSize ||
-                  formattingUpdates.fontWeight !== currentShape?.fontWeight ||
-                  formattingUpdates.fontStyle !== currentShape?.fontStyle ||
-                  formattingUpdates.textColor !== currentShape?.textColor ||
-                  formattingUpdates.backgroundColor !== currentShape?.backgroundColor
-                ));
-              
+                (formattingUpdates &&
+                  (formattingUpdates.fontSize !== currentShape?.fontSize ||
+                    formattingUpdates.fontWeight !== currentShape?.fontWeight ||
+                    formattingUpdates.fontStyle !== currentShape?.fontStyle ||
+                    formattingUpdates.textColor !== currentShape?.textColor ||
+                    formattingUpdates.backgroundColor !== currentShape?.backgroundColor));
+
               if (hasChanges) {
                 updateShape(canvasId, editingTextId, updates);
               }
@@ -3329,7 +3720,7 @@ function Canvas({
           containerSize={containerSize}
         />
       )}
-      
+
       {/* Context Menu */}
       {contextMenu && (
         <ContextMenu
@@ -3342,7 +3733,7 @@ function Canvas({
           onClose={() => setContextMenu(null)}
         />
       )}
-      
+
       {/* Debug Panel (dev only) */}
       <DebugPanel />
     </div>
@@ -3350,4 +3741,3 @@ function Canvas({
 }
 
 export default Canvas;
-

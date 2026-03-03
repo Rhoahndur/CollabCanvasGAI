@@ -1,10 +1,10 @@
 import { memo } from 'react';
-import { 
-  SELECTION_COLOR, 
-  SELECTION_WIDTH, 
-  HANDLE_SIZE, 
-  HANDLE_FILL, 
-  HANDLE_STROKE, 
+import {
+  SELECTION_COLOR,
+  SELECTION_WIDTH,
+  HANDLE_SIZE,
+  HANDLE_FILL,
+  HANDLE_STROKE,
   HANDLE_STROKE_WIDTH,
   ROTATION_HANDLE_OFFSET,
   SHAPE_TYPES,
@@ -14,12 +14,7 @@ import {
  * SelectionBox component - Renders selection outline, resize handles, and rotation handle
  * for the currently selected shape
  */
-const SelectionBox = memo(function SelectionBox({ 
-  shape,
-  zoom,
-  onResizeStart,
-  onRotateStart,
-}) {
+const SelectionBox = memo(function SelectionBox({ shape, zoom, onResizeStart, onRotateStart }) {
   if (!shape) return null;
 
   const handleSize = HANDLE_SIZE / zoom;
@@ -29,17 +24,21 @@ const SelectionBox = memo(function SelectionBox({
 
   // Calculate bounding box based on shape type
   let bounds = { x: 0, y: 0, width: 0, height: 0, centerX: 0, centerY: 0 };
-  
-  if (shape.type === SHAPE_TYPES.RECTANGLE || shape.type === SHAPE_TYPES.TEXT || shape.type === SHAPE_TYPES.IMAGE) {
+
+  if (
+    shape.type === SHAPE_TYPES.RECTANGLE ||
+    shape.type === SHAPE_TYPES.TEXT ||
+    shape.type === SHAPE_TYPES.IMAGE
+  ) {
     // Safety check for width/height
     const width = shape.width || 100;
     const height = shape.height || 100;
-    
+
     // Rectangles, text boxes, and images have the same bounding box structure
     // Images use x,y as center, so we need to calculate top-left
     const x = shape.type === SHAPE_TYPES.IMAGE ? shape.x - width / 2 : shape.x;
     const y = shape.type === SHAPE_TYPES.IMAGE ? shape.y - height / 2 : shape.y;
-    
+
     bounds = {
       x: x,
       y: y,
@@ -69,11 +68,11 @@ const SelectionBox = memo(function SelectionBox({
   } else if (shape.type === SHAPE_TYPES.CUSTOM_POLYGON && shape.vertices) {
     // Calculate bounding box from vertices
     const vertices = shape.vertices;
-    const minX = Math.min(...vertices.map(v => v.x));
-    const maxX = Math.max(...vertices.map(v => v.x));
-    const minY = Math.min(...vertices.map(v => v.y));
-    const maxY = Math.max(...vertices.map(v => v.y));
-    
+    const minX = Math.min(...vertices.map((v) => v.x));
+    const maxX = Math.max(...vertices.map((v) => v.x));
+    const minY = Math.min(...vertices.map((v) => v.y));
+    const maxY = Math.max(...vertices.map((v) => v.y));
+
     bounds = {
       x: minX,
       y: minY,
@@ -86,21 +85,25 @@ const SelectionBox = memo(function SelectionBox({
 
   // Resize handles for rectangles, text boxes, and images (8 handles: 4 corners + 4 edges)
   const resizeHandles = [];
-  
-  if (shape.type === SHAPE_TYPES.RECTANGLE || shape.type === SHAPE_TYPES.TEXT || shape.type === SHAPE_TYPES.IMAGE) {
+
+  if (
+    shape.type === SHAPE_TYPES.RECTANGLE ||
+    shape.type === SHAPE_TYPES.TEXT ||
+    shape.type === SHAPE_TYPES.IMAGE
+  ) {
     // Corners
     resizeHandles.push(
       { type: 'nw', x: bounds.x, y: bounds.y, cursor: 'nw-resize' },
       { type: 'ne', x: bounds.x + bounds.width, y: bounds.y, cursor: 'ne-resize' },
       { type: 'sw', x: bounds.x, y: bounds.y + bounds.height, cursor: 'sw-resize' },
-      { type: 'se', x: bounds.x + bounds.width, y: bounds.y + bounds.height, cursor: 'se-resize' },
+      { type: 'se', x: bounds.x + bounds.width, y: bounds.y + bounds.height, cursor: 'se-resize' }
     );
     // Edges
     resizeHandles.push(
       { type: 'n', x: bounds.centerX, y: bounds.y, cursor: 'n-resize' },
       { type: 's', x: bounds.centerX, y: bounds.y + bounds.height, cursor: 's-resize' },
       { type: 'w', x: bounds.x, y: bounds.centerY, cursor: 'w-resize' },
-      { type: 'e', x: bounds.x + bounds.width, y: bounds.centerY, cursor: 'e-resize' },
+      { type: 'e', x: bounds.x + bounds.width, y: bounds.centerY, cursor: 'e-resize' }
     );
   } else {
     // For circles and polygons, use 4 cardinal direction handles
@@ -108,7 +111,7 @@ const SelectionBox = memo(function SelectionBox({
       { type: 'n', x: bounds.centerX, y: bounds.y, cursor: 'n-resize' },
       { type: 's', x: bounds.centerX, y: bounds.y + bounds.height, cursor: 's-resize' },
       { type: 'w', x: bounds.x, y: bounds.centerY, cursor: 'w-resize' },
-      { type: 'e', x: bounds.x + bounds.width, y: bounds.centerY, cursor: 'e-resize' },
+      { type: 'e', x: bounds.x + bounds.width, y: bounds.centerY, cursor: 'e-resize' }
     );
   }
 
@@ -188,4 +191,3 @@ const SelectionBox = memo(function SelectionBox({
 });
 
 export default SelectionBox;
-

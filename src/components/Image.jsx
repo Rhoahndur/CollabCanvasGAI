@@ -18,16 +18,16 @@ import { memo } from 'react';
  * @param {function} onMouseDown - Mouse down handler
  * @param {function} onDoubleClick - Double click handler
  */
-const Image = memo(function Image({ 
-  id, 
-  x, 
-  y, 
-  width = 200, 
+const Image = memo(function Image({
+  id,
+  x,
+  y,
+  width = 200,
   height = 200,
   imageUrl,
   color,
   rotation = 0,
-  isSelected, 
+  isSelected,
   isLocked,
   lockedBy,
   lockedByUserName,
@@ -39,10 +39,10 @@ const Image = memo(function Image({
   // Calculate center for rotation
   const centerX = x;
   const centerY = y;
-  
+
   // Rotation transform (SVG format: rotate(angle centerX centerY))
   const transform = rotation ? `rotate(${rotation} ${centerX} ${centerY})` : undefined;
-  
+
   // Calculate top-left corner from center
   const topLeftX = x - width / 2;
   const topLeftY = y - height / 2;
@@ -61,17 +61,14 @@ const Image = memo(function Image({
     e.stopPropagation();
     if (onDoubleClick) onDoubleClick(id, e);
   };
-  
+
   const handleContextMenu = (e) => {
     e.stopPropagation();
     if (onContextMenu) onContextMenu(e);
   };
 
   return (
-    <g
-      className="canvas-image"
-      transform={transform}
-    >
+    <g className="canvas-image" transform={transform}>
       {/* Image element */}
       <image
         href={imageUrl}
@@ -84,11 +81,11 @@ const Image = memo(function Image({
         onMouseDown={handleMouseDown}
         onDoubleClick={handleDoubleClick}
         onContextMenu={handleContextMenu}
-        style={{ 
+        style={{
           cursor: isLocked && !isSelected ? 'not-allowed' : 'pointer',
         }}
       />
-      
+
       {/* Border (always visible for context) */}
       <rect
         x={topLeftX}
@@ -101,11 +98,10 @@ const Image = memo(function Image({
         strokeDasharray={isSelected ? undefined : '4 2'}
         style={{ pointerEvents: 'none' }}
       />
-      
+
       {/* Note: No locked indicator for images - they always appear at full color */}
     </g>
   );
 });
 
 export default Image;
-

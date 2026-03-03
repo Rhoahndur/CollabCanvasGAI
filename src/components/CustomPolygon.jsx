@@ -7,7 +7,7 @@ import { getUserColor, getContrastColor } from '../utils/colorUtils';
  * Renders a polygon with custom vertex points
  * Memoized for performance with large numbers of objects
  */
-const CustomPolygon = memo(function CustomPolygon({ 
+const CustomPolygon = memo(function CustomPolygon({
   id,
   vertices, // Array of {x, y} points
   color,
@@ -31,7 +31,7 @@ const CustomPolygon = memo(function CustomPolygon({
   }
 
   // Convert vertices to SVG points string
-  const points = vertices.map(v => `${v.x},${v.y}`).join(' ');
+  const points = vertices.map((v) => `${v.x},${v.y}`).join(' ');
 
   // Calculate centroid for text positioning and rotation
   const centroidX = vertices.reduce((sum, v) => sum + v.x, 0) / vertices.length;
@@ -50,14 +50,14 @@ const CustomPolygon = memo(function CustomPolygon({
       onMouseDown(id, e);
     }
   };
-  
+
   const handleDoubleClick = (e) => {
     e.stopPropagation();
     if (onDoubleClick) {
       onDoubleClick(e);
     }
   };
-  
+
   const handleContextMenu = (e) => {
     e.stopPropagation();
     if (onContextMenu) {
@@ -83,7 +83,7 @@ const CustomPolygon = memo(function CustomPolygon({
         onDoubleClick={handleDoubleClick}
         onContextMenu={handleContextMenu}
       />
-      
+
       {/* Text content (centered at centroid) */}
       {text && (
         <text
@@ -112,7 +112,7 @@ const CustomPolygon = memo(function CustomPolygon({
           ))}
         </text>
       )}
-      
+
       {/* Selection highlight */}
       {isSelected && (
         <polygon
@@ -126,7 +126,7 @@ const CustomPolygon = memo(function CustomPolygon({
           }}
         />
       )}
-      
+
       {/* Lock indicator (subtle overlay) */}
       {isLocked && !isSelected && (
         <>
@@ -140,7 +140,9 @@ const CustomPolygon = memo(function CustomPolygon({
           />
           {/* Show user name label for locked polygon */}
           {lockedByUserName && (
-            <g transform={`translate(${centroidX - (lockedByUserName.length * 7 + 12) / 2}, ${centroidY - 30})`}>
+            <g
+              transform={`translate(${centroidX - (lockedByUserName.length * 7 + 12) / 2}, ${centroidY - 30})`}
+            >
               {/* Label background */}
               <rect
                 x="0"
@@ -150,7 +152,7 @@ const CustomPolygon = memo(function CustomPolygon({
                 fill={getUserColor(lockedBy)}
                 rx="4"
                 ry="4"
-                style={{ 
+                style={{
                   filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))',
                   pointerEvents: 'none',
                 }}
@@ -176,4 +178,3 @@ const CustomPolygon = memo(function CustomPolygon({
 });
 
 export default CustomPolygon;
-

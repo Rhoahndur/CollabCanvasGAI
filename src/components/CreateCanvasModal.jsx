@@ -34,22 +34,22 @@ function CreateCanvasModal({ isOpen, onClose, onCreateCanvas, userCanvasCount = 
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Validate
     if (!canvasName.trim()) {
       setError('Please enter a canvas name');
       return;
     }
-    
+
     // Check limit
     if (userCanvasCount >= MAX_CANVASES_PER_USER) {
       setError(`Maximum ${MAX_CANVASES_PER_USER} canvases allowed`);
       return;
     }
-    
+
     setIsCreating(true);
     setError('');
-    
+
     try {
       await onCreateCanvas(canvasName.trim(), selectedTemplate);
       // Reset and close
@@ -84,8 +84,8 @@ function CreateCanvasModal({ isOpen, onClose, onCreateCanvas, userCanvasCount = 
               {userCanvasCount} / {MAX_CANVASES_PER_USER} canvases
             </div>
           </div>
-          <button 
-            className="modal-close-btn" 
+          <button
+            className="modal-close-btn"
             onClick={handleClose}
             disabled={isCreating}
             aria-label="Close"
@@ -93,7 +93,7 @@ function CreateCanvasModal({ isOpen, onClose, onCreateCanvas, userCanvasCount = 
             ×
           </button>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="modal-body">
           {/* Canvas Name Input */}
           <div className="form-group">
@@ -109,7 +109,7 @@ function CreateCanvasModal({ isOpen, onClose, onCreateCanvas, userCanvasCount = 
               disabled={isCreating}
             />
           </div>
-          
+
           {/* Template Selector */}
           <div className="form-group">
             <label>Choose a Template</label>
@@ -129,24 +129,20 @@ function CreateCanvasModal({ isOpen, onClose, onCreateCanvas, userCanvasCount = 
               ))}
             </div>
           </div>
-          
+
           {/* Canvas Limit Warning */}
           {userCanvasCount >= MAX_CANVASES_PER_USER - 1 && (
             <div className="canvas-limit-warning">
-              ⚠️ You have {userCanvasCount} of {MAX_CANVASES_PER_USER} canvases. 
-              {userCanvasCount >= MAX_CANVASES_PER_USER 
+              ⚠️ You have {userCanvasCount} of {MAX_CANVASES_PER_USER} canvases.
+              {userCanvasCount >= MAX_CANVASES_PER_USER
                 ? ' Delete a canvas to create a new one.'
                 : ' This is your last canvas slot.'}
             </div>
           )}
-          
+
           {/* Error Message */}
-          {error && (
-            <div className="error-message">
-              {error}
-            </div>
-          )}
-          
+          {error && <div className="error-message">{error}</div>}
+
           {/* Actions */}
           <div className="modal-actions">
             <button
@@ -160,7 +156,9 @@ function CreateCanvasModal({ isOpen, onClose, onCreateCanvas, userCanvasCount = 
             <button
               type="submit"
               className="btn btn-primary"
-              disabled={isCreating || !canvasName.trim() || userCanvasCount >= MAX_CANVASES_PER_USER}
+              disabled={
+                isCreating || !canvasName.trim() || userCanvasCount >= MAX_CANVASES_PER_USER
+              }
             >
               {isCreating ? 'Creating...' : 'Create Canvas'}
             </button>
@@ -172,4 +170,3 @@ function CreateCanvasModal({ isOpen, onClose, onCreateCanvas, userCanvasCount = 
 }
 
 export default CreateCanvasModal;
-

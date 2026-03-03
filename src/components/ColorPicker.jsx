@@ -20,9 +20,21 @@ function ColorPicker({ value, onChange, label = 'Color', allowTransparent = fals
 
   // Preset colors
   const presetColors = [
-    '#000000', '#FFFFFF', '#FF0000', '#00FF00', '#0000FF',
-    '#FFFF00', '#FF00FF', '#00FFFF', '#FFA500', '#800080',
-    '#008000', '#800000', '#FFC0CB', '#A52A2A', '#808080',
+    '#000000',
+    '#FFFFFF',
+    '#FF0000',
+    '#00FF00',
+    '#0000FF',
+    '#FFFF00',
+    '#FF00FF',
+    '#00FFFF',
+    '#FFA500',
+    '#800080',
+    '#008000',
+    '#800000',
+    '#FFC0CB',
+    '#A52A2A',
+    '#808080',
   ];
 
   // Close picker when clicking outside
@@ -54,8 +66,8 @@ function ColorPicker({ value, onChange, label = 'Color', allowTransparent = fals
 
     // Draw color wheel
     for (let angle = 0; angle < 360; angle += 1) {
-      const startAngle = (angle - 2) * Math.PI / 180;
-      const endAngle = angle * Math.PI / 180;
+      const startAngle = ((angle - 2) * Math.PI) / 180;
+      const endAngle = (angle * Math.PI) / 180;
 
       ctx.beginPath();
       ctx.moveTo(centerX, centerY);
@@ -82,12 +94,12 @@ function ColorPicker({ value, onChange, label = 'Color', allowTransparent = fals
 
   const handleColorSelect = (color) => {
     onChange(color);
-    
+
     // Add to recent colors (max 5)
-    const updated = [color, ...recentColors.filter(c => c !== color)].slice(0, 5);
+    const updated = [color, ...recentColors.filter((c) => c !== color)].slice(0, 5);
     setRecentColors(updated);
     localStorage.setItem('recentTextColors', JSON.stringify(updated));
-    
+
     setShowPicker(false);
   };
 
@@ -101,7 +113,7 @@ function ColorPicker({ value, onChange, label = 'Color', allowTransparent = fals
     const ctx = canvas.getContext('2d');
     const pixelData = ctx.getImageData(x, y, 1, 1).data;
     const color = `#${[pixelData[0], pixelData[1], pixelData[2]]
-      .map(x => x.toString(16).padStart(2, '0'))
+      .map((x) => x.toString(16).padStart(2, '0'))
       .join('')}`;
 
     handleColorSelect(color);
@@ -110,7 +122,7 @@ function ColorPicker({ value, onChange, label = 'Color', allowTransparent = fals
   return (
     <div className="color-picker-wrapper" ref={pickerRef}>
       <label className="color-picker-label">{label}:</label>
-      
+
       {/* Current Color Button */}
       <button
         className="color-picker-button"
@@ -123,10 +135,7 @@ function ColorPicker({ value, onChange, label = 'Color', allowTransparent = fals
         {value === 'transparent' ? (
           <div className="color-preview transparent-pattern" />
         ) : (
-          <div 
-            className="color-preview" 
-            style={{ backgroundColor: value }}
-          />
+          <div className="color-preview" style={{ backgroundColor: value }} />
         )}
       </button>
 
@@ -162,7 +171,7 @@ function ColorPicker({ value, onChange, label = 'Color', allowTransparent = fals
           <div className="color-section">
             <div className="color-section-title">Preset Colors</div>
             <div className="color-grid">
-              {presetColors.map(color => (
+              {presetColors.map((color) => (
                 <button
                   key={color}
                   className={`color-tile ${value === color ? 'active' : ''}`}
@@ -215,4 +224,3 @@ function ColorPicker({ value, onChange, label = 'Color', allowTransparent = fals
 }
 
 export default ColorPicker;
-

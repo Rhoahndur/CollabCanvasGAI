@@ -202,7 +202,8 @@
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -238,22 +239,21 @@
   .presence-sidebar {
     width: 240px;
   }
-  
+
   .presence-minimized-tab {
     right: 12px;
     top: 60px;
     width: 52px;
     height: 64px;
   }
-  
+
   .minimized-icon svg {
     width: 20px;
     height: 20px;
   }
-  
+
   .minimized-count {
     font-size: 12px;
     padding: 2px 8px;
   }
 }
-

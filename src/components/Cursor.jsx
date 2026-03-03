@@ -4,27 +4,19 @@ import { getUserColor, getContrastColor } from '../utils/colorUtils';
  * Cursor component - SVG cursor for other users
  * Always displays cursor icon and user name label
  */
-function Cursor({ 
-  userId, 
-  x, 
-  y, 
-  userName,
-}) {
+function Cursor({ userId, x, y, userName }) {
   const userColor = getUserColor(userId);
   const textColor = getContrastColor(userColor);
 
   return (
-    <g 
+    <g
       className="cursor-group"
       transform={`translate(${x}, ${y})`}
       style={{ pointerEvents: 'none' }}
     >
       {/* User name label - ALWAYS visible */}
       {/* Render label FIRST so it appears BEHIND cursor in DOM order */}
-      <g 
-        transform="translate(18, -32)" 
-        style={{ pointerEvents: 'none' }}
-      >
+      <g transform="translate(18, -32)" style={{ pointerEvents: 'none' }}>
         {/* Label background */}
         <rect
           x="0"
@@ -35,9 +27,9 @@ function Cursor({
           rx="4"
           ry="4"
           opacity="0.95"
-          style={{ 
+          style={{
             filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.3))',
-            pointerEvents: 'none'
+            pointerEvents: 'none',
           }}
         />
         {/* User name text */}
@@ -62,9 +54,9 @@ function Cursor({
           fill={userColor}
           stroke="white"
           strokeWidth="1.5"
-          style={{ 
+          style={{
             filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.4))',
-            pointerEvents: 'none'
+            pointerEvents: 'none',
           }}
         />
       </g>
@@ -73,4 +65,3 @@ function Cursor({
 }
 
 export default Cursor;
-

@@ -47,7 +47,8 @@ function ShareCanvasModal({ canvasId, canvasName, currentUserId, isOpen, onClose
   // Copy shareable link to clipboard with role parameter
   const handleCopyLink = () => {
     const linkWithRole = `${shareLink}?role=${shareLinkRole}`;
-    navigator.clipboard.writeText(linkWithRole)
+    navigator.clipboard
+      .writeText(linkWithRole)
       .then(() => {
         setCopySuccess(true);
         setSuccessMessage(`${shareLinkRole === 'editor' ? 'Editor' : 'Viewer'} link copied!`);
@@ -56,7 +57,7 @@ function ShareCanvasModal({ canvasId, canvasName, currentUserId, isOpen, onClose
           setSuccessMessage('');
         }, 2000);
       })
-      .catch(err => {
+      .catch((err) => {
         console.error('Failed to copy link:', err);
         setError('Failed to copy link to clipboard');
       });
@@ -79,7 +80,7 @@ function ShareCanvasModal({ canvasId, canvasName, currentUserId, isOpen, onClose
       await removeCanvasPermission(canvasId, userId);
       setSuccessMessage('Collaborator removed');
       loadCollaborators();
-      
+
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
       console.error('Failed to remove collaborator:', err);
@@ -121,7 +122,7 @@ function ShareCanvasModal({ canvasId, canvasName, currentUserId, isOpen, onClose
             <p className="share-section-description">
               Choose the access level for people who use this link
             </p>
-            
+
             {/* Role selector for share link */}
             <div className="share-link-role-selector">
               <button
@@ -143,7 +144,7 @@ function ShareCanvasModal({ canvasId, canvasName, currentUserId, isOpen, onClose
                 <span className="role-desc">Can view & edit</span>
               </button>
             </div>
-            
+
             <div className="share-link-container">
               <input
                 type="text"
@@ -164,7 +165,9 @@ function ShareCanvasModal({ canvasId, canvasName, currentUserId, isOpen, onClose
           <div className="share-section">
             <h3>Collaborators ({collaborators.length})</h3>
             {collaborators.length === 0 ? (
-              <p className="share-empty-state">No collaborators yet. Share the link above to invite people!</p>
+              <p className="share-empty-state">
+                No collaborators yet. Share the link above to invite people!
+              </p>
             ) : (
               <div className="share-collaborators-list">
                 {collaborators.map((collab) => (
@@ -174,9 +177,7 @@ function ShareCanvasModal({ canvasId, canvasName, currentUserId, isOpen, onClose
                         {collab.userName}
                         {collab.userId === currentUserId && ' (You)'}
                       </span>
-                      <span className={`share-role-badge role-${collab.role}`}>
-                        {collab.role}
-                      </span>
+                      <span className={`share-role-badge role-${collab.role}`}>{collab.role}</span>
                     </div>
                     {collab.userId !== currentUserId && collab.role !== CANVAS_ROLE.OWNER && (
                       <button
@@ -207,4 +208,3 @@ function ShareCanvasModal({ canvasId, canvasName, currentUserId, isOpen, onClose
 }
 
 export default ShareCanvasModal;
-

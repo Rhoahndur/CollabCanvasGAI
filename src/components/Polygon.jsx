@@ -7,10 +7,10 @@ import { getUserColor, getContrastColor } from '../utils/colorUtils';
  * Renders a regular polygon with optional selection highlight
  * Memoized for performance with large numbers of objects
  */
-const Polygon = memo(function Polygon({ 
+const Polygon = memo(function Polygon({
   id,
-  x, 
-  y, 
+  x,
+  y,
   radius,
   sides = 5,
   color,
@@ -34,14 +34,14 @@ const Polygon = memo(function Polygon({
     const points = [];
     const angleStep = (Math.PI * 2) / numSides;
     const startAngle = -Math.PI / 2; // Start from top
-    
+
     for (let i = 0; i < numSides; i++) {
       const angle = startAngle + angleStep * i;
       const px = cx + r * Math.cos(angle);
       const py = cy + r * Math.sin(angle);
       points.push(`${px},${py}`);
     }
-    
+
     return points.join(' ');
   };
 
@@ -60,14 +60,14 @@ const Polygon = memo(function Polygon({
       onMouseDown(id, e);
     }
   };
-  
+
   const handleDoubleClick = (e) => {
     e.stopPropagation();
     if (onDoubleClick) {
       onDoubleClick(e);
     }
   };
-  
+
   const handleContextMenu = (e) => {
     e.stopPropagation();
     if (onContextMenu) {
@@ -93,7 +93,7 @@ const Polygon = memo(function Polygon({
         onDoubleClick={handleDoubleClick}
         onContextMenu={handleContextMenu}
       />
-      
+
       {/* Text content (centered) */}
       {text && (
         <text
@@ -112,17 +112,13 @@ const Polygon = memo(function Polygon({
           }}
         >
           {text.split('\n').map((line, i, arr) => (
-            <tspan
-              key={i}
-              x={x}
-              dy={i === 0 ? -((arr.length - 1) * fontSize) / 2 : fontSize}
-            >
+            <tspan key={i} x={x} dy={i === 0 ? -((arr.length - 1) * fontSize) / 2 : fontSize}>
               {line}
             </tspan>
           ))}
         </text>
       )}
-      
+
       {/* Selection highlight */}
       {isSelected && (
         <polygon
@@ -136,7 +132,7 @@ const Polygon = memo(function Polygon({
           }}
         />
       )}
-      
+
       {/* Lock indicator (subtle overlay) */}
       {isLocked && !isSelected && (
         <>
@@ -150,7 +146,9 @@ const Polygon = memo(function Polygon({
           />
           {/* Show user name label for locked polygon */}
           {lockedByUserName && (
-            <g transform={`translate(${x - (lockedByUserName.length * 7 + 12) / 2}, ${y - radius - 15})`}>
+            <g
+              transform={`translate(${x - (lockedByUserName.length * 7 + 12) / 2}, ${y - radius - 15})`}
+            >
               {/* Label background */}
               <rect
                 x="0"
@@ -160,7 +158,7 @@ const Polygon = memo(function Polygon({
                 fill={getUserColor(lockedBy)}
                 rx="4"
                 ry="4"
-                style={{ 
+                style={{
                   filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))',
                   pointerEvents: 'none',
                 }}
@@ -186,4 +184,3 @@ const Polygon = memo(function Polygon({
 });
 
 export default Polygon;
-

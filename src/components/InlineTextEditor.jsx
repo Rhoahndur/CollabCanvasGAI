@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { FONT_SIZES, DEFAULT_FONT_SIZE, DEFAULT_TEXT_COLOR, DEFAULT_TEXT_BACKGROUND_COLOR } from '../utils/constants';
+import {
+  FONT_SIZES,
+  DEFAULT_FONT_SIZE,
+  DEFAULT_TEXT_COLOR,
+  DEFAULT_TEXT_BACKGROUND_COLOR,
+} from '../utils/constants';
 import ColorPicker from './ColorPicker';
 import './InlineTextEditor.css';
 
@@ -14,13 +19,15 @@ import './InlineTextEditor.css';
  */
 function InlineTextEditor({ shape, text, onTextChange, onFinish, viewport, containerSize }) {
   const textareaRef = useRef(null);
-  
+
   // Text formatting state
   const [fontSize, setFontSize] = useState(shape.fontSize || DEFAULT_FONT_SIZE);
   const [isBold, setIsBold] = useState(shape.fontWeight === 'bold' || false);
   const [isItalic, setIsItalic] = useState(shape.fontStyle === 'italic' || false);
   const [textColor, setTextColor] = useState(shape.textColor || shape.color || DEFAULT_TEXT_COLOR);
-  const [backgroundColor, setBackgroundColor] = useState(shape.backgroundColor || DEFAULT_TEXT_BACKGROUND_COLOR);
+  const [backgroundColor, setBackgroundColor] = useState(
+    shape.backgroundColor || DEFAULT_TEXT_BACKGROUND_COLOR
+  );
 
   // Focus the textarea when component mounts
   useEffect(() => {
@@ -64,7 +71,7 @@ function InlineTextEditor({ shape, text, onTextChange, onFinish, viewport, conta
   const getScreenPosition = () => {
     // Calculate shape center in canvas coordinates
     let centerX, centerY, width, height;
-    
+
     if (shape.type === 'text' || shape.type === 'rectangle') {
       centerX = shape.x + (shape.width || 200) / 2;
       centerY = shape.y + (shape.height || 60) / 2;
@@ -140,8 +147,10 @@ function InlineTextEditor({ shape, text, onTextChange, onFinish, viewport, conta
               onChange={(e) => setFontSize(Number(e.target.value))}
               onClick={(e) => e.stopPropagation()}
             >
-              {FONT_SIZES.map(size => (
-                <option key={size} value={size}>{size}px</option>
+              {FONT_SIZES.map((size) => (
+                <option key={size} value={size}>
+                  {size}px
+                </option>
               ))}
             </select>
           </div>
@@ -171,11 +180,7 @@ function InlineTextEditor({ shape, text, onTextChange, onFinish, viewport, conta
           </button>
 
           {/* Text Color Picker */}
-          <ColorPicker
-            value={textColor}
-            onChange={setTextColor}
-            label="Color"
-          />
+          <ColorPicker value={textColor} onChange={setTextColor} label="Color" />
 
           {/* Background Color Picker */}
           <ColorPicker
@@ -212,4 +217,3 @@ function InlineTextEditor({ shape, text, onTextChange, onFinish, viewport, conta
 }
 
 export default InlineTextEditor;
-

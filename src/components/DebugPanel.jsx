@@ -21,7 +21,7 @@ function DebugPanel() {
   useEffect(() => {
     const handleDebugEvent = (event) => {
       const { type, data, timestamp } = event.detail;
-      setLogs(prev => [...prev, { type, data, timestamp: timestamp || Date.now() }]);
+      setLogs((prev) => [...prev, { type, data, timestamp: timestamp || Date.now() }]);
     };
 
     window.addEventListener('canny-debug', handleDebugEvent);
@@ -100,7 +100,7 @@ function DebugPanel() {
       <button className="debug-toggle" onClick={() => setIsOpen(!isOpen)}>
         🐛 Debug {isOpen ? '▼' : '▲'}
       </button>
-      
+
       {isOpen && (
         <div className="debug-content">
           <div className="debug-header">
@@ -109,7 +109,7 @@ function DebugPanel() {
               Clear
             </button>
           </div>
-          
+
           <div className="debug-logs">
             {logs.length === 0 ? (
               <div className="debug-empty">
@@ -121,9 +121,7 @@ function DebugPanel() {
                   <div className="log-header">
                     <span className="log-icon">{getLogIcon(log.type)}</span>
                     <span className="log-title">{getLogTitle(log.type)}</span>
-                    <span className="log-time">
-                      {new Date(log.timestamp).toLocaleTimeString()}
-                    </span>
+                    <span className="log-time">{new Date(log.timestamp).toLocaleTimeString()}</span>
                   </div>
                   <pre className="log-content">{formatJson(log.data)}</pre>
                 </div>
@@ -138,4 +136,3 @@ function DebugPanel() {
 }
 
 export default DebugPanel;
-

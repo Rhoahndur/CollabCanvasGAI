@@ -7,10 +7,10 @@ import { Component } from 'react';
 class ErrorBoundary extends Component {
   constructor(props) {
     super(props);
-    this.state = { 
+    this.state = {
       hasError: false,
       error: null,
-      errorInfo: null
+      errorInfo: null,
     };
   }
 
@@ -22,7 +22,7 @@ class ErrorBoundary extends Component {
     console.error('React Error Boundary caught an error:', error, errorInfo);
     this.setState({
       error,
-      errorInfo
+      errorInfo,
     });
   }
 
@@ -31,10 +31,10 @@ class ErrorBoundary extends Component {
   };
 
   handleReset = () => {
-    this.setState({ 
+    this.setState({
       hasError: false,
       error: null,
-      errorInfo: null
+      errorInfo: null,
     });
   };
 
@@ -46,10 +46,9 @@ class ErrorBoundary extends Component {
             <div className="error-icon">⚠️</div>
             <h1>Oops! Something went wrong</h1>
             <p className="error-message">
-              We're sorry, but something unexpected happened. 
-              This error has been logged.
+              We're sorry, but something unexpected happened. This error has been logged.
             </p>
-            
+
             {import.meta.env.DEV && this.state.error && (
               <details className="error-details">
                 <summary>Error Details (Dev Mode)</summary>
@@ -59,24 +58,19 @@ class ErrorBoundary extends Component {
                 </pre>
               </details>
             )}
-            
+
             <div className="error-actions">
-              <button 
-                className="btn-primary" 
-                onClick={this.handleReload}
-              >
+              <button className="btn-primary" onClick={this.handleReload}>
                 Reload Page
               </button>
-              <button 
-                className="btn-secondary" 
-                onClick={this.handleReset}
-              >
+              <button className="btn-secondary" onClick={this.handleReset}>
                 Try Again
               </button>
             </div>
-            
+
             <p className="error-hint">
-              If this problem persists, try clearing your browser cache or using a different browser.
+              If this problem persists, try clearing your browser cache or using a different
+              browser.
             </p>
           </div>
         </div>
@@ -88,4 +82,3 @@ class ErrorBoundary extends Component {
 }
 
 export default ErrorBoundary;
-

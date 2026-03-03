@@ -13,7 +13,7 @@ function LayersPanel({
   onRenameShape,
   userRole = 'editor',
   isOpen = false,
-  onTogglePanel
+  onTogglePanel,
 }) {
   const [editingShapeId, setEditingShapeId] = useState(null);
   const [editingName, setEditingName] = useState('');
@@ -26,25 +26,25 @@ function LayersPanel({
       editInputRef.current.select();
     }
   }, [editingShapeId]);
-  
+
   // Close panel when clicking outside
   useEffect(() => {
     if (!isOpen) return;
-    
+
     const handleClickOutside = (e) => {
       const panel = document.querySelector('.layers-panel');
       const toggleBtn = document.querySelector('.layers-toggle-btn');
-      
+
       if (panel && !panel.contains(e.target) && toggleBtn && !toggleBtn.contains(e.target)) {
         onTogglePanel();
       }
     };
-    
+
     // Add slight delay to avoid immediate close
     setTimeout(() => {
       document.addEventListener('mousedown', handleClickOutside);
     }, 100);
-    
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
@@ -55,12 +55,12 @@ function LayersPanel({
 
   const handleLayerClick = (shapeId, e) => {
     e.stopPropagation();
-    
+
     // Don't select if clicking on visibility toggle or edit input
     if (e.target.closest('.layer-visibility-toggle') || e.target.closest('.layer-name-input')) {
       return;
     }
-    
+
     onSelectShape(shapeId);
   };
 
@@ -72,7 +72,7 @@ function LayersPanel({
   const handleNameDoubleClick = (shape, e) => {
     e.stopPropagation();
     if (userRole === 'viewer') return;
-    
+
     setEditingShapeId(shape.id);
     setEditingName(shape.name || getDefaultShapeName(shape));
   };
@@ -105,16 +105,16 @@ function LayersPanel({
 
   const getDefaultShapeName = (shape) => {
     if (!shape) return 'Shape';
-    
+
     const typeNames = {
       rectangle: 'Rectangle',
       circle: 'Circle',
       polygon: 'Pentagon',
       customPolygon: 'Polygon',
       text: 'Text',
-      image: 'Image'
+      image: 'Image',
     };
-    
+
     return typeNames[shape.type] || 'Shape';
   };
 
@@ -142,13 +142,24 @@ function LayersPanel({
       case 'text':
         return (
           <svg viewBox="0 0 16 16" fill="currentColor">
-            <text x="8" y="12" fontSize="12" textAnchor="middle" fontWeight="bold">T</text>
+            <text x="8" y="12" fontSize="12" textAnchor="middle" fontWeight="bold">
+              T
+            </text>
           </svg>
         );
       case 'image':
         return (
           <svg viewBox="0 0 16 16" fill="currentColor">
-            <rect x="2" y="2" width="12" height="12" rx="1" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+            <rect
+              x="2"
+              y="2"
+              width="12"
+              height="12"
+              rx="1"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            />
             <circle cx="6" cy="6" r="1.5" />
             <path d="M 2 11 L 6 7 L 10 11 L 14 7 L 14 14 L 2 14 Z" />
           </svg>
@@ -173,11 +184,7 @@ function LayersPanel({
       {/* Panel Header */}
       <div className="layers-header">
         <h3>Layers</h3>
-        <button
-          className="layers-close-btn"
-          onClick={onTogglePanel}
-          title="Close layers panel"
-        >
+        <button className="layers-close-btn" onClick={onTogglePanel} title="Close layers panel">
           ✕
         </button>
       </div>
@@ -199,7 +206,7 @@ function LayersPanel({
               const isShapeSelected = isSelected(shape.id);
               const isVisible = shape.visible !== false;
               const isLocked = shape.lockedBy && shape.lockedBy !== shape.createdBy;
-              
+
               return (
                 <div
                   key={shape.id}
@@ -244,7 +251,10 @@ function LayersPanel({
 
                   {/* Lock Indicator */}
                   {isLocked && (
-                    <div className="layer-lock-indicator" title={`Locked by ${shape.lockedByUserName || 'another user'}`}>
+                    <div
+                      className="layer-lock-indicator"
+                      title={`Locked by ${shape.lockedByUserName || 'another user'}`}
+                    >
                       🔒
                     </div>
                   )}
@@ -259,4 +269,3 @@ function LayersPanel({
 }
 
 export default LayersPanel;
-

@@ -10,23 +10,23 @@ import { memo, useMemo } from 'react';
  */
 function wrapText(text, maxWidth, fontSize, fontWeight) {
   if (!text) return [];
-  
+
   // Rough character width estimation based on font size
   // Bold text is slightly wider
   const charWidth = fontSize * (fontWeight === 'bold' ? 0.65 : 0.6);
   const padding = 16; // Account for padding
   const availableWidth = maxWidth - padding;
   const maxCharsPerLine = Math.floor(availableWidth / charWidth);
-  
+
   if (maxCharsPerLine < 1) return [];
-  
+
   const words = text.split(/\s+/);
   const lines = [];
   let currentLine = '';
-  
-  words.forEach(word => {
+
+  words.forEach((word) => {
     const testLine = currentLine ? `${currentLine} ${word}` : word;
-    
+
     if (testLine.length <= maxCharsPerLine) {
       currentLine = testLine;
     } else {
@@ -48,11 +48,11 @@ function wrapText(text, maxWidth, fontSize, fontWeight) {
       }
     }
   });
-  
+
   if (currentLine) {
     lines.push(currentLine);
   }
-  
+
   return lines;
 }
 
@@ -79,11 +79,11 @@ function wrapText(text, maxWidth, fontSize, fontWeight) {
  * @param {function} onMouseDown - Mouse down handler
  * @param {function} onDoubleClick - Double click handler for editing
  */
-const TextBox = memo(function TextBox({ 
-  id, 
-  x, 
-  y, 
-  width = 200, 
+const TextBox = memo(function TextBox({
+  id,
+  x,
+  y,
+  width = 200,
   height = 60,
   text = 'Double-click to edit',
   color,
@@ -93,7 +93,7 @@ const TextBox = memo(function TextBox({
   fontSize = 16,
   fontWeight = 'normal',
   fontStyle = 'normal',
-  isSelected, 
+  isSelected,
   isLocked,
   lockedBy,
   lockedByUserName,
@@ -105,30 +105,30 @@ const TextBox = memo(function TextBox({
   // Calculate center for rotation
   const centerX = x + width / 2;
   const centerY = y + height / 2;
-  
+
   // Rotation transform (SVG format: rotate(angle centerX centerY))
   const transform = rotation ? `rotate(${rotation} ${centerX} ${centerY})` : undefined;
-  
+
   // Wrap text into lines
-  const wrappedLines = useMemo(() => 
-    wrapText(text, width, fontSize, fontWeight),
+  const wrappedLines = useMemo(
+    () => wrapText(text, width, fontSize, fontWeight),
     [text, width, fontSize, fontWeight]
   );
-  
+
   // Calculate line height (1.2x font size for readability)
   const lineHeight = fontSize * 1.2;
   const padding = 8;
-  const availableHeight = height - (padding * 2);
+  const availableHeight = height - padding * 2;
   const maxVisibleLines = Math.floor(availableHeight / lineHeight);
-  
+
   // Check if text overflows
   const hasOverflow = wrappedLines.length > maxVisibleLines;
   const visibleLines = hasOverflow ? wrappedLines.slice(0, maxVisibleLines) : wrappedLines;
-  
+
   // Calculate starting Y position for vertically centered text
   const totalTextHeight = visibleLines.length * lineHeight;
   const startY = y + (height - totalTextHeight) / 2 + fontSize * 0.8;
-  
+
   // Event handlers that pass the id parameter
   const handleClick = (e) => {
     e.stopPropagation();
@@ -143,14 +143,14 @@ const TextBox = memo(function TextBox({
       onMouseDown(id, e);
     }
   };
-  
+
   const handleDoubleClick = (e) => {
     e.stopPropagation();
     if (onDoubleClick) {
       onDoubleClick(e);
     }
   };
-  
+
   const handleContextMenu = (e) => {
     e.stopPropagation();
     if (onContextMenu) {
@@ -175,31 +175,25 @@ const TextBox = memo(function TextBox({
         onMouseDown={handleMouseDown}
         onDoubleClick={handleDoubleClick}
         onContextMenu={handleContextMenu}
-        style={{ 
+        style={{
           cursor: isLocked && !isSelected ? 'not-allowed' : 'pointer',
         }}
       />
-      
+
       {/* Clipping path for text overflow */}
       <defs>
         <clipPath id={`clip-${id}`}>
-          <rect
-            x={x + 4}
-            y={y + 4}
-            width={width - 8}
-            height={height - 8}
-            rx={3}
-          />
+          <rect x={x + 4} y={y + 4} width={width - 8} height={height - 8} rx={3} />
         </clipPath>
       </defs>
-      
+
       {/* Text content - wrapped and clipped */}
       <g clipPath={`url(#clip-${id})`}>
         {visibleLines.map((line, i) => (
           <text
             key={i}
             x={x + 8}
-            y={startY + (i * lineHeight)}
+            y={startY + i * lineHeight}
             fill={textColor || color || '#000000'}
             fontSize={fontSize}
             fontWeight={fontWeight}
@@ -215,7 +209,7 @@ const TextBox = memo(function TextBox({
           </text>
         ))}
       </g>
-      
+
       {/* Overflow indicator (star) */}
       {hasOverflow && (
         <g style={{ pointerEvents: 'none' }}>
@@ -300,4 +294,3 @@ const TextBox = memo(function TextBox({
 });
 
 export default TextBox;
-

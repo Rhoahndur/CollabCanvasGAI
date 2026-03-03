@@ -201,7 +201,9 @@
   border-radius: 8px;
   padding: 0.5rem;
   min-width: 140px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
   pointer-events: auto; /* Menu is interactive */
   animation: menuFadeIn 0.15s ease-out;
 }
@@ -260,15 +262,14 @@
   .canvas-card {
     border-radius: 6px;
   }
-  
+
   .canvas-info {
     padding: 0.75rem;
   }
-  
+
   .canvas-name {
     font-size: 0.9rem;
   }
 }
 
 /* Theme handled by CSS variables in themes.css */
-

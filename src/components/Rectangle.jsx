@@ -7,12 +7,12 @@ import { getUserColor, getContrastColor } from '../utils/colorUtils';
  * Renders a single rectangle with optional selection highlight
  * Memoized for performance with large numbers of objects
  */
-const Rectangle = memo(function Rectangle({ 
+const Rectangle = memo(function Rectangle({
   id,
-  x, 
-  y, 
-  width, 
-  height, 
+  x,
+  y,
+  width,
+  height,
   color,
   rotation = 0,
   text = null,
@@ -42,14 +42,14 @@ const Rectangle = memo(function Rectangle({
       onMouseDown(id, e);
     }
   };
-  
+
   const handleDoubleClick = (e) => {
     e.stopPropagation();
     if (onDoubleClick) {
       onDoubleClick(e);
     }
   };
-  
+
   const handleContextMenu = (e) => {
     e.stopPropagation();
     if (onContextMenu) {
@@ -80,7 +80,7 @@ const Rectangle = memo(function Rectangle({
         onDoubleClick={handleDoubleClick}
         onContextMenu={handleContextMenu}
       />
-      
+
       {/* Text content (centered) */}
       {text && (
         <text
@@ -99,17 +99,13 @@ const Rectangle = memo(function Rectangle({
           }}
         >
           {text.split('\n').map((line, i, arr) => (
-            <tspan
-              key={i}
-              x={centerX}
-              dy={i === 0 ? -((arr.length - 1) * fontSize) / 2 : fontSize}
-            >
+            <tspan key={i} x={centerX} dy={i === 0 ? -((arr.length - 1) * fontSize) / 2 : fontSize}>
               {line}
             </tspan>
           ))}
         </text>
       )}
-      
+
       {/* Selection highlight */}
       {isSelected && (
         <rect
@@ -126,7 +122,7 @@ const Rectangle = memo(function Rectangle({
           }}
         />
       )}
-      
+
       {/* Lock indicator (subtle overlay) */}
       {isLocked && !isSelected && (
         <>
@@ -153,7 +149,7 @@ const Rectangle = memo(function Rectangle({
                 fill={getUserColor(lockedBy)}
                 rx="4"
                 ry="4"
-                style={{ 
+                style={{
                   filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))',
                   pointerEvents: 'none',
                 }}
@@ -179,4 +175,3 @@ const Rectangle = memo(function Rectangle({
 });
 
 export default Rectangle;
-
