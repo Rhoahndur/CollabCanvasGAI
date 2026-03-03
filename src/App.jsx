@@ -57,9 +57,9 @@ function App() {
           );
           return 0;
         }
-        console.log(`🧹 Manually cleaning up stale presence for canvas: ${targetCanvasId}`);
+        console.warn(`🧹 Manually cleaning up stale presence for canvas: ${targetCanvasId}`);
         const cleaned = await cleanupStalePresence(targetCanvasId);
-        console.log(`✅ Cleaned up ${cleaned} stale sessions`);
+        console.warn(`✅ Cleaned up ${cleaned} stale sessions`);
         return cleaned;
       };
     }
@@ -103,7 +103,7 @@ function App() {
           setCurrentView('canvas');
 
           if (!accessResult.alreadyHadAccess) {
-            console.log(`✅ Granted viewer access to canvas: ${accessResult.canvasName}`);
+            console.warn(`✅ Granted viewer access to canvas: ${accessResult.canvasName}`);
           }
         } else {
           // Canvas not found or error
@@ -149,14 +149,14 @@ function App() {
         try {
           const metadata = await getCanvasMetadata(currentCanvasId);
           if (metadata?.settings) {
-            console.log('📥 Loaded canvas settings:', metadata.settings);
+            console.warn('📥 Loaded canvas settings:', metadata.settings);
             setCanvasSettings({
               backgroundColor: metadata.settings.backgroundColor || '#1a1a1a',
               gridVisible: metadata.settings.gridVisible === true,
             });
           } else {
             // No settings saved yet, use defaults
-            console.log('📥 No saved settings, using defaults');
+            console.warn('📥 No saved settings, using defaults');
             setCanvasSettings({
               backgroundColor: '#1a1a1a',
               gridVisible: false,
