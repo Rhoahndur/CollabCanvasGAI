@@ -136,14 +136,14 @@ export const CANVAS_ROLE = {
  *   lockedBy: string | null, // User ID of current lock holder, null if unlocked
  *   timestamp: number,       // Creation timestamp
  *   rotation: number,        // Rotation angle in degrees (default: 0)
- *   
+ *
  *   // Rectangle-specific
  *   width: number,           // Rectangle width (only for rectangles)
  *   height: number,          // Rectangle height (only for rectangles)
- *   
+ *
  *   // Circle-specific
  *   radius: number,          // Circle radius (only for circles)
- *   
+ *
  *   // Polygon-specific
  *   radius: number,          // Polygon radius (only for polygons)
  *   sides: number,           // Number of sides (only for polygons)
@@ -172,4 +172,3 @@ export const CANVAS_ROLE = {
  *   color: string,           // User's assigned color
  * }
  */
-

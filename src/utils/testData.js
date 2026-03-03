@@ -40,23 +40,23 @@ function randomColor() {
 function generateRandomShape(userId, padding = 100) {
   const shapeTypes = [SHAPE_TYPES.RECTANGLE, SHAPE_TYPES.CIRCLE, SHAPE_TYPES.POLYGON];
   const shapeType = shapeTypes[randomInt(0, shapeTypes.length - 1)];
-  
+
   const minSize = 30;
   const maxSize = 150;
-  
+
   const baseShape = {
     type: shapeType,
     color: randomColor(),
     createdBy: userId,
     rotation: randomInt(0, 359),
   };
-  
+
   if (shapeType === SHAPE_TYPES.RECTANGLE) {
     const width = randomInt(minSize, maxSize);
     const height = randomInt(minSize, maxSize);
     const x = randomInt(padding, CANVAS_WIDTH - width - padding);
     const y = randomInt(padding, CANVAS_HEIGHT - height - padding);
-    
+
     return {
       ...baseShape,
       x,
@@ -68,7 +68,7 @@ function generateRandomShape(userId, padding = 100) {
     const radius = randomInt(minSize / 2, maxSize / 2);
     const x = randomInt(padding + radius, CANVAS_WIDTH - radius - padding);
     const y = randomInt(padding + radius, CANVAS_HEIGHT - radius - padding);
-    
+
     return {
       ...baseShape,
       x,
@@ -80,7 +80,7 @@ function generateRandomShape(userId, padding = 100) {
     const sides = [3, 4, 5, 6, 8][randomInt(0, 4)]; // Triangle, square, pentagon, hexagon, or octagon
     const x = randomInt(padding + radius, CANVAS_WIDTH - radius - padding);
     const y = randomInt(padding + radius, CANVAS_HEIGHT - radius - padding);
-    
+
     return {
       ...baseShape,
       x,
@@ -97,13 +97,13 @@ function generateRandomShape(userId, padding = 100) {
 function generateRandomRectangle(userId, padding = 100) {
   const minSize = 30;
   const maxSize = 200;
-  
+
   const width = randomInt(minSize, maxSize);
   const height = randomInt(minSize, maxSize);
-  
+
   const x = randomInt(padding, CANVAS_WIDTH - width - padding);
   const y = randomInt(padding, CANVAS_HEIGHT - height - padding);
-  
+
   return {
     type: SHAPE_TYPES.RECTANGLE,
     x,
@@ -124,13 +124,20 @@ function generateRandomRectangle(userId, padding = 100) {
  * @param {boolean} sequential - Whether to create sequentially with delays (default: true for Realtime DB)
  * @returns {Promise<void>}
  */
-export async function generateTestShapes(count, userId, canvasId = DEFAULT_CANVAS_ID, sequential = true) {
-  console.log(`🔧 generateTestShapes ENTRY: count=${count}, userId=${userId}, canvasId=${canvasId}`);
+export async function generateTestShapes(
+  count,
+  userId,
+  canvasId = DEFAULT_CANVAS_ID,
+  sequential = true
+) {
+  console.log(
+    `🔧 generateTestShapes ENTRY: count=${count}, userId=${userId}, canvasId=${canvasId}`
+  );
   console.log(`🔧 Generating ${count} test shapes...`);
   const startTime = performance.now();
-  
+
   const createdShapes = [];
-  
+
   try {
     if (sequential) {
       // Create shapes one by one with small delays (better for Realtime Database)
@@ -138,15 +145,15 @@ export async function generateTestShapes(count, userId, canvasId = DEFAULT_CANVA
         try {
           const shapeData = generateRandomShape(userId);
           console.log(`  Creating shape ${i + 1}/${count}:`, shapeData.type);
-          
+
           const shapeId = await createShape(canvasId, shapeData);
           createdShapes.push(shapeId);
-          
+
           console.log(`  ✓ Created shape ${i + 1}/${count}: ${shapeId}`);
-          
+
           // Small delay between creates to avoid overwhelming Realtime Database
           if (i < count - 1) {
-            await new Promise(resolve => setTimeout(resolve, 50));
+            await new Promise((resolve) => setTimeout(resolve, 50));
           }
         } catch (err) {
           console.error(`  ❌ Failed to create shape ${i + 1}/${count}:`, err);
@@ -157,48 +164,50 @@ export async function generateTestShapes(count, userId, canvasId = DEFAULT_CANVA
       // Create shapes in parallel batches
       const batchSize = 5; // Smaller batches for Realtime Database
       const batches = Math.ceil(count / batchSize);
-      
+
       for (let i = 0; i < batches; i++) {
         const batchPromises = [];
-        const currentBatchSize = Math.min(batchSize, count - (i * batchSize));
-        
+        const currentBatchSize = Math.min(batchSize, count - i * batchSize);
+
         console.log(`  Creating batch ${i + 1}/${batches} (${currentBatchSize} shapes)...`);
-        
+
         for (let j = 0; j < currentBatchSize; j++) {
           const shapeData = generateRandomShape(userId);
           batchPromises.push(
             createShape(canvasId, shapeData)
-              .then(id => {
+              .then((id) => {
                 createdShapes.push(id);
                 return id;
               })
-              .catch(err => {
+              .catch((err) => {
                 console.error(`  ❌ Failed to create shape ${j + 1} in batch ${i + 1}:`, err);
                 return null;
               })
           );
         }
-        
+
         const results = await Promise.all(batchPromises);
-        const successCount = results.filter(r => r !== null).length;
+        const successCount = results.filter((r) => r !== null).length;
         const failCount = currentBatchSize - successCount;
-        
-        console.log(`  ✓ Batch ${i + 1}/${batches}: ${successCount} succeeded${failCount > 0 ? `, ${failCount} failed` : ''}`);
-        
+
+        console.log(
+          `  ✓ Batch ${i + 1}/${batches}: ${successCount} succeeded${failCount > 0 ? `, ${failCount} failed` : ''}`
+        );
+
         // Delay between batches
         if (i < batches - 1) {
-          await new Promise(resolve => setTimeout(resolve, 150));
+          await new Promise((resolve) => setTimeout(resolve, 150));
         }
       }
     }
-    
+
     const endTime = performance.now();
     const duration = Math.round(endTime - startTime);
-    
+
     console.log(`✅ Successfully created ${createdShapes.length}/${count} shapes in ${duration}ms`);
     console.log(`   Average: ${(duration / createdShapes.length).toFixed(2)}ms per shape`);
     console.log(`   Created shape IDs:`, createdShapes);
-    
+
     if (createdShapes.length < count) {
       console.warn(`⚠️ Only ${createdShapes.length}/${count} shapes were created successfully`);
     }
@@ -220,16 +229,16 @@ export const generateTestRectangles = generateTestShapes;
 export async function generateGridRectangles(rows, cols, userId, canvasId = DEFAULT_CANVAS_ID) {
   console.log(`🔧 Generating ${rows}x${cols} grid of shapes...`);
   const startTime = performance.now();
-  
+
   const rectWidth = 80;
   const rectHeight = 60;
   const spacing = 20;
   const startX = 100;
   const startY = 100;
-  
+
   try {
     const promises = [];
-    
+
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
         const rectData = {
@@ -241,27 +250,27 @@ export async function generateGridRectangles(rows, cols, userId, canvasId = DEFA
           color: randomColor(),
           createdBy: userId,
         };
-        
+
         promises.push(createShape(canvasId, rectData));
-        
+
         // Process in batches of 10
         if (promises.length === 10) {
           await Promise.all(promises);
           promises.length = 0;
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise((resolve) => setTimeout(resolve, 100));
         }
       }
     }
-    
+
     // Process remaining
     if (promises.length > 0) {
       await Promise.all(promises);
     }
-    
+
     const endTime = performance.now();
     const duration = Math.round(endTime - startTime);
     const total = rows * cols;
-    
+
     console.log(`✅ Successfully created ${total} shapes in grid pattern in ${duration}ms`);
   } catch (error) {
     console.error('❌ Error generating grid shapes:', error);
@@ -279,10 +288,9 @@ export function setup500Test(userId) {
     generate1000: () => generateTestShapes(1000, userId),
     generateGrid: (rows, cols) => generateGridRectangles(rows, cols, userId),
   };
-  
+
   // console.log('🧪 Test functions available:');
   // console.log('  - window.testCanvas.generate500() - Generate 500 random shapes');
   // console.log('  - window.testCanvas.generate1000() - Generate 1000 random shapes');
   // console.log('  - window.testCanvas.generateGrid(rows, cols) - Generate grid of shapes');
 }
-
