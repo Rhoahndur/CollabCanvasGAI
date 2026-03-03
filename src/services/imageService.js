@@ -26,18 +26,18 @@ export async function convertImageToDataUrl(file, maxWidth = 400, maxHeight = 40
 
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      
+
       reader.onload = (e) => {
         const img = new window.Image();
-        
+
         img.onload = () => {
           // Calculate new dimensions while maintaining aspect ratio
           let width = img.width;
           let height = img.height;
-          
+
           if (width > maxWidth || height > maxHeight) {
             const aspectRatio = width / height;
-            
+
             if (width > height) {
               width = maxWidth;
               height = width / aspectRatio;
@@ -46,39 +46,39 @@ export async function convertImageToDataUrl(file, maxWidth = 400, maxHeight = 40
               width = height * aspectRatio;
             }
           }
-          
+
           // Create canvas to resize image
           const canvas = document.createElement('canvas');
           canvas.width = width;
           canvas.height = height;
-          
+
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
-          
+
           // Convert to base64 data URL with compression
           const dataUrl = canvas.toDataURL('image/jpeg', 0.6); // 60% quality JPEG for smaller size
-          
+
           console.log(`✅ Image converted: ${img.width}x${img.height} → ${width}x${height}`);
           console.log(`   Data URL size: ${(dataUrl.length / 1024).toFixed(1)}KB`);
-          
+
           resolve({
             dataUrl,
             width: Math.round(width),
             height: Math.round(height),
           });
         };
-        
+
         img.onerror = () => {
           reject(new Error('Failed to load image'));
         };
-        
+
         img.src = e.target.result;
       };
-      
+
       reader.onerror = () => {
         reject(new Error('Failed to read file'));
       };
-      
+
       reader.readAsDataURL(file);
     });
   } catch (error) {
@@ -97,12 +97,12 @@ export async function convertImageToDataUrl(file, maxWidth = 400, maxHeight = 40
 export async function uploadImage(file, userId, canvasId = 'default') {
   try {
     console.log('📤 Converting image to base64:', file.name);
-    
+
     // Convert to base64 with resizing
     const { dataUrl, width, height } = await convertImageToDataUrl(file);
-    
+
     console.log('✅ Image converted to base64');
-    
+
     return {
       url: dataUrl, // Return data URL directly
       width,
@@ -136,20 +136,20 @@ export async function deleteImage(path) {
 export async function clipboardItemToFile(item) {
   try {
     // Get image types from clipboard item
-    const imageTypes = item.types.filter(type => type.startsWith('image/'));
-    
+    const imageTypes = item.types.filter((type) => type.startsWith('image/'));
+
     if (imageTypes.length === 0) {
       return null;
     }
-    
+
     // Get the first image type
     const imageType = imageTypes[0];
     const blob = await item.getType(imageType);
-    
+
     // Convert blob to File
     const filename = `pasted-image-${Date.now()}.${imageType.split('/')[1]}`;
     const file = new File([blob], filename, { type: imageType });
-    
+
     return file;
   } catch (error) {
     console.error('Error converting clipboard item to file:', error);
@@ -165,15 +165,15 @@ export async function clipboardItemToFile(item) {
 export async function handlePasteEvent(event) {
   try {
     const items = event.clipboardData?.items;
-    
+
     if (!items) {
       return null;
     }
-    
+
     // Look for image in clipboard items
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
-      
+
       if (item.type.startsWith('image/')) {
         const blob = item.getAsFile();
         if (blob) {
@@ -181,11 +181,10 @@ export async function handlePasteEvent(event) {
         }
       }
     }
-    
+
     return null;
   } catch (error) {
     console.error('Error handling paste event:', error);
     return null;
   }
 }
-

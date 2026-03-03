@@ -20,16 +20,25 @@ import { DEFAULT_CANVAS_ID } from '../utils/constants';
 
 // Reference paths for Realtime Database
 const getCanvasRef = (canvasId = DEFAULT_CANVAS_ID) => ref(realtimeDb, `canvases/${canvasId}`);
-const getCanvasMetadataRef = (canvasId = DEFAULT_CANVAS_ID) => ref(realtimeDb, `canvases/${canvasId}/metadata`);
-const getCanvasPermissionsRef = (canvasId = DEFAULT_CANVAS_ID) => ref(realtimeDb, `canvases/${canvasId}/permissions`);
-const getObjectsRef = (canvasId = DEFAULT_CANVAS_ID) => ref(realtimeDb, `canvases/${canvasId}/objects`);
-const getObjectRef = (canvasId = DEFAULT_CANVAS_ID, objectId) => ref(realtimeDb, `canvases/${canvasId}/objects/${objectId}`);
-const getCursorsRef = (canvasId = DEFAULT_CANVAS_ID) => ref(realtimeDb, `canvases/${canvasId}/cursors`);
-const getCursorRef = (canvasId = DEFAULT_CANVAS_ID, sessionId) => ref(realtimeDb, `canvases/${canvasId}/cursors/${sessionId}`);
-const getPresenceRef = (canvasId = DEFAULT_CANVAS_ID) => ref(realtimeDb, `canvases/${canvasId}/presence`);
-const getPresenceSessionRef = (canvasId = DEFAULT_CANVAS_ID, sessionId) => ref(realtimeDb, `canvases/${canvasId}/presence/${sessionId}`);
+const getCanvasMetadataRef = (canvasId = DEFAULT_CANVAS_ID) =>
+  ref(realtimeDb, `canvases/${canvasId}/metadata`);
+const getCanvasPermissionsRef = (canvasId = DEFAULT_CANVAS_ID) =>
+  ref(realtimeDb, `canvases/${canvasId}/permissions`);
+const getObjectsRef = (canvasId = DEFAULT_CANVAS_ID) =>
+  ref(realtimeDb, `canvases/${canvasId}/objects`);
+const getObjectRef = (canvasId = DEFAULT_CANVAS_ID, objectId) =>
+  ref(realtimeDb, `canvases/${canvasId}/objects/${objectId}`);
+const getCursorsRef = (canvasId = DEFAULT_CANVAS_ID) =>
+  ref(realtimeDb, `canvases/${canvasId}/cursors`);
+const getCursorRef = (canvasId = DEFAULT_CANVAS_ID, sessionId) =>
+  ref(realtimeDb, `canvases/${canvasId}/cursors/${sessionId}`);
+const getPresenceRef = (canvasId = DEFAULT_CANVAS_ID) =>
+  ref(realtimeDb, `canvases/${canvasId}/presence`);
+const getPresenceSessionRef = (canvasId = DEFAULT_CANVAS_ID, sessionId) =>
+  ref(realtimeDb, `canvases/${canvasId}/presence/${sessionId}`);
 const getUserCanvasesRef = (userId) => ref(realtimeDb, `userCanvases/${userId}`);
-const getUserCanvasRef = (userId, canvasId) => ref(realtimeDb, `userCanvases/${userId}/${canvasId}`);
+const getUserCanvasRef = (userId, canvasId) =>
+  ref(realtimeDb, `userCanvases/${userId}/${canvasId}`);
 
 // ============================================================================
 // CONNECTION MONITORING
@@ -42,13 +51,13 @@ const getUserCanvasRef = (userId, canvasId) => ref(realtimeDb, `userCanvases/${u
  */
 export const monitorConnection = (callback) => {
   const connectedRef = ref(realtimeDb, '.info/connected');
-  
+
   const unsubscribe = onValue(connectedRef, (snapshot) => {
     const connected = snapshot.val() === true;
     // console.log(connected ? '🟢 Connected to Realtime Database' : '🔴 Disconnected from Realtime Database');
     callback(connected);
   });
-  
+
   return unsubscribe;
 };
 
@@ -79,7 +88,7 @@ const getDefaultShapeName = (type) => {
     polygon: 'Pentagon',
     customPolygon: 'Polygon',
     text: 'Text',
-    image: 'Image'
+    image: 'Image',
   };
   return typeNames[type] || 'Shape';
 };
@@ -94,10 +103,10 @@ export const createShape = async (canvasId = DEFAULT_CANVAS_ID, shapeData) => {
   try {
     const objectId = generateObjectId(shapeData.createdBy);
     const objectRef = getObjectRef(canvasId, objectId);
-    
+
     // Auto-generate name if not provided
     const defaultName = getDefaultShapeName(shapeData.type);
-    
+
     await set(objectRef, {
       ...shapeData,
       id: objectId,
@@ -107,7 +116,7 @@ export const createShape = async (canvasId = DEFAULT_CANVAS_ID, shapeData) => {
       lockedByUserName: null,
       timestamp: Date.now(),
     });
-    
+
     // console.log('Shape created:', shapeData.type, objectId);
     return objectId;
   } catch (error) {
@@ -115,7 +124,6 @@ export const createShape = async (canvasId = DEFAULT_CANVAS_ID, shapeData) => {
     throw error;
   }
 };
-
 
 /**
  * Update an existing shape
@@ -203,19 +211,19 @@ export const unlockObject = async (canvasId = DEFAULT_CANVAS_ID, objectId) => {
  */
 export const subscribeToObjects = (canvasId = DEFAULT_CANVAS_ID, callback, errorCallback) => {
   const objectsRef = getObjectsRef(canvasId);
-  
+
   onValue(
     objectsRef,
     (snapshot) => {
       const objects = [];
       const data = snapshot.val();
-      
+
       if (data) {
         Object.keys(data).forEach((key) => {
           objects.push({ id: key, ...data[key] });
         });
       }
-      
+
       callback(objects);
     },
     (error) => {
@@ -225,7 +233,7 @@ export const subscribeToObjects = (canvasId = DEFAULT_CANVAS_ID, callback, error
       }
     }
   );
-  
+
   // Return unsubscribe function
   return () => {
     off(objectsRef);
@@ -260,13 +268,13 @@ export const updateCursor = async (
 ) => {
   try {
     const cursorRef = getCursorRef(canvasId, sessionId);
-    
+
     // Set up automatic cleanup on disconnect (only once per session)
     // Note: This is idempotent - calling multiple times won't create multiple cleanup handlers
     if (isActive) {
       await onDisconnect(cursorRef).remove();
     }
-    
+
     await set(cursorRef, {
       sessionId,
       userId,
@@ -291,26 +299,26 @@ export const updateCursor = async (
  */
 export const subscribeToCursors = (canvasId = DEFAULT_CANVAS_ID, callback) => {
   const cursorsRef = getCursorsRef(canvasId);
-  
+
   onValue(
     cursorsRef,
     (snapshot) => {
       const cursors = [];
       const data = snapshot.val();
-      
+
       if (data) {
         Object.keys(data).forEach((key) => {
           cursors.push({ id: key, ...data[key] });
         });
       }
-      
+
       callback(cursors);
     },
     (error) => {
       console.error('Error subscribing to cursors:', error);
     }
   );
-  
+
   // Return unsubscribe function
   return () => {
     off(cursorsRef);
@@ -368,13 +376,13 @@ export const setUserPresence = async (
       console.error('❌ Cannot set presence: userName is required and must not be empty');
       throw new Error('userName is required for presence');
     }
-    
+
     const presenceRef = getPresenceSessionRef(canvasId, sessionId);
-    
+
     // Set up automatic cleanup on disconnect
     await onDisconnect(presenceRef).remove();
     // console.log('🔌 Auto-cleanup configured for presence:', userName);
-    
+
     // Set the presence data
     await set(presenceRef, {
       sessionId,
@@ -400,26 +408,26 @@ export const setUserPresence = async (
  */
 export const subscribeToPresence = (canvasId = DEFAULT_CANVAS_ID, callback) => {
   const presenceRef = getPresenceRef(canvasId);
-  
+
   onValue(
     presenceRef,
     (snapshot) => {
       const presenceData = [];
       const data = snapshot.val();
-      
+
       if (data) {
         Object.keys(data).forEach((key) => {
           presenceData.push({ id: key, ...data[key] });
         });
       }
-      
+
       callback(presenceData);
     },
     (error) => {
       console.error('Error subscribing to presence:', error);
     }
   );
-  
+
   // Return unsubscribe function
   return () => {
     off(presenceRef);
@@ -433,7 +441,11 @@ export const subscribeToPresence = (canvasId = DEFAULT_CANVAS_ID, callback) => {
  * @param {boolean} isActive - Whether the user is actively interacting (default: true)
  * @returns {Promise<void>}
  */
-export const updatePresenceHeartbeat = async (canvasId = DEFAULT_CANVAS_ID, sessionId, isActive = true) => {
+export const updatePresenceHeartbeat = async (
+  canvasId = DEFAULT_CANVAS_ID,
+  sessionId,
+  isActive = true
+) => {
   try {
     const presenceRef = getPresenceSessionRef(canvasId, sessionId);
     await update(presenceRef, {
@@ -478,10 +490,10 @@ export const cleanupStalePresence = async (canvasId = DEFAULT_CANVAS_ID) => {
   try {
     const presenceRef = getPresenceRef(canvasId);
     const snapshot = await get(presenceRef);
-    
+
     const thirtySecondsAgo = Date.now() - 30 * 1000;
     const staleSessionIds = [];
-    
+
     if (snapshot.exists()) {
       const data = snapshot.val();
       Object.keys(data).forEach((sessionId) => {
@@ -490,27 +502,28 @@ export const cleanupStalePresence = async (canvasId = DEFAULT_CANVAS_ID) => {
         // 1. Not online
         // 2. Haven't been seen in 30+ seconds
         // 3. Have empty/invalid usernames (to clean up legacy anonymous users)
-        const hasInvalidUsername = !session.userName || 
-                                   session.userName.trim() === '' || 
-                                   session.userName === 'Anonymous User' ||
-                                   session.userName === 'Anonymous';
-        
+        const hasInvalidUsername =
+          !session.userName ||
+          session.userName.trim() === '' ||
+          session.userName === 'Anonymous User' ||
+          session.userName === 'Anonymous';
+
         if (!session.isOnline || session.lastSeen < thirtySecondsAgo || hasInvalidUsername) {
           staleSessionIds.push(sessionId);
         }
       });
     }
-    
+
     // Delete stale sessions
     if (staleSessionIds.length > 0) {
       const updates = {};
-      staleSessionIds.forEach(sessionId => {
+      staleSessionIds.forEach((sessionId) => {
         updates[sessionId] = null; // Setting to null deletes in Realtime Database
       });
       await update(presenceRef, updates);
       console.log(`🧹 Cleaned up ${staleSessionIds.length} stale presence sessions`);
     }
-    
+
     return staleSessionIds.length;
   } catch (error) {
     console.error('Error cleaning up stale presence:', error);
@@ -532,14 +545,14 @@ export const testFirestoreConnection = async () => {
     if (!realtimeDb) {
       throw new Error('Realtime Database not initialized');
     }
-    
+
     // Try to get a reference to verify the connection
     const testRef = getObjectsRef(DEFAULT_CANVAS_ID);
     if (testRef) {
       // console.log('✅ Realtime Database connection test successful!');
       return true;
     }
-    
+
     throw new Error('Could not get Realtime Database reference');
   } catch (error) {
     console.error('❌ Realtime Database connection test failed:', error);
@@ -573,14 +586,14 @@ export const createCanvas = async (userId, canvasName, template = 'blank') => {
   try {
     const canvasId = generateCanvasId(userId);
     const now = Date.now();
-    
+
     // console.log('🎨 Creating canvas:', canvasId, canvasName, template);
-    
+
     // IMPORTANT: Set permissions FIRST before writing any other data
     // Security rules require permissions to exist before writing metadata/objects
     await set(ref(realtimeDb, `canvases/${canvasId}/permissions/${userId}`), 'owner');
     // console.log('✅ Permissions set');
-    
+
     // Canvas metadata
     const metadata = {
       name: canvasName,
@@ -589,11 +602,11 @@ export const createCanvas = async (userId, canvasName, template = 'blank') => {
       lastModified: now,
       template,
     };
-    
+
     // Set canvas metadata (now permissions exist, so this will work)
     await set(getCanvasMetadataRef(canvasId), metadata);
     // console.log('✅ Metadata set');
-    
+
     // Add canvas to user's canvas list
     await set(getUserCanvasRef(userId, canvasId), {
       name: canvasName,
@@ -602,7 +615,7 @@ export const createCanvas = async (userId, canvasName, template = 'blank') => {
       starred: false,
     });
     // console.log('✅ User canvas index updated');
-    
+
     // Initialize template shapes if not blank
     if (template !== 'blank') {
       const templateShapes = getTemplateShapes(template, userId);
@@ -618,7 +631,7 @@ export const createCanvas = async (userId, canvasName, template = 'blank') => {
         }
       }
     }
-    
+
     // console.log('✅ Canvas created:', canvasId, canvasName);
     return canvasId;
   } catch (error) {
@@ -640,33 +653,156 @@ const getTemplateShapes = (template, userId) => {
     lockedBy: null,
     lockedByUserName: null,
   };
-  
+
   if (template === 'brainstorm') {
     return [
       // Ideas zone (Yellow)
-      { ...baseShape, type: 'rectangle', x: 100, y: 100, width: 400, height: 500, color: 'rgba(255, 235, 59, 0.2)', zIndex: Date.now() },
-      { ...baseShape, type: 'text', x: 150, y: 120, width: 300, height: 50, text: '💡 Ideas', fontSize: 24, fontWeight: 'bold', textColor: 'rgba(255, 235, 59, 1)', zIndex: Date.now() + 1 },
+      {
+        ...baseShape,
+        type: 'rectangle',
+        x: 100,
+        y: 100,
+        width: 400,
+        height: 500,
+        color: 'rgba(255, 235, 59, 0.2)',
+        zIndex: Date.now(),
+      },
+      {
+        ...baseShape,
+        type: 'text',
+        x: 150,
+        y: 120,
+        width: 300,
+        height: 50,
+        text: '💡 Ideas',
+        fontSize: 24,
+        fontWeight: 'bold',
+        textColor: 'rgba(255, 235, 59, 1)',
+        zIndex: Date.now() + 1,
+      },
       // Actions zone (Green)
-      { ...baseShape, type: 'rectangle', x: 550, y: 100, width: 400, height: 500, color: 'rgba(76, 175, 80, 0.2)', zIndex: Date.now() + 2 },
-      { ...baseShape, type: 'text', x: 600, y: 120, width: 300, height: 50, text: '⚡ Actions', fontSize: 24, fontWeight: 'bold', textColor: 'rgba(76, 175, 80, 1)', zIndex: Date.now() + 3 },
+      {
+        ...baseShape,
+        type: 'rectangle',
+        x: 550,
+        y: 100,
+        width: 400,
+        height: 500,
+        color: 'rgba(76, 175, 80, 0.2)',
+        zIndex: Date.now() + 2,
+      },
+      {
+        ...baseShape,
+        type: 'text',
+        x: 600,
+        y: 120,
+        width: 300,
+        height: 50,
+        text: '⚡ Actions',
+        fontSize: 24,
+        fontWeight: 'bold',
+        textColor: 'rgba(76, 175, 80, 1)',
+        zIndex: Date.now() + 3,
+      },
       // Questions zone (Blue)
-      { ...baseShape, type: 'rectangle', x: 1000, y: 100, width: 400, height: 500, color: 'rgba(33, 150, 243, 0.2)', zIndex: Date.now() + 4 },
-      { ...baseShape, type: 'text', x: 1050, y: 120, width: 300, height: 50, text: '❓ Questions', fontSize: 24, fontWeight: 'bold', textColor: 'rgba(33, 150, 243, 1)', zIndex: Date.now() + 5 },
+      {
+        ...baseShape,
+        type: 'rectangle',
+        x: 1000,
+        y: 100,
+        width: 400,
+        height: 500,
+        color: 'rgba(33, 150, 243, 0.2)',
+        zIndex: Date.now() + 4,
+      },
+      {
+        ...baseShape,
+        type: 'text',
+        x: 1050,
+        y: 120,
+        width: 300,
+        height: 50,
+        text: '❓ Questions',
+        fontSize: 24,
+        fontWeight: 'bold',
+        textColor: 'rgba(33, 150, 243, 1)',
+        zIndex: Date.now() + 5,
+      },
     ];
   } else if (template === 'wireframe') {
     return [
       // Header
-      { ...baseShape, type: 'rectangle', x: 100, y: 100, width: 1200, height: 100, color: 'rgba(200, 200, 200, 0.3)', zIndex: Date.now() },
-      { ...baseShape, type: 'text', x: 150, y: 130, width: 200, height: 40, text: 'Header Area', fontSize: 20, textColor: 'rgba(100, 100, 100, 1)', zIndex: Date.now() + 1 },
+      {
+        ...baseShape,
+        type: 'rectangle',
+        x: 100,
+        y: 100,
+        width: 1200,
+        height: 100,
+        color: 'rgba(200, 200, 200, 0.3)',
+        zIndex: Date.now(),
+      },
+      {
+        ...baseShape,
+        type: 'text',
+        x: 150,
+        y: 130,
+        width: 200,
+        height: 40,
+        text: 'Header Area',
+        fontSize: 20,
+        textColor: 'rgba(100, 100, 100, 1)',
+        zIndex: Date.now() + 1,
+      },
       // Sidebar
-      { ...baseShape, type: 'rectangle', x: 100, y: 220, width: 250, height: 600, color: 'rgba(200, 200, 200, 0.3)', zIndex: Date.now() + 2 },
-      { ...baseShape, type: 'text', x: 150, y: 250, width: 150, height: 40, text: 'Sidebar', fontSize: 18, textColor: 'rgba(100, 100, 100, 1)', zIndex: Date.now() + 3 },
+      {
+        ...baseShape,
+        type: 'rectangle',
+        x: 100,
+        y: 220,
+        width: 250,
+        height: 600,
+        color: 'rgba(200, 200, 200, 0.3)',
+        zIndex: Date.now() + 2,
+      },
+      {
+        ...baseShape,
+        type: 'text',
+        x: 150,
+        y: 250,
+        width: 150,
+        height: 40,
+        text: 'Sidebar',
+        fontSize: 18,
+        textColor: 'rgba(100, 100, 100, 1)',
+        zIndex: Date.now() + 3,
+      },
       // Main Content
-      { ...baseShape, type: 'rectangle', x: 370, y: 220, width: 930, height: 600, color: 'rgba(255, 255, 255, 0)', zIndex: Date.now() + 4 },
-      { ...baseShape, type: 'text', x: 420, y: 250, width: 300, height: 40, text: 'Main Content Area', fontSize: 20, textColor: 'rgba(100, 100, 100, 1)', zIndex: Date.now() + 5 },
+      {
+        ...baseShape,
+        type: 'rectangle',
+        x: 370,
+        y: 220,
+        width: 930,
+        height: 600,
+        color: 'rgba(255, 255, 255, 0)',
+        zIndex: Date.now() + 4,
+      },
+      {
+        ...baseShape,
+        type: 'text',
+        x: 420,
+        y: 250,
+        width: 300,
+        height: 40,
+        text: 'Main Content Area',
+        fontSize: 20,
+        textColor: 'rgba(100, 100, 100, 1)',
+        zIndex: Date.now() + 5,
+      },
     ];
   }
-  
+
   return []; // blank template
 };
 
@@ -701,33 +837,33 @@ export const requestCanvasAccess = async (canvasId, userId, userName, requestedR
     // Check if user already has access
     const userCanvasRef = getUserCanvasRef(userId, canvasId);
     const userCanvasSnapshot = await get(userCanvasRef);
-    
+
     if (userCanvasSnapshot.exists()) {
       // User already has access
       const canvasData = userCanvasSnapshot.val();
-      return { 
-        success: true, 
+      return {
+        success: true,
         role: canvasData.role,
         canvasName: canvasData.name,
-        alreadyHadAccess: true
+        alreadyHadAccess: true,
       };
     }
-    
+
     // Check if canvas exists
     const canvasMetadata = await getCanvasMetadata(canvasId);
     if (!canvasMetadata) {
       return { success: false, error: 'Canvas not found' };
     }
-    
+
     // Validate and grant the requested role (viewer or editor, never owner via link)
     const role = ['viewer', 'editor'].includes(requestedRole) ? requestedRole : 'viewer';
     await addCanvasPermission(canvasId, userId, role, canvasMetadata.name);
-    
-    return { 
-      success: true, 
+
+    return {
+      success: true,
       role,
       canvasName: canvasMetadata.name,
-      alreadyHadAccess: false
+      alreadyHadAccess: false,
     };
   } catch (error) {
     console.error('❌ Error requesting canvas access:', error);
@@ -747,28 +883,28 @@ export const duplicateCanvas = async (sourceCanvasId, userId, newName) => {
     // Verify user is owner of source canvas by checking their userCanvases
     const userCanvasRef = getUserCanvasRef(userId, sourceCanvasId);
     const userCanvasSnapshot = await get(userCanvasRef);
-    
+
     if (!userCanvasSnapshot.exists()) {
       throw new Error('Canvas not found in your list');
     }
-    
+
     const userCanvasData = userCanvasSnapshot.val();
     if (userCanvasData.role !== 'owner') {
       throw new Error('Only the owner can duplicate the canvas');
     }
-    
+
     // Get source canvas data
     const sourceCanvasSnapshot = await get(getCanvasRef(sourceCanvasId));
     if (!sourceCanvasSnapshot.exists()) {
       throw new Error('Source canvas not found');
     }
-    
+
     const sourceData = sourceCanvasSnapshot.val();
-    
+
     // Generate new canvas ID
     const timestamp = Date.now();
     const newCanvasId = `canvas_${userId}_${timestamp}`;
-    
+
     // Create new canvas with duplicated data
     const newCanvasData = {
       metadata: {
@@ -790,26 +926,26 @@ export const duplicateCanvas = async (sourceCanvasId, userId, newName) => {
       cursors: {},
       presence: {},
     };
-    
+
     // Copy all objects with slight position offset
     if (sourceData.objects) {
       const offsetX = 20; // Offset duplicated objects by 20px
       const offsetY = 20;
-      
+
       Object.entries(sourceData.objects).forEach(([oldId, obj]) => {
         // Skip objects with invalid data
         if (!obj || typeof obj !== 'object') {
           console.warn(`Skipping invalid object during duplication: ${oldId}`);
           return;
         }
-        
+
         // Ensure x and y are valid numbers
         const objX = typeof obj.x === 'number' && !isNaN(obj.x) ? obj.x : 0;
         const objY = typeof obj.y === 'number' && !isNaN(obj.y) ? obj.y : 0;
-        
+
         // Generate new ID for duplicated object
         const newId = generateObjectId(userId);
-        
+
         // Copy object with offset position
         newCanvasData.objects[newId] = {
           ...obj,
@@ -823,10 +959,10 @@ export const duplicateCanvas = async (sourceCanvasId, userId, newName) => {
         };
       });
     }
-    
+
     // Save new canvas
     await set(getCanvasRef(newCanvasId), newCanvasData);
-    
+
     // Add to user's canvas list
     await set(getUserCanvasRef(userId, newCanvasId), {
       name: newName,
@@ -834,7 +970,7 @@ export const duplicateCanvas = async (sourceCanvasId, userId, newName) => {
       lastAccessed: timestamp,
       starred: false,
     });
-    
+
     // console.log('✅ Canvas duplicated:', sourceCanvasId, '→', newCanvasId);
     return newCanvasId;
   } catch (error) {
@@ -852,16 +988,16 @@ export const duplicateCanvas = async (sourceCanvasId, userId, newName) => {
 export const updateCanvasMetadata = async (canvasId, updates) => {
   try {
     console.log('📝 updateCanvasMetadata called:', { canvasId, updates });
-    
+
     // Handle nested updates (e.g., settings.backgroundColor)
     // Convert nested objects to flattened paths for proper merging
     const flattenedUpdates = {};
-    
+
     const flatten = (obj, prefix = '') => {
       for (const key in obj) {
         const value = obj[key];
         const newKey = prefix ? `${prefix}/${key}` : key;
-        
+
         if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
           flatten(value, newKey);
         } else {
@@ -869,17 +1005,17 @@ export const updateCanvasMetadata = async (canvasId, updates) => {
         }
       }
     };
-    
+
     flatten(updates);
     flattenedUpdates.lastModified = Date.now();
-    
+
     console.log('📝 Flattened updates:', flattenedUpdates);
     console.log('📝 Metadata path:', `canvases/${canvasId}/metadata`);
-    
+
     // Use update with flattened paths for proper nested merging
     const metadataRef = getCanvasMetadataRef(canvasId);
     await update(metadataRef, flattenedUpdates);
-    
+
     console.log('✅ Canvas metadata updated successfully:', canvasId);
   } catch (error) {
     console.error('❌ Error updating canvas metadata:', error);
@@ -899,26 +1035,28 @@ export const updateCanvasMetadata = async (canvasId, updates) => {
 export const deleteCanvas = async (canvasId, userId) => {
   try {
     // Verify user is owner
-    const permissionsSnapshot = await get(ref(realtimeDb, `canvases/${canvasId}/permissions/${userId}`));
+    const permissionsSnapshot = await get(
+      ref(realtimeDb, `canvases/${canvasId}/permissions/${userId}`)
+    );
     if (!permissionsSnapshot.exists() || permissionsSnapshot.val() !== 'owner') {
       throw new Error('Only the owner can delete the canvas');
     }
-    
+
     // Delete entire canvas
     await remove(getCanvasRef(canvasId));
-    
+
     // Remove from all users' canvas lists
     const permissionsRef = getCanvasPermissionsRef(canvasId);
     const permissionsSnap = await get(permissionsRef);
     if (permissionsSnap.exists()) {
       const permissions = permissionsSnap.val();
       const userIds = Object.keys(permissions);
-      
+
       for (const uid of userIds) {
         await remove(getUserCanvasRef(uid, canvasId));
       }
     }
-    
+
     // console.log('✅ Canvas deleted:', canvasId);
   } catch (error) {
     console.error('❌ Error deleting canvas:', error);
@@ -937,23 +1075,23 @@ export const getUserCanvases = async (userId) => {
     if (!snapshot.exists()) {
       return [];
     }
-    
+
     const canvasesData = snapshot.val();
     const canvases = [];
     const orphanedCanvases = [];
-    
+
     for (const [canvasId, canvasInfo] of Object.entries(canvasesData)) {
       try {
         // Verify canvas exists and user has permission
         const canvasRef = ref(realtimeDb, `canvases/${canvasId}/metadata`);
         const canvasSnapshot = await get(canvasRef);
-        
+
         if (!canvasSnapshot.exists()) {
           // console.warn(`⚠️ Canvas ${canvasId} metadata not found, marking as orphaned`);
           orphanedCanvases.push(canvasId);
           continue;
         }
-        
+
         // Canvas exists, add to list
         canvases.push({
           id: canvasId,
@@ -965,7 +1103,7 @@ export const getUserCanvases = async (userId) => {
         orphanedCanvases.push(canvasId);
       }
     }
-    
+
     // Clean up orphaned canvas references
     if (orphanedCanvases.length > 0) {
       // console.log(`🧹 Cleaning up ${orphanedCanvases.length} orphaned canvas references`);
@@ -978,10 +1116,10 @@ export const getUserCanvases = async (userId) => {
         }
       }
     }
-    
+
     // Sort by lastAccessed (most recent first)
     canvases.sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0));
-    
+
     return canvases;
   } catch (error) {
     console.error('❌ Error getting user canvases:', error);
@@ -1007,18 +1145,18 @@ export const toggleCanvasStarred = async (canvasId, userId) => {
   try {
     const userCanvasRef = getUserCanvasRef(userId, canvasId);
     const snapshot = await get(userCanvasRef);
-    
+
     if (!snapshot.exists()) {
-      throw new Error('Canvas not found in user\'s list');
+      throw new Error("Canvas not found in user's list");
     }
-    
+
     const currentStarred = snapshot.val().starred || false;
     const newStarred = !currentStarred;
-    
+
     await update(userCanvasRef, {
       starred: newStarred,
     });
-    
+
     // console.log('⭐ Canvas starred status toggled:', canvasId, newStarred);
     return newStarred;
   } catch (error) {
@@ -1040,13 +1178,15 @@ export const getUserRole = async (canvasId, userId) => {
     if (userCanvasSnapshot.exists()) {
       return userCanvasSnapshot.val().role;
     }
-    
+
     // Fallback: check canvas permissions
-    const permissionSnapshot = await get(ref(realtimeDb, `canvases/${canvasId}/permissions/${userId}`));
+    const permissionSnapshot = await get(
+      ref(realtimeDb, `canvases/${canvasId}/permissions/${userId}`)
+    );
     if (permissionSnapshot.exists()) {
       return permissionSnapshot.val();
     }
-    
+
     return null;
   } catch (error) {
     console.error('Error getting user role:', error);
@@ -1058,7 +1198,7 @@ export const addCanvasPermission = async (canvasId, userId, role, canvasName) =>
   try {
     // Add permission to canvas
     await set(ref(realtimeDb, `canvases/${canvasId}/permissions/${userId}`), role);
-    
+
     // Add canvas to user's canvas list
     await set(getUserCanvasRef(userId, canvasId), {
       name: canvasName,
@@ -1066,7 +1206,7 @@ export const addCanvasPermission = async (canvasId, userId, role, canvasName) =>
       lastAccessed: Date.now(),
       starred: false,
     });
-    
+
     // console.log('✅ Canvas permission added:', canvasId, userId, role);
   } catch (error) {
     console.error('❌ Error adding canvas permission:', error);
@@ -1084,10 +1224,10 @@ export const removeCanvasPermission = async (canvasId, userId) => {
   try {
     // Remove permission from canvas
     await remove(ref(realtimeDb, `canvases/${canvasId}/permissions/${userId}`));
-    
+
     // Remove canvas from user's canvas list
     await remove(getUserCanvasRef(userId, canvasId));
-    
+
     // console.log('✅ Canvas permission removed:', canvasId, userId);
   } catch (error) {
     console.error('❌ Error removing canvas permission:', error);

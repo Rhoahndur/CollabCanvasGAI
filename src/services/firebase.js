@@ -1,5 +1,11 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GithubAuthProvider, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import {
+  getAuth,
+  GithubAuthProvider,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut,
+} from 'firebase/auth';
 import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
 import { getDatabase } from 'firebase/database';
 
@@ -35,7 +41,7 @@ export const realtimeDb = getDatabase(app);
 // Enable offline persistence (async for better Safari compatibility)
 enableIndexedDbPersistence(db, {
   // Safari sometimes needs this for better compatibility
-  forceOwnership: false
+  forceOwnership: false,
 })
   .then(() => {
     // console.log('✅ Firestore offline persistence enabled');
@@ -59,21 +65,21 @@ enableIndexedDbPersistence(db, {
 export const signInWithGitHub = async () => {
   try {
     const result = await signInWithPopup(auth, githubProvider);
-    
+
     // Extract GitHub username from the auth response
     if (result.additionalUserInfo && result.additionalUserInfo.username) {
       const githubUsername = result.additionalUserInfo.username;
       console.log('🎯 GitHub username from OAuth:', githubUsername);
-      
+
       // Store in localStorage so we can access it later
       localStorage.setItem('github_username', githubUsername);
     }
-    
+
     console.log('📦 Sign in result:', {
       user: result.user.displayName,
       additionalUserInfo: result.additionalUserInfo,
     });
-    
+
     return result.user;
   } catch (error) {
     console.error('GitHub sign in error:', error);
@@ -87,12 +93,12 @@ export const signInWithGitHub = async () => {
 export const signInWithGoogle = async () => {
   try {
     const result = await signInWithPopup(auth, googleProvider);
-    
+
     console.log('📦 Google sign in result:', {
       user: result.user.displayName,
       email: result.user.email,
     });
-    
+
     return result.user;
   } catch (error) {
     console.error('Google sign in error:', error);
@@ -107,7 +113,7 @@ export const signOutUser = async () => {
   try {
     // Clean up localStorage
     localStorage.removeItem('github_username');
-    
+
     await signOut(auth);
   } catch (error) {
     console.error('Sign out error:', error);
@@ -116,4 +122,3 @@ export const signOutUser = async () => {
 };
 
 export default app;
-
