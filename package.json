@@ -19,13 +19,18 @@
     "deploy:vercel": "vercel --prod",
     "lint": "eslint src/ api/",
     "lint:fix": "eslint src/ api/ --fix",
-    "format": "prettier --write \"src/**/*.{js,jsx,css,json}\" \"api/**/*.js\"",
-    "format:check": "prettier --check \"src/**/*.{js,jsx,css,json}\" \"api/**/*.js\"",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,css,json}\" \"api/**/*.js\"",
+    "format:check": "prettier --check \"src/**/*.{js,jsx,ts,tsx,css,json}\" \"api/**/*.js\"",
     "test:coverage": "vitest run --coverage",
     "prepare": "husky"
   },
   "lint-staged": {
     "src/**/*.{js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "src/**/*.{ts,tsx}": [
       "eslint --fix",
       "prettier --write"
     ],
@@ -44,10 +49,11 @@
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "firebase": "^10.13.0",
+    "helmet": "^8.1.0",
     "openai": "^4.77.0",
-    "openai-edge": "^1.2.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-router-dom": "^7.13.1",
     "zod": "3.23.8"
   },
   "devDependencies": {
@@ -56,13 +62,16 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
+    "@types/react": "^18.3.28",
+    "@types/react-dom": "^18.3.7",
+    "@typescript-eslint/eslint-plugin": "^8.56.1",
+    "@typescript-eslint/parser": "^8.56.1",
     "@vitejs/plugin-react": "^4.3.1",
     "@vitest/coverage-v8": "^1.6.1",
     "@vitest/ui": "^1.6.1",
     "eslint": "^9.39.3",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.26",
     "globals": "^15.15.0",
@@ -72,6 +81,7 @@
     "lint-staged": "^16.3.2",
     "prettier": "^3.8.1",
     "terser": "^5.44.0",
+    "typescript": "^5.9.3",
     "vite": "^5.4.2",
     "vitest": "^1.6.1"
   }
