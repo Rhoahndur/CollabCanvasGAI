@@ -31,6 +31,7 @@ export default defineConfig({
             'firebase/app',
             'firebase/auth',
             'firebase/firestore',
+            'firebase/database',
           ],
         },
         
@@ -56,6 +57,7 @@ export default defineConfig({
       'firebase/app',
       'firebase/auth', 
       'firebase/firestore',
+      'firebase/database',
       'ai/react',
     ],
   },
