@@ -4,6 +4,7 @@ import { auth } from '../services/firebase';
 import { signOutUser } from '../services/firebase';
 import { removeCursor, removePresence } from '../services/canvasService';
 import { DEFAULT_CANVAS_ID } from '../utils/constants';
+import { reportError } from '../utils/errorHandler';
 
 /**
  * Custom hook for managing authentication state
@@ -56,7 +57,10 @@ export function useAuth() {
         // Safety check: If displayName is still empty/undefined, don't set user
         // This prevents anonymous users from accessing the app
         if (!displayName || displayName.trim() === '') {
-          console.error('❌ Cannot authenticate user without a valid display name');
+          reportError('Cannot authenticate user without a valid display name', {
+            component: 'useAuth',
+            action: 'onAuthStateChanged',
+          });
           setUser(null);
           setLoading(false);
           return;
@@ -93,7 +97,7 @@ export function useAuth() {
           // console.log('🔄 Auth token refreshed successfully');
         }
       } catch (error) {
-        console.error('❌ Failed to refresh auth token:', error);
+        reportError(error, { component: 'useAuth', action: 'refreshToken' });
         // If token refresh fails, it might indicate the user needs to re-authenticate
         if (error.code === 'auth/user-token-expired') {
           console.warn('⚠️ Token expired, user may need to sign in again');
@@ -129,7 +133,6 @@ export function useAuth() {
             removeCursor(DEFAULT_CANVAS_ID, sessionId),
             removePresence(DEFAULT_CANVAS_ID, sessionId),
           ]);
-          console.log('Cursor and presence removed before sign out');
         } catch (error) {
           console.warn('Failed to remove cursor/presence before sign out:', error);
         }
@@ -138,7 +141,7 @@ export function useAuth() {
       // Now sign out
       await signOutUser();
     } catch (error) {
-      console.error('Sign out error:', error);
+      reportError(error, { component: 'useAuth', action: 'signOut' });
       throw error;
     }
   };

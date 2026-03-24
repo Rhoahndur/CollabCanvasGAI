@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getCanvasMetadata, updateCanvasMetadata } from '../services/canvasService';
+import { reportError } from '../utils/errorHandler';
 import './CanvasSettingsModal.css';
 
 /**
@@ -43,7 +44,7 @@ function CanvasSettingsModal({ canvasId, canvasName, isOpen, onClose, onSettings
         setGridVisible(metadata.settings.gridVisible === true);
       }
     } catch (err) {
-      console.error('Failed to load canvas settings:', err);
+      reportError(err, { component: 'CanvasSettingsModal', action: 'loadSettings' });
     }
   };
 
@@ -53,8 +54,6 @@ function CanvasSettingsModal({ canvasId, canvasName, isOpen, onClose, onSettings
     setSuccessMessage('');
 
     try {
-      console.log('💾 Saving canvas settings:', { canvasId, backgroundColor, gridVisible });
-
       await updateCanvasMetadata(canvasId, {
         settings: {
           backgroundColor,
@@ -62,7 +61,6 @@ function CanvasSettingsModal({ canvasId, canvasName, isOpen, onClose, onSettings
         },
       });
 
-      console.log('✅ Canvas settings saved successfully');
       setSuccessMessage('Settings saved successfully!');
 
       // Notify parent component of changes
@@ -75,10 +73,7 @@ function CanvasSettingsModal({ canvasId, canvasName, isOpen, onClose, onSettings
         onClose();
       }, 1500);
     } catch (err) {
-      console.error('❌ Failed to save settings:', err);
-      console.error('Error code:', err.code);
-      console.error('Error message:', err.message);
-      console.error('Canvas ID:', canvasId);
+      reportError(err, { component: 'CanvasSettingsModal', action: 'handleSave', canvasId });
 
       // Provide more specific error messages
       let errorMessage = 'Failed to save settings. Please try again.';
@@ -89,7 +84,11 @@ function CanvasSettingsModal({ canvasId, canvasName, isOpen, onClose, onSettings
       ) {
         errorMessage =
           'Permission denied. You need owner or editor access to change canvas settings.';
-        console.error('📛 Permission denied - check Firebase Realtime Database rules');
+        reportError('Permission denied for canvas settings', {
+          component: 'CanvasSettingsModal',
+          action: 'handleSave.permissionDenied',
+          canvasId,
+        });
       } else if (err.code === 'NETWORK_ERROR' || err.message?.includes('network')) {
         errorMessage = 'Network error. Please check your connection and try again.';
       }
@@ -109,8 +108,17 @@ function CanvasSettingsModal({ canvasId, canvasName, isOpen, onClose, onSettings
   if (!isOpen) return null;
 
   return (
-    <div className="settings-modal-overlay" onClick={handleClose}>
-      <div className="settings-modal" onClick={(e) => e.stopPropagation()}>
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+    <div
+      className="settings-modal-overlay"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) handleClose();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') handleClose();
+      }}
+    >
+      <div className="settings-modal">
         {/* Header */}
         <div className="settings-modal-header">
           <h2>Canvas Settings</h2>

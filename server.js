@@ -3,6 +3,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import OpenAI from 'openai';
 
 // Get __dirname equivalent in ES modules
@@ -15,13 +16,22 @@ dotenv.config({ path: join(__dirname, '.env.local') });
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Log startup info
+// Log startup info (without leaking secrets)
 console.log('🚀 Starting Canny AI Server...');
 console.log('📍 Port:', PORT);
-console.log('🔑 OpenAI Key:', process.env.OPENAI_API_KEY ? `✅ Found (${process.env.OPENAI_API_KEY.substring(0, 10)}...)` : '❌ Not found');
+console.log('🔑 OpenAI Key:', process.env.OPENAI_API_KEY ? '✅ Found' : '❌ Not found');
 
-app.use(cors());
-app.use(express.json({ limit: '50mb' })); // Increased for canvas vision images
+// Security headers
+app.use(helmet());
+
+// CORS — restrict to dev origins
+app.use(
+  cors({
+    origin: ['http://localhost:5173', 'http://localhost:4173'],
+  })
+);
+
+app.use(express.json({ limit: '10mb' }));
 
 // OpenAI configuration
 const openai = new OpenAI({

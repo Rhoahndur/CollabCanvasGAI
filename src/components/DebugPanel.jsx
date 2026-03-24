@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import './DebugPanel.css';
+import styles from './DebugPanel.module.css';
 
 /**
  * DebugPanel - Shows OpenAI API calls and responses for debugging Canny
@@ -96,34 +96,39 @@ function DebugPanel() {
   }
 
   return (
-    <div className={`debug-panel ${isOpen ? 'open' : 'closed'}`}>
-      <button className="debug-toggle" onClick={() => setIsOpen(!isOpen)}>
+    <div className={`${styles['debug-panel']} ${isOpen ? styles['open'] : styles['closed']}`}>
+      <button className={styles['debug-toggle']} onClick={() => setIsOpen(!isOpen)}>
         🐛 Debug {isOpen ? '▼' : '▲'}
       </button>
 
       {isOpen && (
-        <div className="debug-content">
-          <div className="debug-header">
+        <div className={styles['debug-content']}>
+          <div className={styles['debug-header']}>
             <h3>Canny Debug Console</h3>
-            <button className="debug-clear" onClick={clearLogs}>
+            <button className={styles['debug-clear']} onClick={clearLogs}>
               Clear
             </button>
           </div>
 
-          <div className="debug-logs">
+          <div className={styles['debug-logs']}>
             {logs.length === 0 ? (
-              <div className="debug-empty">
+              <div className={styles['debug-empty']}>
                 No logs yet. Send a message to Canny to see debug info.
               </div>
             ) : (
               logs.map((log, index) => (
-                <div key={index} className={`debug-log ${getLogStyle(log.type)}`}>
-                  <div className="log-header">
-                    <span className="log-icon">{getLogIcon(log.type)}</span>
-                    <span className="log-title">{getLogTitle(log.type)}</span>
-                    <span className="log-time">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                <div
+                  key={log.timestamp}
+                  className={`${styles['debug-log']} ${styles[getLogStyle(log.type)] || ''}`}
+                >
+                  <div className={styles['log-header']}>
+                    <span className={styles['log-icon']}>{getLogIcon(log.type)}</span>
+                    <span className={styles['log-title']}>{getLogTitle(log.type)}</span>
+                    <span className={styles['log-time']}>
+                      {new Date(log.timestamp).toLocaleTimeString()}
+                    </span>
                   </div>
-                  <pre className="log-content">{formatJson(log.data)}</pre>
+                  <pre className={styles['log-content']}>{formatJson(log.data)}</pre>
                 </div>
               ))
             )}

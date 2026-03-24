@@ -6,7 +6,8 @@
  */
 
 import { SHAPE_TYPES, CANVAS_WIDTH, CANVAS_HEIGHT } from './constants';
-import { constrainRectangle, constrainCircle, clamp } from './canvasUtils';
+import { constrainRectangle, constrainCircle, clamp, getShapeBounds } from './canvasUtils';
+import { reportError } from './errorHandler';
 
 // Safety limits to prevent accidental mass creation
 const MAX_SHAPES_PER_CALL = 50; // Maximum shapes to create in one tool call
@@ -369,10 +370,6 @@ export function executeCanvasTool(toolName, args, context) {
  * Create one or more shapes
  */
 function handleCreateShape(args, context) {
-  console.log('🛠️ handleCreateShape called with args:', args);
-  console.log('📍 Context viewport:', context.viewport);
-  console.log('👤 Context userId:', context.userId);
-
   const { createShape, viewport, userId, shapes } = context;
   const {
     shapeType,
@@ -385,8 +382,6 @@ function handleCreateShape(args, context) {
     text = 'Text',
     count = 1,
   } = args;
-
-  console.log('📝 Shape params - type:', shapeType, 'text:', text, 'position:', { x, y });
 
   // Safety check: Limit shapes per call
   if (count > MAX_SHAPES_PER_CALL) {
@@ -459,13 +454,9 @@ function handleCreateShape(args, context) {
         shapeData.textColor = '#000000';
         // Don't set color property at all for text (no border by default)
         // Firebase doesn't allow undefined values
-        console.log('📝 Creating text shape:', shapeData);
       }
 
-      console.log('🎯 About to call createShape function with:', shapeData);
-      console.log('🎯 createShape function is:', typeof createShape, createShape);
       const newShape = createShape(shapeData);
-      console.log('✅ createShape returned:', newShape);
       if (newShape) {
         createdShapes.push(newShape);
       }
@@ -477,7 +468,6 @@ function handleCreateShape(args, context) {
       data: { count: createdShapes.length, shapes: createdShapes },
     };
 
-    console.log('🎉 handleCreateShape returning result:', result);
     return result;
   } catch (error) {
     return {
@@ -581,17 +571,15 @@ function handleCreateShapesBatch(args, context) {
         shapeData.textColor = '#000000';
         // Don't set color property at all for text (no border by default)
         // Firebase doesn't allow undefined values
-        console.log('📝 Creating text shape in batch:', shapeData);
       }
 
       try {
         const newShape = createShape(shapeData);
-        console.log('✅ Created batch shape:', newShape?.id, 'at', finalX, finalY);
         if (newShape) {
           createdShapes.push(newShape);
         }
       } catch (error) {
-        console.error('❌ Failed to create batch shape:', error);
+        reportError(error, { component: 'canvasTools', action: 'createBatchShape' });
         errors.push(`Shape ${index + 1}: ${error.message}`);
       }
     });
@@ -646,26 +634,28 @@ function handleAlignShapes(args, context) {
 
     shapesToAlign.forEach((shape) => {
       const updates = {};
-      const shapeBounds = getShapeBounds(shape);
+      const sb = getShapeBounds(shape);
 
+      // Use delta-based positioning so it works regardless of
+      // whether shape.x is top-left (rect/text) or center (circle/image).
       switch (alignment) {
         case 'left':
-          updates.x = bounds.minX + shapeBounds.width / 2;
+          updates.x = shape.x + (bounds.minX - sb.minX);
           break;
         case 'right':
-          updates.x = bounds.maxX - shapeBounds.width / 2;
+          updates.x = shape.x + (bounds.maxX - sb.maxX);
           break;
         case 'top':
-          updates.y = bounds.minY + shapeBounds.height / 2;
+          updates.y = shape.y + (bounds.minY - sb.minY);
           break;
         case 'bottom':
-          updates.y = bounds.maxY - shapeBounds.height / 2;
+          updates.y = shape.y + (bounds.maxY - sb.maxY);
           break;
         case 'center-horizontal':
-          updates.x = bounds.centerX;
+          updates.x = shape.x + (bounds.centerX - sb.centerX);
           break;
         case 'center-vertical':
-          updates.y = bounds.centerY;
+          updates.y = shape.y + (bounds.centerY - sb.centerY);
           break;
       }
 
@@ -748,16 +738,19 @@ function handleDistributeShapes(args, context) {
 
     const gapSize = spacing || totalSpace / (sorted.length - 1);
 
+    const firstBounds = getShapeBounds(sorted[0]);
+
     sorted.forEach((shape, index) => {
       if (index === 0) return; // Keep first shape in place
 
+      const sb = getShapeBounds(shape);
       const updates = {};
       if (direction === 'horizontal') {
-        const firstShapeBounds = getShapeBounds(sorted[0]);
-        updates.x = firstShapeBounds.centerX + gapSize * index;
+        const targetCenterX = firstBounds.centerX + gapSize * index;
+        updates.x = shape.x + (targetCenterX - sb.centerX);
       } else {
-        const firstShapeBounds = getShapeBounds(sorted[0]);
-        updates.y = firstShapeBounds.centerY + gapSize * index;
+        const targetCenterY = firstBounds.centerY + gapSize * index;
+        updates.y = shape.y + (targetCenterY - sb.centerY);
       }
 
       // Apply boundary constraints
@@ -1091,64 +1084,4 @@ function calculateShapesBounds(shapes) {
   bounds.centerY = (bounds.minY + bounds.maxY) / 2;
 
   return bounds;
-}
-
-/**
- * Helper: Get bounds of a single shape
- */
-function getShapeBounds(shape) {
-  let minX, maxX, minY, maxY, centerX, centerY, width, height;
-
-  if (shape.type === SHAPE_TYPES.RECTANGLE || shape.type === SHAPE_TYPES.TEXT) {
-    centerX = shape.x;
-    centerY = shape.y;
-    width = shape.width || 100;
-    height = shape.height || 100;
-    minX = centerX - width / 2;
-    maxX = centerX + width / 2;
-    minY = centerY - height / 2;
-    maxY = centerY + height / 2;
-  } else if (shape.type === SHAPE_TYPES.CIRCLE || shape.type === SHAPE_TYPES.POLYGON) {
-    centerX = shape.x;
-    centerY = shape.y;
-    const r = shape.radius || 50;
-    width = r * 2;
-    height = r * 2;
-    minX = centerX - r;
-    maxX = centerX + r;
-    minY = centerY - r;
-    maxY = centerY + r;
-  } else if (shape.type === SHAPE_TYPES.CUSTOM_POLYGON && shape.vertices) {
-    const xCoords = shape.vertices.map((v) => v.x);
-    const yCoords = shape.vertices.map((v) => v.y);
-    minX = Math.min(...xCoords);
-    maxX = Math.max(...xCoords);
-    minY = Math.min(...yCoords);
-    maxY = Math.max(...yCoords);
-    centerX = (minX + maxX) / 2;
-    centerY = (minY + maxY) / 2;
-    width = maxX - minX;
-    height = maxY - minY;
-  } else if (shape.type === SHAPE_TYPES.IMAGE) {
-    centerX = shape.x;
-    centerY = shape.y;
-    width = shape.width || 100;
-    height = shape.height || 100;
-    minX = centerX - width / 2;
-    maxX = centerX + width / 2;
-    minY = centerY - height / 2;
-    maxY = centerY + height / 2;
-  } else {
-    // Default/fallback
-    centerX = shape.x || 0;
-    centerY = shape.y || 0;
-    width = 100;
-    height = 100;
-    minX = centerX - 50;
-    maxX = centerX + 50;
-    minY = centerY - 50;
-    maxY = centerY + 50;
-  }
-
-  return { minX, maxX, minY, maxY, centerX, centerY, width, height };
 }

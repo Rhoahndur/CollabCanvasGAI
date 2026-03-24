@@ -8,16 +8,21 @@ import {
 } from 'firebase/auth';
 import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
 import { getDatabase } from 'firebase/database';
+import { validateEnv } from '../utils/envValidation';
+import { reportError } from '../utils/errorHandler';
 
-// Firebase configuration from environment variables
+// Validate environment variables before initializing Firebase
+const validatedEnv = validateEnv();
+
+// Firebase configuration from validated environment variables
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+  apiKey: validatedEnv.VITE_FIREBASE_API_KEY,
+  authDomain: validatedEnv.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: validatedEnv.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: validatedEnv.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: validatedEnv.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: validatedEnv.VITE_FIREBASE_APP_ID,
+  databaseURL: validatedEnv.VITE_FIREBASE_DATABASE_URL,
 };
 
 // Initialize Firebase
@@ -69,20 +74,14 @@ export const signInWithGitHub = async () => {
     // Extract GitHub username from the auth response
     if (result.additionalUserInfo && result.additionalUserInfo.username) {
       const githubUsername = result.additionalUserInfo.username;
-      console.log('🎯 GitHub username from OAuth:', githubUsername);
 
       // Store in localStorage so we can access it later
       localStorage.setItem('github_username', githubUsername);
     }
 
-    console.log('📦 Sign in result:', {
-      user: result.user.displayName,
-      additionalUserInfo: result.additionalUserInfo,
-    });
-
     return result.user;
   } catch (error) {
-    console.error('GitHub sign in error:', error);
+    reportError(error, { component: 'firebase', action: 'signInWithGitHub' });
     throw error;
   }
 };
@@ -94,14 +93,9 @@ export const signInWithGoogle = async () => {
   try {
     const result = await signInWithPopup(auth, googleProvider);
 
-    console.log('📦 Google sign in result:', {
-      user: result.user.displayName,
-      email: result.user.email,
-    });
-
     return result.user;
   } catch (error) {
-    console.error('Google sign in error:', error);
+    reportError(error, { component: 'firebase', action: 'signInWithGoogle' });
     throw error;
   }
 };
@@ -116,7 +110,7 @@ export const signOutUser = async () => {
 
     await signOut(auth);
   } catch (error) {
-    console.error('Sign out error:', error);
+    reportError(error, { component: 'firebase', action: 'signOut' });
     throw error;
   }
 };

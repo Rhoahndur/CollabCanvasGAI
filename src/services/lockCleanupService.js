@@ -1,5 +1,6 @@
 import { ref, onValue, update, get } from 'firebase/database';
 import { realtimeDb } from './firebase';
+import { reportError } from '../utils/errorHandler';
 
 /**
  * Lock Cleanup Service
@@ -74,23 +75,15 @@ export function startLockCleanup(canvasId) {
           updates[`${objectId}/lockedBy`] = null;
           updates[`${objectId}/lockedByUserName`] = null;
           cleanedCount++;
-
-          console.log(
-            `🧹 Cleaning stale lock on object ${objectId}:`,
-            isUserActive
-              ? `User inactive for ${Math.round(inactiveTime / 1000)}s`
-              : 'User disconnected'
-          );
         }
       });
 
       // Apply all unlocks in a single batch update
       if (cleanedCount > 0) {
         await update(objectsRef, updates);
-        console.log(`✅ Cleaned ${cleanedCount} stale lock(s)`);
       }
     } catch (error) {
-      console.error('❌ Error cleaning stale locks:', error);
+      reportError(error, { component: 'lockCleanupService', action: 'cleanStaleLocks' });
     }
   }, CLEANUP_INTERVAL_MS);
 
@@ -98,7 +91,6 @@ export function startLockCleanup(canvasId) {
   return () => {
     presenceUnsubscribe();
     clearInterval(cleanupInterval);
-    console.log('🛑 Lock cleanup stopped');
   };
 }
 
@@ -115,9 +107,8 @@ export async function forceUnlockObject(canvasId, objectId) {
       lockedBy: null,
       lockedByUserName: null,
     });
-    console.log(`🔓 Force-unlocked object: ${objectId}`);
   } catch (error) {
-    console.error('❌ Error force-unlocking object:', error);
+    reportError(error, { component: 'lockCleanupService', action: 'forceUnlockObject' });
     throw error;
   }
 }
@@ -149,10 +140,9 @@ export async function unlockAllByUser(canvasId, userId) {
 
     if (unlockedCount > 0) {
       await update(objectsRef, updates);
-      console.log(`🔓 Unlocked ${unlockedCount} object(s) for user ${userId}`);
     }
   } catch (error) {
-    console.error('❌ Error unlocking objects for user:', error);
+    reportError(error, { component: 'lockCleanupService', action: 'unlockAllByUser' });
     throw error;
   }
 }

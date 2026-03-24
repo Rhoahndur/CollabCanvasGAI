@@ -6,13 +6,14 @@
 import { ref, get, set, remove } from 'firebase/database';
 import { realtimeDb } from './firebase';
 import { DEFAULT_CANVAS_ID } from '../utils/constants';
+import { reportError } from '../utils/errorHandler';
 
 /**
  * Check if user needs migration
  * @param {string} userId - User ID
  * @returns {Promise<boolean>} True if migration needed
  */
-export const needsMigration = async (userId) => {
+const needsMigration = async (userId) => {
   try {
     // Check if user already has canvas list
     const userCanvasesRef = ref(realtimeDb, `userCanvases/${userId}`);
@@ -30,7 +31,7 @@ export const needsMigration = async (userId) => {
     // Migration needed if default canvas has objects
     return defaultCanvasSnapshot.exists();
   } catch (error) {
-    console.error('Error checking migration status:', error);
+    reportError(error, { component: 'canvasMigration', action: 'needsMigration' });
     return false;
   }
 };
@@ -42,14 +43,11 @@ export const needsMigration = async (userId) => {
  * @param {Object} user - Full user object with providerData
  * @returns {Promise<boolean>} True if migration successful
  */
-export const migrateToMultiCanvas = async (userId, userName, user = null) => {
+const migrateToMultiCanvas = async (userId, userName, user = null) => {
   try {
-    console.log('🔄 Starting canvas migration for user:', userId, userName);
-
     // Check if migration needed
     const shouldMigrate = await needsMigration(userId);
     if (!shouldMigrate) {
-      console.log('✅ No migration needed');
       return true;
     }
 
@@ -58,7 +56,6 @@ export const migrateToMultiCanvas = async (userId, userName, user = null) => {
     const oldCanvasSnapshot = await get(oldCanvasRef);
 
     if (!oldCanvasSnapshot.exists()) {
-      console.log('⚠️ No data to migrate - creating empty canvas entry');
       // Create empty user canvas list
       await set(ref(realtimeDb, `userCanvases/${userId}/${DEFAULT_CANVAS_ID}`), {
         name: 'My First Canvas',
@@ -70,13 +67,10 @@ export const migrateToMultiCanvas = async (userId, userName, user = null) => {
     }
 
     const oldCanvasData = oldCanvasSnapshot.val();
-    console.log('📦 Found old canvas data:', Object.keys(oldCanvasData));
 
     // Check if metadata already exists (migration already happened)
     const existingMetadata = oldCanvasData.metadata;
     if (existingMetadata) {
-      console.log('✅ Canvas already has metadata, just adding to user list');
-
       // Add canvas to user's canvas list if not already there
       await set(ref(realtimeDb, `userCanvases/${userId}/${DEFAULT_CANVAS_ID}`), {
         name: existingMetadata.name || 'My First Canvas',
@@ -89,7 +83,6 @@ export const migrateToMultiCanvas = async (userId, userName, user = null) => {
       const existingPermissions = oldCanvasData.permissions || {};
       if (!existingPermissions[userId]) {
         await set(ref(realtimeDb, `canvases/${DEFAULT_CANVAS_ID}/permissions/${userId}`), 'owner');
-        console.log('✅ Added user to canvas permissions');
       }
 
       return true;
@@ -114,9 +107,6 @@ export const migrateToMultiCanvas = async (userId, userName, user = null) => {
         originalOwnerId = Object.keys(creatorCounts).reduce((a, b) =>
           creatorCounts[a] > creatorCounts[b] ? a : b
         );
-        console.log(
-          `📊 Detected original owner: ${originalOwnerId} (created ${creatorCounts[originalOwnerId]} objects)`
-        );
       }
     }
 
@@ -130,14 +120,12 @@ export const migrateToMultiCanvas = async (userId, userName, user = null) => {
     };
 
     await set(ref(realtimeDb, `canvases/${DEFAULT_CANVAS_ID}/metadata`), metadata);
-    console.log('✅ Created canvas metadata');
 
     // Set permissions for original owner
     await set(
       ref(realtimeDb, `canvases/${DEFAULT_CANVAS_ID}/permissions/${originalOwnerId}`),
       'owner'
     );
-    console.log('✅ Set canvas permissions for original owner');
 
     // Add canvas to original owner's canvas list
     await set(ref(realtimeDb, `userCanvases/${originalOwnerId}/${DEFAULT_CANVAS_ID}`), {
@@ -146,11 +134,9 @@ export const migrateToMultiCanvas = async (userId, userName, user = null) => {
       lastAccessed: now,
       starred: false,
     });
-    console.log('✅ Added canvas to original owner list');
 
     // If current user is different from original owner, add them as editor
     if (userId !== originalOwnerId) {
-      console.log(`ℹ️ Current user (${userId}) is not the original owner, adding as viewer`);
       await set(ref(realtimeDb, `canvases/${DEFAULT_CANVAS_ID}/permissions/${userId}`), 'viewer');
       await set(ref(realtimeDb, `userCanvases/${userId}/${DEFAULT_CANVAS_ID}`), {
         name: 'My First Canvas',
@@ -160,10 +146,9 @@ export const migrateToMultiCanvas = async (userId, userName, user = null) => {
       });
     }
 
-    console.log('✅ Migration completed successfully!');
     return true;
   } catch (error) {
-    console.error('❌ Migration failed:', error);
+    reportError(error, { component: 'canvasMigration', action: 'migrateToMultiCanvas' });
     throw error;
   }
 };
@@ -180,51 +165,12 @@ export const autoMigrate = async (userId, userName, user = null) => {
   try {
     const shouldMigrate = await needsMigration(userId);
     if (shouldMigrate) {
-      console.log('🔄 Auto-migration triggered');
       await migrateToMultiCanvas(userId, userName, user);
 
       // Show user a notification (optional)
-      console.log('✨ Your canvas has been upgraded to support multiple canvases!');
     }
   } catch (error) {
     // Don't fail app startup if migration fails
-    console.error('⚠️ Auto-migration failed (non-critical):', error);
-  }
-};
-
-/**
- * Get migration status for debugging
- * @param {string} userId - User ID
- * @returns {Promise<Object>} Migration status object
- */
-export const getMigrationStatus = async (userId) => {
-  try {
-    const userCanvasesRef = ref(realtimeDb, `userCanvases/${userId}`);
-    const userCanvasesSnapshot = await get(userCanvasesRef);
-
-    const defaultCanvasRef = ref(realtimeDb, `canvases/${DEFAULT_CANVAS_ID}/objects`);
-    const defaultCanvasSnapshot = await get(defaultCanvasRef);
-
-    const hasUserCanvases = userCanvasesSnapshot.exists();
-    const hasDefaultCanvasData = defaultCanvasSnapshot.exists();
-    const objectCount = hasDefaultCanvasData
-      ? Object.keys(defaultCanvasSnapshot.val() || {}).length
-      : 0;
-
-    return {
-      migrated: hasUserCanvases,
-      hasOldData: hasDefaultCanvasData,
-      defaultCanvasObjectCount: objectCount,
-      needsMigration: !hasUserCanvases && hasDefaultCanvasData,
-    };
-  } catch (error) {
-    console.error('Error getting migration status:', error);
-    return {
-      migrated: false,
-      hasOldData: false,
-      defaultCanvasObjectCount: 0,
-      needsMigration: false,
-      error: error.message,
-    };
+    reportError(error, { component: 'canvasMigration', action: 'autoMigrate' });
   }
 };

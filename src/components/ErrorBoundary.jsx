@@ -1,4 +1,6 @@
 import { Component } from 'react';
+import { reportError } from '../utils/errorHandler';
+import styles from './ErrorBoundary.module.css';
 
 /**
  * Error Boundary Component
@@ -19,7 +21,7 @@ class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('React Error Boundary caught an error:', error, errorInfo);
+    reportError(error, { component: 'ErrorBoundary', action: 'componentDidCatch' });
     this.setState({
       error,
       errorInfo,
@@ -41,34 +43,34 @@ class ErrorBoundary extends Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="error-boundary">
-          <div className="error-boundary-content">
-            <div className="error-icon">⚠️</div>
+        <div className={styles['error-boundary']}>
+          <div className={styles['error-boundary-content']}>
+            <div className={styles['error-icon']}>⚠️</div>
             <h1>Oops! Something went wrong</h1>
-            <p className="error-message">
+            <p className={styles['error-message']}>
               We're sorry, but something unexpected happened. This error has been logged.
             </p>
 
             {import.meta.env.DEV && this.state.error && (
-              <details className="error-details">
+              <details className={styles['error-details']}>
                 <summary>Error Details (Dev Mode)</summary>
-                <pre className="error-stack">
+                <pre className={styles['error-stack']}>
                   {this.state.error.toString()}
                   {this.state.errorInfo && this.state.errorInfo.componentStack}
                 </pre>
               </details>
             )}
 
-            <div className="error-actions">
-              <button className="btn-primary" onClick={this.handleReload}>
+            <div className={styles['error-actions']}>
+              <button className={styles['btn-primary']} onClick={this.handleReload}>
                 Reload Page
               </button>
-              <button className="btn-secondary" onClick={this.handleReset}>
+              <button className={styles['btn-secondary']} onClick={this.handleReset}>
                 Try Again
               </button>
             </div>
 
-            <p className="error-hint">
+            <p className={styles['error-hint']}>
               If this problem persists, try clearing your browser cache or using a different
               browser.
             </p>

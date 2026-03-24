@@ -5,6 +5,8 @@
  * (JPEG with quality setting provides smaller file sizes than PNG)
  */
 
+import { reportError } from './errorHandler';
+
 /**
  * Capture the current viewport of the canvas as a base64 JPEG image
  *
@@ -76,13 +78,9 @@ export async function captureCanvasImage(svgElement, options = {}) {
     // Convert canvas to base64 JPEG with quality setting (smaller file size)
     const base64Image = canvas.toDataURL('image/jpeg', quality);
 
-    console.log(
-      `📸 Canvas captured: ${width}x${height}, size: ~${Math.round(base64Image.length / 1024)}KB`
-    );
-
     return base64Image;
   } catch (error) {
-    console.error('Failed to capture canvas:', error);
+    reportError(error, { component: 'canvasCapture', action: 'captureCanvasImage' });
     throw error;
   }
 }

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import './ColorPicker.css';
+import styles from './ColorPicker.module.css';
 
 /**
  * ColorPicker - Advanced color picker with gradient wheel, presets, and recent colors
@@ -120,12 +120,12 @@ function ColorPicker({ value, onChange, label = 'Color', allowTransparent = fals
   };
 
   return (
-    <div className="color-picker-wrapper" ref={pickerRef}>
-      <label className="color-picker-label">{label}:</label>
+    <div className={styles['color-picker-wrapper']} ref={pickerRef}>
+      <label className={styles['color-picker-label']}>{label}:</label>
 
       {/* Current Color Button */}
       <button
-        className="color-picker-button"
+        className={styles['color-picker-button']}
         onClick={(e) => {
           e.stopPropagation();
           setShowPicker(!showPicker);
@@ -133,34 +133,39 @@ function ColorPicker({ value, onChange, label = 'Color', allowTransparent = fals
         title="Click to change color"
       >
         {value === 'transparent' ? (
-          <div className="color-preview transparent-pattern" />
+          <div className={`${styles['color-preview']} ${styles['transparent-pattern']}`} />
         ) : (
-          <div className="color-preview" style={{ backgroundColor: value }} />
+          <div className={styles['color-preview']} style={{ backgroundColor: value }} />
         )}
       </button>
 
       {/* Color Picker Dropdown */}
       {showPicker && (
-        <div className="color-picker-dropdown" onClick={(e) => e.stopPropagation()}>
+        // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+        <div
+          className={styles['color-picker-dropdown']}
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
           {/* Transparent Option */}
           {allowTransparent && (
-            <div className="color-section">
+            <div className={styles['color-section']}>
               <button
-                className={`transparent-button ${value === 'transparent' ? 'active' : ''}`}
+                className={`${styles['transparent-button']} ${value === 'transparent' ? styles['active'] : ''}`}
                 onClick={() => handleColorSelect('transparent')}
                 title="Transparent background"
               >
-                <div className="transparent-pattern"></div>
+                <div className={styles['transparent-pattern']}></div>
                 <span>Transparent</span>
               </button>
             </div>
           )}
 
           {/* Color Wheel */}
-          <div className="color-wheel-section">
+          <div className={styles['color-wheel-section']}>
             <canvas
               ref={canvasRef}
-              className="color-wheel"
+              className={styles['color-wheel']}
               width={180}
               height={180}
               onClick={handleCanvasClick}
@@ -168,13 +173,13 @@ function ColorPicker({ value, onChange, label = 'Color', allowTransparent = fals
           </div>
 
           {/* Preset Colors */}
-          <div className="color-section">
-            <div className="color-section-title">Preset Colors</div>
-            <div className="color-grid">
+          <div className={styles['color-section']}>
+            <div className={styles['color-section-title']}>Preset Colors</div>
+            <div className={styles['color-grid']}>
               {presetColors.map((color) => (
                 <button
                   key={color}
-                  className={`color-tile ${value === color ? 'active' : ''}`}
+                  className={`${styles['color-tile']} ${value === color ? styles['active'] : ''}`}
                   style={{ backgroundColor: color }}
                   onClick={() => handleColorSelect(color)}
                   title={color}
@@ -185,13 +190,13 @@ function ColorPicker({ value, onChange, label = 'Color', allowTransparent = fals
 
           {/* Recent Colors */}
           {recentColors.length > 0 && (
-            <div className="color-section">
-              <div className="color-section-title">Recent Colors</div>
-              <div className="color-grid">
+            <div className={styles['color-section']}>
+              <div className={styles['color-section-title']}>Recent Colors</div>
+              <div className={styles['color-grid']}>
                 {recentColors.map((color, index) => (
                   <button
-                    key={`${color}-${index}`}
-                    className={`color-tile ${value === color ? 'active' : ''}`}
+                    key={color}
+                    className={`${styles['color-tile']} ${value === color ? styles['active'] : ''}`}
                     style={{ backgroundColor: color }}
                     onClick={() => handleColorSelect(color)}
                     title={color}
@@ -202,10 +207,10 @@ function ColorPicker({ value, onChange, label = 'Color', allowTransparent = fals
           )}
 
           {/* Hex Input */}
-          <div className="color-section">
+          <div className={styles['color-section']}>
             <input
               type="text"
-              className="color-hex-input"
+              className={styles['color-hex-input']}
               value={value}
               onChange={(e) => {
                 const hex = e.target.value;

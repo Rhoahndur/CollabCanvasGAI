@@ -46,7 +46,6 @@ export function useCursors(currentSessionId, canvasId = DEFAULT_CANVAS_ID) {
 
     // Cleanup subscription on unmount
     return () => {
-      console.log('Cleaning up cursor subscription');
       if (filterIntervalRef.current) {
         clearInterval(filterIntervalRef.current);
       }
@@ -68,7 +67,6 @@ export function useCursors(currentSessionId, canvasId = DEFAULT_CANVAS_ID) {
     window.addEventListener('beforeunload', handleBeforeUnload);
 
     return () => {
-      console.log('Cleaning up cursor for session:', currentSessionId);
       window.removeEventListener('beforeunload', handleBeforeUnload);
 
       // Remove cursor on component unmount

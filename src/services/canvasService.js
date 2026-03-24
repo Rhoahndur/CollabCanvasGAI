@@ -17,6 +17,7 @@ import {
 } from 'firebase/database';
 import { realtimeDb } from './firebase';
 import { DEFAULT_CANVAS_ID } from '../utils/constants';
+import { reportError } from '../utils/errorHandler';
 
 // Reference paths for Realtime Database
 const getCanvasRef = (canvasId = DEFAULT_CANVAS_ID) => ref(realtimeDb, `canvases/${canvasId}`);
@@ -120,7 +121,7 @@ export const createShape = async (canvasId = DEFAULT_CANVAS_ID, shapeData) => {
     // console.log('Shape created:', shapeData.type, objectId);
     return objectId;
   } catch (error) {
-    console.error('Error creating shape:', error);
+    reportError(error, { component: 'canvasService', action: 'createShape' });
     throw error;
   }
 };
@@ -138,7 +139,7 @@ export const updateShape = async (canvasId = DEFAULT_CANVAS_ID, shapeId, updates
     await update(objectRef, updates);
     // console.log('Shape updated:', shapeId);
   } catch (error) {
-    console.error('Error updating shape:', error);
+    reportError(error, { component: 'canvasService', action: 'updateShape' });
     throw error;
   }
 };
@@ -155,7 +156,7 @@ export const deleteShape = async (canvasId = DEFAULT_CANVAS_ID, shapeId) => {
     await remove(objectRef);
     // console.log('Shape deleted:', shapeId);
   } catch (error) {
-    console.error('Error deleting shape:', error);
+    reportError(error, { component: 'canvasService', action: 'deleteShape' });
     throw error;
   }
 };
@@ -177,7 +178,7 @@ export const lockObject = async (canvasId = DEFAULT_CANVAS_ID, objectId, userId,
     });
     // console.log('Object locked:', objectId, 'by', userName);
   } catch (error) {
-    console.error('Error locking object:', error);
+    reportError(error, { component: 'canvasService', action: 'lockObject' });
     throw error;
   }
 };
@@ -197,7 +198,7 @@ export const unlockObject = async (canvasId = DEFAULT_CANVAS_ID, objectId) => {
     });
     // console.log('Object unlocked:', objectId);
   } catch (error) {
-    console.error('Error unlocking object:', error);
+    reportError(error, { component: 'canvasService', action: 'unlockObject' });
     throw error;
   }
 };
@@ -227,7 +228,7 @@ export const subscribeToObjects = (canvasId = DEFAULT_CANVAS_ID, callback, error
       callback(objects);
     },
     (error) => {
-      console.error('Error subscribing to objects:', error);
+      reportError(error, { component: 'canvasService', action: 'subscribeToObjects' });
       if (errorCallback) {
         errorCallback(error);
       }
@@ -286,7 +287,7 @@ export const updateCursor = async (
       isActive,
     });
   } catch (error) {
-    console.error('Error updating cursor:', error);
+    reportError(error, { component: 'canvasService', action: 'updateCursor' });
     throw error;
   }
 };
@@ -315,7 +316,7 @@ export const subscribeToCursors = (canvasId = DEFAULT_CANVAS_ID, callback) => {
       callback(cursors);
     },
     (error) => {
-      console.error('Error subscribing to cursors:', error);
+      reportError(error, { component: 'canvasService', action: 'subscribeToCursors' });
     }
   );
 
@@ -341,7 +342,7 @@ export const removeCursor = async (canvasId = DEFAULT_CANVAS_ID, sessionId) => {
     if (error.code === 'PERMISSION_DENIED' || error.code === 'permission-denied') {
       // console.log('Cursor already removed or not found:', sessionId);
     } else {
-      console.error('Error removing cursor:', error);
+      reportError(error, { component: 'canvasService', action: 'removeCursor' });
     }
   }
 };
@@ -373,7 +374,10 @@ export const setUserPresence = async (
     // Validate that userName is not empty
     // This prevents "Anonymous" users from appearing in the presence list
     if (!userName || userName.trim() === '' || userName === 'Anonymous User') {
-      console.error('❌ Cannot set presence: userName is required and must not be empty');
+      reportError('Cannot set presence: userName is required and must not be empty', {
+        component: 'canvasService',
+        action: 'setUserPresence',
+      });
       throw new Error('userName is required for presence');
     }
 
@@ -395,7 +399,7 @@ export const setUserPresence = async (
     });
     // console.log('Presence updated:', userName, isOnline ? 'online' : 'offline', isActive ? '(active)' : '(away)');
   } catch (error) {
-    console.error('Error setting presence:', error);
+    reportError(error, { component: 'canvasService', action: 'setUserPresence' });
     throw error;
   }
 };
@@ -424,7 +428,7 @@ export const subscribeToPresence = (canvasId = DEFAULT_CANVAS_ID, callback) => {
       callback(presenceData);
     },
     (error) => {
-      console.error('Error subscribing to presence:', error);
+      reportError(error, { component: 'canvasService', action: 'subscribeToPresence' });
     }
   );
 
@@ -454,7 +458,7 @@ export const updatePresenceHeartbeat = async (
       isActive,
     });
   } catch (error) {
-    console.error('Error updating presence heartbeat:', error);
+    reportError(error, { component: 'canvasService', action: 'updatePresenceHeartbeat' });
     // Don't throw - heartbeat failures shouldn't break the app
   }
 };
@@ -475,7 +479,7 @@ export const removePresence = async (canvasId = DEFAULT_CANVAS_ID, sessionId) =>
     if (error.code === 'PERMISSION_DENIED' || error.code === 'permission-denied') {
       // console.log('Presence already removed or not found:', sessionId);
     } else {
-      console.error('Error removing presence:', error);
+      reportError(error, { component: 'canvasService', action: 'removePresence' });
     }
   }
 };
@@ -521,12 +525,11 @@ export const cleanupStalePresence = async (canvasId = DEFAULT_CANVAS_ID) => {
         updates[sessionId] = null; // Setting to null deletes in Realtime Database
       });
       await update(presenceRef, updates);
-      console.log(`🧹 Cleaned up ${staleSessionIds.length} stale presence sessions`);
     }
 
     return staleSessionIds.length;
   } catch (error) {
-    console.error('Error cleaning up stale presence:', error);
+    reportError(error, { component: 'canvasService', action: 'cleanupStalePresence' });
     return 0;
   }
 };
@@ -555,7 +558,7 @@ export const testFirestoreConnection = async () => {
 
     throw new Error('Could not get Realtime Database reference');
   } catch (error) {
-    console.error('❌ Realtime Database connection test failed:', error);
+    reportError(error, { component: 'canvasService', action: 'testFirestoreConnection' });
     return false;
   }
 };
@@ -569,7 +572,7 @@ export const testFirestoreConnection = async () => {
  * @param {string} userId - User ID
  * @returns {string} Unique canvas ID
  */
-export const generateCanvasId = (userId) => {
+const generateCanvasId = (userId) => {
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 9);
   return `${userId}_${timestamp}_${random}`;
@@ -635,7 +638,7 @@ export const createCanvas = async (userId, canvasName, template = 'blank') => {
     // console.log('✅ Canvas created:', canvasId, canvasName);
     return canvasId;
   } catch (error) {
-    console.error('❌ Error creating canvas:', error);
+    reportError(error, { component: 'canvasService', action: 'createCanvas' });
     throw error;
   }
 };
@@ -819,7 +822,7 @@ export const getCanvasMetadata = async (canvasId) => {
     }
     return null;
   } catch (error) {
-    console.error('❌ Error getting canvas metadata:', error);
+    reportError(error, { component: 'canvasService', action: 'getCanvasMetadata' });
     throw error;
   }
 };
@@ -866,7 +869,7 @@ export const requestCanvasAccess = async (canvasId, userId, userName, requestedR
       alreadyHadAccess: false,
     };
   } catch (error) {
-    console.error('❌ Error requesting canvas access:', error);
+    reportError(error, { component: 'canvasService', action: 'requestCanvasAccess' });
     return { success: false, error: error.message };
   }
 };
@@ -974,7 +977,7 @@ export const duplicateCanvas = async (sourceCanvasId, userId, newName) => {
     // console.log('✅ Canvas duplicated:', sourceCanvasId, '→', newCanvasId);
     return newCanvasId;
   } catch (error) {
-    console.error('❌ Error duplicating canvas:', error);
+    reportError(error, { component: 'canvasService', action: 'duplicateCanvas' });
     throw error;
   }
 };
@@ -987,8 +990,6 @@ export const duplicateCanvas = async (sourceCanvasId, userId, newName) => {
  */
 export const updateCanvasMetadata = async (canvasId, updates) => {
   try {
-    console.log('📝 updateCanvasMetadata called:', { canvasId, updates });
-
     // Handle nested updates (e.g., settings.backgroundColor)
     // Convert nested objects to flattened paths for proper merging
     const flattenedUpdates = {};
@@ -1009,19 +1010,11 @@ export const updateCanvasMetadata = async (canvasId, updates) => {
     flatten(updates);
     flattenedUpdates.lastModified = Date.now();
 
-    console.log('📝 Flattened updates:', flattenedUpdates);
-    console.log('📝 Metadata path:', `canvases/${canvasId}/metadata`);
-
     // Use update with flattened paths for proper nested merging
     const metadataRef = getCanvasMetadataRef(canvasId);
     await update(metadataRef, flattenedUpdates);
-
-    console.log('✅ Canvas metadata updated successfully:', canvasId);
   } catch (error) {
-    console.error('❌ Error updating canvas metadata:', error);
-    console.error('Error code:', error.code);
-    console.error('Error message:', error.message);
-    console.error('Error details:', error);
+    reportError(error, { component: 'canvasService', action: 'updateCanvasMetadata', canvasId });
     throw error;
   }
 };
@@ -1059,7 +1052,7 @@ export const deleteCanvas = async (canvasId, userId) => {
 
     // console.log('✅ Canvas deleted:', canvasId);
   } catch (error) {
-    console.error('❌ Error deleting canvas:', error);
+    reportError(error, { component: 'canvasService', action: 'deleteCanvas' });
     throw error;
   }
 };
@@ -1112,7 +1105,11 @@ export const getUserCanvases = async (userId) => {
           await remove(getUserCanvasRef(userId, canvasId));
           // console.log(`✅ Removed orphaned canvas reference: ${canvasId}`);
         } catch (cleanupErr) {
-          console.error(`❌ Failed to clean up ${canvasId}:`, cleanupErr);
+          reportError(cleanupErr, {
+            component: 'canvasService',
+            action: 'getUserCanvases.cleanup',
+            canvasId,
+          });
         }
       }
     }
@@ -1122,7 +1119,7 @@ export const getUserCanvases = async (userId) => {
 
     return canvases;
   } catch (error) {
-    console.error('❌ Error getting user canvases:', error);
+    reportError(error, { component: 'canvasService', action: 'getUserCanvases' });
     throw error;
   }
 };
@@ -1160,7 +1157,7 @@ export const toggleCanvasStarred = async (canvasId, userId) => {
     // console.log('⭐ Canvas starred status toggled:', canvasId, newStarred);
     return newStarred;
   } catch (error) {
-    console.error('❌ Error toggling starred status:', error);
+    reportError(error, { component: 'canvasService', action: 'toggleCanvasStarred' });
     throw error;
   }
 };
@@ -1189,12 +1186,12 @@ export const getUserRole = async (canvasId, userId) => {
 
     return null;
   } catch (error) {
-    console.error('Error getting user role:', error);
+    reportError(error, { component: 'canvasService', action: 'getUserRole' });
     return null;
   }
 };
 
-export const addCanvasPermission = async (canvasId, userId, role, canvasName) => {
+const addCanvasPermission = async (canvasId, userId, role, canvasName) => {
   try {
     // Add permission to canvas
     await set(ref(realtimeDb, `canvases/${canvasId}/permissions/${userId}`), role);
@@ -1209,7 +1206,7 @@ export const addCanvasPermission = async (canvasId, userId, role, canvasName) =>
 
     // console.log('✅ Canvas permission added:', canvasId, userId, role);
   } catch (error) {
-    console.error('❌ Error adding canvas permission:', error);
+    reportError(error, { component: 'canvasService', action: 'addCanvasPermission' });
     throw error;
   }
 };
@@ -1230,24 +1227,7 @@ export const removeCanvasPermission = async (canvasId, userId) => {
 
     // console.log('✅ Canvas permission removed:', canvasId, userId);
   } catch (error) {
-    console.error('❌ Error removing canvas permission:', error);
+    reportError(error, { component: 'canvasService', action: 'removeCanvasPermission' });
     throw error;
-  }
-};
-
-/**
- * Update user's last accessed time for a canvas
- * @param {string} userId - User ID
- * @param {string} canvasId - Canvas ID
- * @returns {Promise<void>}
- */
-export const updateCanvasAccess = async (userId, canvasId) => {
-  try {
-    await update(getUserCanvasRef(userId, canvasId), {
-      lastAccessed: Date.now(),
-    });
-  } catch (error) {
-    // Silently fail - not critical
-    // console.warn('Warning: Could not update canvas access time:', error);
   }
 };

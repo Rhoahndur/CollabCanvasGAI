@@ -4,7 +4,8 @@ import { ref, push, onValue, query, orderByChild, limitToLast } from 'firebase/d
 import { realtimeDb } from '../services/firebase';
 import { executeCanvasTool } from '../utils/canvasTools';
 import { captureCanvasImage, shouldUseVision, getVisionReason } from '../utils/canvasCapture';
-import './ChatPanel.css';
+import { reportError } from '../utils/errorHandler';
+import styles from './ChatPanel.module.css';
 
 // Track executed tool calls to prevent infinite loops
 const executedToolCalls = new Set();
@@ -118,14 +119,6 @@ function ChatPanel({
     ],
     // Handle tool calls from Canny
     experimental_onToolCall: async (toolCall) => {
-      console.log(
-        '🔧 Canny is calling tool:',
-        toolCall.toolName,
-        'with args:',
-        toolCall.args,
-        'TOOL CALL EVENT FIRED!'
-      );
-
       // Emit debug event for tool call
       window.dispatchEvent(
         new CustomEvent('canny-debug', {
@@ -156,8 +149,6 @@ function ChatPanel({
 
       const result = executeCanvasTool(toolCall.toolName, toolCall.args, context);
 
-      console.log('✅ Tool execution result:', result);
-
       // Emit debug event for tool result
       window.dispatchEvent(
         new CustomEvent('canny-debug', {
@@ -177,7 +168,7 @@ function ChatPanel({
     },
     // Log errors
     onError: (error) => {
-      console.error('❌ Chat error:', error);
+      reportError(error, { component: 'ChatPanel', action: 'onError' });
       window.dispatchEvent(
         new CustomEvent('canny-debug', {
           detail: {
@@ -193,7 +184,6 @@ function ChatPanel({
     },
     // Log when response is received
     onFinish: (message) => {
-      console.log('✅ Response finished:', message);
       window.dispatchEvent(
         new CustomEvent('canny-debug', {
           detail: {
@@ -225,7 +215,6 @@ function ChatPanel({
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
-      console.log('🛑 Request stopped by user');
     }
     setIsCapturingCanvas(false);
     setVisionReason(null);
@@ -279,12 +268,8 @@ function ChatPanel({
         setIsCapturingCanvas(true);
         setVisionReason(getVisionReason(trimmedInput));
 
-        console.log('👁️ Vision detected! Capturing canvas...');
-
         // Capture canvas as image
         const canvasImage = await captureCanvasImage(svgRef.current);
-
-        console.log('✅ Canvas captured, sending with vision...');
 
         // Emit debug event for request with vision
         window.dispatchEvent(
@@ -326,7 +311,7 @@ function ChatPanel({
         setIsCapturingCanvas(false);
         setVisionReason(null);
       } catch (error) {
-        console.error('Failed to capture canvas:', error);
+        reportError(error, { component: 'ChatPanel', action: 'captureCanvas' });
         setIsCapturingCanvas(false);
         setVisionReason(null);
 
@@ -366,7 +351,7 @@ function ChatPanel({
         }
       } catch (error) {
         if (error.name !== 'AbortError') {
-          console.error('Failed to send message:', error);
+          reportError(error, { component: 'ChatPanel', action: 'sendMessage' });
         }
       }
     }
@@ -482,7 +467,6 @@ function ChatPanel({
 
     // Method 1: Check if message has tool_calls property (standard format)
     if (lastMessage?.tool_calls && Array.isArray(lastMessage.tool_calls)) {
-      console.log('🔧 Detected tool calls in message (standard format):', lastMessage.tool_calls);
       toolCallsToExecute = lastMessage.tool_calls;
     }
 
@@ -492,10 +476,9 @@ function ChatPanel({
       if (markerMatch) {
         try {
           const parsedToolCalls = JSON.parse(markerMatch[1]);
-          console.log('🔧 Detected tool calls in message (marker format):', parsedToolCalls);
           toolCallsToExecute = parsedToolCalls;
         } catch (e) {
-          console.error('Failed to parse tool calls from marker:', e);
+          reportError(e, { component: 'ChatPanel', action: 'parseToolCallsMarker' });
         }
       }
     }
@@ -508,7 +491,6 @@ function ChatPanel({
 
         // Skip if already executed
         if (executedToolCalls.has(toolCallId)) {
-          console.log(`⏭️ Skipping already executed tool call: ${toolCallId}`);
           continue;
         }
 
@@ -522,11 +504,9 @@ function ChatPanel({
           try {
             args = JSON.parse(toolCall.function.arguments);
           } catch (e) {
-            console.error('Failed to parse tool arguments:', e);
+            reportError(e, { component: 'ChatPanel', action: 'parseToolArguments' });
             continue;
           }
-
-          console.log(`🛠️ Executing tool (${toolCallId}): ${toolName}`, args);
 
           // Build context (use latest values from closure)
           const context = {
@@ -544,7 +524,6 @@ function ChatPanel({
 
           // Execute the tool
           const result = executeCanvasTool(toolName, args, context);
-          console.log('✅ Tool result:', result);
         }
       }
     }
@@ -576,7 +555,7 @@ function ChatPanel({
 
       setCanvasInput('');
     } catch (error) {
-      console.error('Failed to send message:', error);
+      reportError(error, { component: 'ChatPanel', action: 'handleCanvasChatSubmit' });
     }
   };
 
@@ -626,13 +605,14 @@ function ChatPanel({
 
   return (
     <div
-      className={`chat-panel ${isOpen ? 'open' : 'closed'} ${isResizing ? 'resizing' : ''}`}
+      className={`${styles['chat-panel']} ${isOpen ? styles['open'] : styles['closed']} ${isResizing ? styles['resizing'] : ''}`}
       style={{ width: isOpen ? `${panelWidth}px` : undefined }}
     >
       {/* Resize handle */}
       {isOpen && (
+        // eslint-disable-next-line jsx-a11y/no-static-element-interactions
         <div
-          className="chat-resize-handle"
+          className={styles['chat-resize-handle']}
           onMouseDown={handleResizeStart}
           title="Drag to resize"
         />
@@ -640,7 +620,7 @@ function ChatPanel({
 
       {/* Toggle button */}
       <button
-        className="chat-toggle"
+        className={styles['chat-toggle']}
         onClick={handleToggle}
         title={isOpen ? 'Close Chat' : 'Open Chat'}
         aria-label={isOpen ? 'Close Chat' : 'Open Chat'}
@@ -669,18 +649,18 @@ function ChatPanel({
               <circle cx="12" cy="12" r="10" />
               <path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01" />
             </svg>
-            <span className="chat-badge">Chat</span>
+            <span className={styles['chat-badge']}>Chat</span>
           </>
         )}
       </button>
 
       {/* Chat content */}
-      <div className="chat-content">
+      <div className={styles['chat-content']}>
         {/* Header with tabs */}
-        <div className="chat-header">
-          <div className="chat-tabs">
+        <div className={styles['chat-header']}>
+          <div className={styles['chat-tabs']}>
             <button
-              className={`chat-tab ${activeTab === 'canvas' ? 'active' : ''}`}
+              className={`${styles['chat-tab']} ${activeTab === 'canvas' ? styles['active'] : ''}`}
               onClick={() => setActiveTab('canvas')}
             >
               <svg
@@ -696,7 +676,7 @@ function ChatPanel({
               Users
             </button>
             <button
-              className={`chat-tab ${activeTab === 'canny' ? 'active' : ''}`}
+              className={`${styles['chat-tab']} ${activeTab === 'canny' ? styles['active'] : ''}`}
               onClick={() => setActiveTab('canny')}
             >
               <svg
@@ -713,10 +693,10 @@ function ChatPanel({
               Canny
             </button>
           </div>
-          <div className="chat-header-actions">
+          <div className={styles['chat-header-actions']}>
             {activeTab === 'canny' && (
               <button
-                className="chat-action-btn"
+                className={styles['chat-action-btn']}
                 onClick={handleClear}
                 title="Clear chat"
                 aria-label="Clear chat"
@@ -734,7 +714,7 @@ function ChatPanel({
               </button>
             )}
             <button
-              className="chat-action-btn"
+              className={styles['chat-action-btn']}
               onClick={handleToggle}
               title="Minimize"
               aria-label="Minimize"
@@ -756,9 +736,9 @@ function ChatPanel({
         {/* Canvas Chat Tab */}
         {activeTab === 'canvas' && (
           <>
-            <div className="chat-messages">
+            <div className={styles['chat-messages']}>
               {canvasMessages.length === 0 ? (
-                <div className="chat-empty-state">
+                <div className={styles['chat-empty-state']}>
                   <svg
                     viewBox="0 0 24 24"
                     width="48"
@@ -770,7 +750,9 @@ function ChatPanel({
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                   </svg>
                   <p>No messages yet</p>
-                  <p className="chat-empty-hint">Start a conversation with your collaborators!</p>
+                  <p className={styles['chat-empty-hint']}>
+                    Start a conversation with your collaborators!
+                  </p>
                 </div>
               ) : (
                 <>
@@ -781,10 +763,10 @@ function ChatPanel({
                     return (
                       <div
                         key={msg.id}
-                        className={`chat-message ${isOwnMessage ? 'user' : 'other'}`}
+                        className={`${styles['chat-message']} ${isOwnMessage ? styles['user'] : styles['other']}`}
                       >
                         <div
-                          className="message-avatar"
+                          className={styles['message-avatar']}
                           style={{
                             backgroundColor: `${userColor}20`,
                             color: userColor,
@@ -793,15 +775,19 @@ function ChatPanel({
                         >
                           {msg.userName.charAt(0).toUpperCase()}
                         </div>
-                        <div className="message-content">
-                          <div className="message-header">
-                            <span className="message-sender" style={{ color: userColor }}>
+                        <div className={styles['message-content']}>
+                          <div className={styles['message-header']}>
+                            <span className={styles['message-sender']} style={{ color: userColor }}>
                               {msg.userName}
                             </span>
-                            {isOwnMessage && <span className="message-you-badge">You</span>}
-                            <span className="message-time">{formatTime(msg.timestamp)}</span>
+                            {isOwnMessage && (
+                              <span className={styles['message-you-badge']}>You</span>
+                            )}
+                            <span className={styles['message-time']}>
+                              {formatTime(msg.timestamp)}
+                            </span>
                           </div>
-                          <div className="message-text">{msg.text}</div>
+                          <div className={styles['message-text']}>{msg.text}</div>
                         </div>
                       </div>
                     );
@@ -811,10 +797,10 @@ function ChatPanel({
               )}
             </div>
 
-            <form className="chat-input-form" onSubmit={handleCanvasChatSubmit}>
+            <form className={styles['chat-input-form']} onSubmit={handleCanvasChatSubmit}>
               <input
                 type="text"
-                className="chat-input"
+                className={styles['chat-input']}
                 placeholder="Message your team..."
                 value={canvasInput}
                 onChange={(e) => setCanvasInput(e.target.value)}
@@ -823,7 +809,7 @@ function ChatPanel({
               />
               <button
                 type="submit"
-                className="chat-send-btn"
+                className={styles['chat-send-btn']}
                 disabled={!canvasInput.trim() || !user || !canvasId}
                 aria-label="Send message"
               >
@@ -838,7 +824,7 @@ function ChatPanel({
         {/* Canny AI Tab */}
         {activeTab === 'canny' && (
           <>
-            <div className="chat-messages">
+            <div className={styles['chat-messages']}>
               {messages.map((message, index) => {
                 // Skip rendering messages that only contain tool calls (no text content)
                 if (message.tool_calls && !message.content) {
@@ -870,14 +856,17 @@ function ChatPanel({
 
                 const messageType = getMessageType(message.role);
                 return (
-                  <div key={message.id || index} className={`chat-message ${messageType}`}>
-                    <div className="message-avatar">
+                  <div
+                    key={message.id}
+                    className={`${styles['chat-message']} ${styles[messageType] || ''}`}
+                  >
+                    <div className={styles['message-avatar']}>
                       {messageType === 'user' ? '👤' : messageType === 'assistant' ? '🤖' : 'ℹ️'}
                     </div>
-                    <div className="message-content">
-                      <div className="message-text">{cleanContent}</div>
+                    <div className={styles['message-content']}>
+                      <div className={styles['message-text']}>{cleanContent}</div>
                       {message.createdAt && (
-                        <div className="message-time">
+                        <div className={styles['message-time']}>
                           {new Date(message.createdAt).toLocaleTimeString([], {
                             hour: '2-digit',
                             minute: '2-digit',
@@ -889,10 +878,12 @@ function ChatPanel({
                 );
               })}
               {isLoading && (
-                <div className="chat-message assistant loading">
-                  <div className="message-avatar">🤖</div>
-                  <div className="message-content">
-                    <div className="message-text typing-indicator">
+                <div
+                  className={`${styles['chat-message']} ${styles['assistant']} ${styles['loading']}`}
+                >
+                  <div className={styles['message-avatar']}>🤖</div>
+                  <div className={styles['message-content']}>
+                    <div className={`${styles['message-text']} ${styles['typing-indicator']}`}>
                       <span></span>
                       <span></span>
                       <span></span>
@@ -901,10 +892,10 @@ function ChatPanel({
                 </div>
               )}
               {error && (
-                <div className="chat-message system error">
-                  <div className="message-avatar">⚠️</div>
-                  <div className="message-content">
-                    <div className="message-text" style={{ color: '#ff6b6b' }}>
+                <div className={`${styles['chat-message']} ${styles['system']} ${styles['error']}`}>
+                  <div className={styles['message-avatar']}>⚠️</div>
+                  <div className={styles['message-content']}>
+                    <div className={styles['message-text']} style={{ color: '#ff6b6b' }}>
                       <strong>Error:</strong>{' '}
                       {error.message ||
                         'Failed to connect to Canny. Make sure the backend server is running and your OpenAI API key is configured.'}
@@ -917,17 +908,19 @@ function ChatPanel({
 
             {/* Vision indicator */}
             {(isCapturingCanvas || visionReason) && (
-              <div className="vision-indicator">
-                <span className="vision-icon">👁️</span>
-                <span className="vision-text">{visionReason || 'Capturing canvas...'}</span>
+              <div className={styles['vision-indicator']}>
+                <span className={styles['vision-icon']}>👁️</span>
+                <span className={styles['vision-text']}>
+                  {visionReason || 'Capturing canvas...'}
+                </span>
               </div>
             )}
 
             {/* Example Prompts Dropdown */}
-            <div className="example-prompts-container" ref={examplesDropdownRef}>
+            <div className={styles['example-prompts-container']} ref={examplesDropdownRef}>
               <button
                 type="button"
-                className={`example-prompts-trigger ${showExamples ? 'open' : ''}`}
+                className={`${styles['example-prompts-trigger']} ${showExamples ? styles['open'] : ''}`}
                 onClick={() => setShowExamples(!showExamples)}
                 aria-label="Toggle example prompts"
               >
@@ -938,20 +931,20 @@ function ChatPanel({
               </button>
 
               {showExamples && (
-                <div className="example-prompts-dropdown">
-                  <div className="example-prompts">
-                    <div className="example-header">
-                      <span className="example-icon">💡</span>
+                <div className={styles['example-prompts-dropdown']}>
+                  <div className={styles['example-prompts']}>
+                    <div className={styles['example-header']}>
+                      <span className={styles['example-icon']}>💡</span>
                       <h4>Try asking Canny...</h4>
                     </div>
                     {EXAMPLE_PROMPTS.map((category, catIndex) => (
-                      <div key={catIndex} className="example-category">
-                        <div className="category-title">{category.category}</div>
-                        <div className="category-prompts">
+                      <div key={category.category} className={styles['example-category']}>
+                        <div className={styles['category-title']}>{category.category}</div>
+                        <div className={styles['category-prompts']}>
                           {category.prompts.map((prompt, promptIndex) => (
                             <button
-                              key={promptIndex}
-                              className="example-prompt-btn"
+                              key={prompt}
+                              className={styles['example-prompt-btn']}
                               onClick={() => handleExampleClick(prompt)}
                               disabled={isLoading || isCapturingCanvas}
                             >
@@ -966,10 +959,10 @@ function ChatPanel({
               )}
             </div>
 
-            <form className="chat-input-form" onSubmit={handleCannySubmit}>
+            <form className={styles['chat-input-form']} onSubmit={handleCannySubmit}>
               <input
                 type="text"
-                className="chat-input"
+                className={styles['chat-input']}
                 placeholder="Ask Canny... (I can see the canvas! 👁️)"
                 value={input}
                 onChange={handleInputChange}
@@ -981,7 +974,7 @@ function ChatPanel({
               {(isLoading || isCapturingCanvas) && (
                 <button
                   type="button"
-                  className="chat-stop-btn"
+                  className={styles['chat-stop-btn']}
                   onClick={handleStop}
                   aria-label="Stop generation"
                   title="Stop current request"
@@ -996,7 +989,7 @@ function ChatPanel({
               {!(isLoading || isCapturingCanvas) && (
                 <button
                   type="submit"
-                  className="chat-send-btn"
+                  className={styles['chat-send-btn']}
                   disabled={!input.trim()}
                   aria-label="Send message"
                 >

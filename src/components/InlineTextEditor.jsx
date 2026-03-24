@@ -6,7 +6,7 @@ import {
   DEFAULT_TEXT_BACKGROUND_COLOR,
 } from '../utils/constants';
 import ColorPicker from './ColorPicker';
-import './InlineTextEditor.css';
+import styles from './InlineTextEditor.module.css';
 
 /**
  * InlineTextEditor - Renders an inline textarea overlaid on the canvas for text editing
@@ -118,17 +118,20 @@ function InlineTextEditor({ shape, text, onTextChange, onFinish, viewport, conta
   };
 
   return (
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <div
-      className="inline-text-editor-overlay"
+      className={styles['inline-text-editor-overlay']}
       onClick={(e) => {
-        // Click outside to finish
         if (e.target === e.currentTarget) {
           handleSave();
         }
       }}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') handleSave();
+      }}
     >
       <div
-        className="inline-text-editor-container"
+        className={styles['inline-text-editor-container']}
         style={{
           left: `${position.left}px`,
           top: `${position.top}px`,
@@ -137,12 +140,15 @@ function InlineTextEditor({ shape, text, onTextChange, onFinish, viewport, conta
         }}
       >
         {/* Formatting Toolbar */}
-        <div className="text-editor-toolbar">
+        <div className={styles['text-editor-toolbar']}>
           {/* Font Size */}
-          <div className="toolbar-group">
-            <label className="toolbar-label">Size:</label>
+          <div className={styles['toolbar-group']}>
+            <label className={styles['toolbar-label']} htmlFor="text-editor-font-size">
+              Size:
+            </label>
             <select
-              className="toolbar-select"
+              id="text-editor-font-size"
+              className={styles['toolbar-select']}
               value={fontSize}
               onChange={(e) => setFontSize(Number(e.target.value))}
               onClick={(e) => e.stopPropagation()}
@@ -157,7 +163,7 @@ function InlineTextEditor({ shape, text, onTextChange, onFinish, viewport, conta
 
           {/* Bold */}
           <button
-            className={`toolbar-button ${isBold ? 'active' : ''}`}
+            className={`${styles['toolbar-button']} ${isBold ? styles['active'] : ''}`}
             onClick={(e) => {
               e.stopPropagation();
               setIsBold(!isBold);
@@ -169,7 +175,7 @@ function InlineTextEditor({ shape, text, onTextChange, onFinish, viewport, conta
 
           {/* Italic */}
           <button
-            className={`toolbar-button ${isItalic ? 'active' : ''}`}
+            className={`${styles['toolbar-button']} ${isItalic ? styles['active'] : ''}`}
             onClick={(e) => {
               e.stopPropagation();
               setIsItalic(!isItalic);
@@ -194,7 +200,7 @@ function InlineTextEditor({ shape, text, onTextChange, onFinish, viewport, conta
         {/* Text Area */}
         <textarea
           ref={textareaRef}
-          className="inline-text-editor-textarea"
+          className={styles['inline-text-editor-textarea']}
           value={text}
           onChange={(e) => onTextChange(e.target.value)}
           placeholder="Type text here..."
@@ -208,7 +214,7 @@ function InlineTextEditor({ shape, text, onTextChange, onFinish, viewport, conta
         />
 
         {/* Hints */}
-        <div className="inline-text-editor-hint">
+        <div className={styles['inline-text-editor-hint']}>
           <span>Cmd/Ctrl + Enter to save • Esc to cancel • Cmd/Ctrl + B/I for bold/italic</span>
         </div>
       </div>

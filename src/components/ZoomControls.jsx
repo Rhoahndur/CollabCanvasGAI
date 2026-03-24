@@ -1,5 +1,5 @@
 import { memo, useState, useEffect, useRef } from 'react';
-import './ZoomControls.css';
+import styles from './ZoomControls.module.css';
 
 /**
  * ZoomControls component - Provides zoom in/out buttons and zoom level display
@@ -107,10 +107,10 @@ const ZoomControls = memo(function ZoomControls({
   const canZoomOut = zoom > minZoom;
 
   return (
-    <div className="zoom-controls">
-      <div className="zoom-controls-main">
+    <div className={styles['zoom-controls']}>
+      <div className={styles['zoom-controls-main']}>
         <button
-          className="zoom-btn zoom-out"
+          className={styles['zoom-btn']}
           onClick={onZoomOut}
           disabled={!canZoomOut}
           title="Zoom Out (Ctrl + -)"
@@ -121,11 +121,11 @@ const ZoomControls = memo(function ZoomControls({
           </svg>
         </button>
 
-        <div className="zoom-input-container">
+        <div className={styles['zoom-input-container']}>
           <input
             ref={inputRef}
             type="text"
-            className="zoom-input"
+            className={styles['zoom-input']}
             value={inputValue}
             onChange={handleInputChange}
             onFocus={handleInputFocus}
@@ -134,11 +134,11 @@ const ZoomControls = memo(function ZoomControls({
             title="Click to edit zoom percentage"
             aria-label="Zoom percentage"
           />
-          <span className="zoom-percent-sign">%</span>
+          <span className={styles['zoom-percent-sign']}>%</span>
         </div>
 
         <button
-          className="zoom-btn zoom-in"
+          className={styles['zoom-btn']}
           onClick={onZoomIn}
           disabled={!canZoomIn}
           title="Zoom In (Ctrl + +)"
@@ -157,7 +157,7 @@ const ZoomControls = memo(function ZoomControls({
 
       {/* Fit Canvas button */}
       <button
-        className="zoom-btn zoom-fit"
+        className={`${styles['zoom-btn']} ${styles['zoom-fit']}`}
         onClick={handleFitCanvas}
         title="Fit entire canvas in view"
         aria-label="Fit canvas to view"

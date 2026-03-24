@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { TOOL_TYPES } from '../utils/constants';
-import './ShapePalette.css';
+import styles from './ShapePalette.module.css';
 
 /**
  * ShapePalette component - Tool selector for different shape types and selection tool
@@ -129,12 +129,12 @@ const ShapePalette = memo(function ShapePalette({
   ];
 
   return (
-    <div className="shape-palette">
-      <div className="shape-palette-tools">
+    <div className={styles['shape-palette']} role="toolbar" aria-label="Drawing tools">
+      <div className={styles['shape-palette-tools']} role="radiogroup" aria-label="Shape selection">
         {tools.map((tool) => (
           <button
             key={tool.type}
-            className={`tool-button ${selectedTool === tool.type ? 'active' : ''} ${tool.disabled ? 'disabled' : ''}`}
+            className={`${styles['tool-button']} ${selectedTool === tool.type ? styles['active'] : ''} ${tool.disabled ? styles['disabled'] : ''}`}
             onClick={() => {
               if (tool.disabled) return;
               if (tool.isUpload && onImageUpload) {
@@ -154,11 +154,11 @@ const ShapePalette = memo(function ShapePalette({
 
       {/* Alignment tools - only show when shapes are selected */}
       {hasSelection && onAlign && (
-        <div className="shape-palette-alignment">
-          <div className="alignment-section-title">Align</div>
-          <div className="alignment-buttons">
+        <div className={styles['shape-palette-alignment']}>
+          <div className={styles['alignment-section-title']}>Align</div>
+          <div className={styles['alignment-buttons']}>
             <button
-              className="align-button"
+              className={styles['align-button']}
               onClick={() => onAlign('left')}
               title="Align Left"
               aria-label="Align left"
@@ -178,7 +178,7 @@ const ShapePalette = memo(function ShapePalette({
             </button>
 
             <button
-              className="align-button"
+              className={styles['align-button']}
               onClick={() => onAlign('center-horizontal')}
               title="Align Center Horizontally"
               aria-label="Align center horizontally"
@@ -198,7 +198,7 @@ const ShapePalette = memo(function ShapePalette({
             </button>
 
             <button
-              className="align-button"
+              className={styles['align-button']}
               onClick={() => onAlign('right')}
               title="Align Right"
               aria-label="Align right"
@@ -218,7 +218,7 @@ const ShapePalette = memo(function ShapePalette({
             </button>
 
             <button
-              className="align-button"
+              className={styles['align-button']}
               onClick={() => onAlign('top')}
               title="Align Top"
               aria-label="Align top"
@@ -238,7 +238,7 @@ const ShapePalette = memo(function ShapePalette({
             </button>
 
             <button
-              className="align-button"
+              className={styles['align-button']}
               onClick={() => onAlign('center-vertical')}
               title="Align Center Vertically"
               aria-label="Align center vertically"
@@ -258,7 +258,7 @@ const ShapePalette = memo(function ShapePalette({
             </button>
 
             <button
-              className="align-button"
+              className={styles['align-button']}
               onClick={() => onAlign('bottom')}
               title="Align Bottom"
               aria-label="Align bottom"
@@ -282,10 +282,10 @@ const ShapePalette = memo(function ShapePalette({
 
       {/* Action buttons */}
       {onGenerate500 && onClearAll && (
-        <div className="shape-palette-actions">
+        <div className={styles['shape-palette-actions']}>
           {onDuplicate && (
             <button
-              className="action-button action-duplicate"
+              className={`${styles['action-button']} ${styles['action-duplicate']}`}
               onClick={onDuplicate}
               disabled={!hasSelection}
               title="Duplicate (Cmd/Ctrl+D)"
@@ -306,7 +306,7 @@ const ShapePalette = memo(function ShapePalette({
           )}
 
           <button
-            className="action-button action-generate"
+            className={`${styles['action-button']} ${styles['action-generate']}`}
             onClick={onGenerate500}
             title="Generate 10 random shapes"
             aria-label="Generate 10 random shapes"
@@ -324,7 +324,7 @@ const ShapePalette = memo(function ShapePalette({
           </button>
 
           <button
-            className="action-button action-clear"
+            className={`${styles['action-button']} ${styles['action-clear']}`}
             onClick={onClearAll}
             title="Clear all shapes"
             aria-label="Clear all shapes"
@@ -346,7 +346,7 @@ const ShapePalette = memo(function ShapePalette({
 
       {selectedTool === TOOL_TYPES.CUSTOM_POLYGON && (
         <div
-          className="shape-palette-hint"
+          className={styles['shape-palette-hint']}
           title="Click to add vertices, press Enter to finish, Escape to cancel"
         >
           ⏎

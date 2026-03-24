@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
 import {
@@ -10,6 +11,7 @@ import {
   toggleCanvasStarred,
 } from '../services/canvasService';
 import { autoMigrate } from '../services/canvasMigration';
+import { reportError } from '../utils/errorHandler';
 import CanvasCard from './CanvasCard';
 import CreateCanvasModal from './CreateCanvasModal';
 import UserSettingsModal from './UserSettingsModal';
@@ -21,8 +23,10 @@ const CANVAS_LIMIT = 2;
 /**
  * CanvasDashboard - Main dashboard for managing multiple canvases
  */
-function CanvasDashboard({ onOpenCanvas }) {
+function CanvasDashboard() {
+  const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const onOpenCanvas = useCallback((canvasId) => navigate(`/canvas/${canvasId}`), [navigate]);
   const { theme, setTheme } = useTheme();
   const [canvases, setCanvases] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -57,7 +61,7 @@ function CanvasDashboard({ onOpenCanvas }) {
       const userCanvases = await getUserCanvases(user.uid);
       setCanvases(userCanvases);
     } catch (err) {
-      console.error('Error loading canvases:', err);
+      reportError(err, { component: 'CanvasDashboard', action: 'loadCanvases' });
       setError(err.message || 'Failed to load canvases');
     } finally {
       setLoading(false);
@@ -73,7 +77,6 @@ function CanvasDashboard({ onOpenCanvas }) {
 
     try {
       const canvasId = await createCanvas(user.uid, name, template);
-      console.log('✅ Canvas created:', canvasId);
 
       // Reload canvases
       await loadCanvases();
@@ -81,7 +84,7 @@ function CanvasDashboard({ onOpenCanvas }) {
       // Open the new canvas
       onOpenCanvas(canvasId, name);
     } catch (error) {
-      console.error('Error creating canvas:', error);
+      reportError(error, { component: 'CanvasDashboard', action: 'handleCreateCanvas' });
       throw error;
     }
   };
@@ -89,12 +92,11 @@ function CanvasDashboard({ onOpenCanvas }) {
   const handleDeleteCanvas = async (canvasId) => {
     try {
       await deleteCanvas(canvasId, user.uid);
-      console.log('✅ Canvas deleted:', canvasId);
 
       // Reload canvases
       await loadCanvases();
     } catch (error) {
-      console.error('Error deleting canvas:', error);
+      reportError(error, { component: 'CanvasDashboard', action: 'handleDeleteCanvas' });
       throw error;
     }
   };
@@ -102,7 +104,6 @@ function CanvasDashboard({ onOpenCanvas }) {
   const handleRenameCanvas = async (canvasId, newName) => {
     try {
       await updateCanvasMetadata(canvasId, { name: newName });
-      console.log('✅ Canvas renamed:', canvasId, newName);
 
       // Update local state
       setCanvases((prevCanvases) =>
@@ -111,7 +112,7 @@ function CanvasDashboard({ onOpenCanvas }) {
         )
       );
     } catch (error) {
-      console.error('Error renaming canvas:', error);
+      reportError(error, { component: 'CanvasDashboard', action: 'handleRenameCanvas' });
       throw error;
     }
   };
@@ -120,7 +121,6 @@ function CanvasDashboard({ onOpenCanvas }) {
     try {
       const newName = `${canvasName} (Copy)`;
       const newCanvasId = await duplicateCanvas(canvasId, user.uid, newName);
-      console.log('✅ Canvas duplicated:', canvasId, '→', newCanvasId);
 
       // Reload canvases
       await loadCanvases();
@@ -128,7 +128,7 @@ function CanvasDashboard({ onOpenCanvas }) {
       // Optionally open the new canvas
       // onOpenCanvas(newCanvasId, newName);
     } catch (error) {
-      console.error('Error duplicating canvas:', error);
+      reportError(error, { component: 'CanvasDashboard', action: 'handleDuplicateCanvas' });
       throw error;
     }
   };
@@ -136,7 +136,6 @@ function CanvasDashboard({ onOpenCanvas }) {
   const handleToggleStar = async (canvasId) => {
     try {
       const newStarred = await toggleCanvasStarred(canvasId, user.uid);
-      console.log('⭐ Canvas star toggled:', canvasId, newStarred);
 
       // Update local state
       setCanvases((prevCanvases) =>
@@ -145,7 +144,7 @@ function CanvasDashboard({ onOpenCanvas }) {
         )
       );
     } catch (error) {
-      console.error('Error toggling star:', error);
+      reportError(error, { component: 'CanvasDashboard', action: 'handleToggleStar' });
     }
   };
 
@@ -372,8 +371,17 @@ function CanvasDashboard({ onOpenCanvas }) {
 
       {/* Canvas Limit Modal */}
       {showLimitModal && (
-        <div className="modal-overlay" onClick={() => setShowLimitModal(false)}>
-          <div className="modal-content limit-modal" onClick={(e) => e.stopPropagation()}>
+        // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+        <div
+          className="modal-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowLimitModal(false);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setShowLimitModal(false);
+          }}
+        >
+          <div className="modal-content limit-modal">
             <div className="modal-header">
               <h2>Canvas Limit Reached</h2>
               <button className="modal-close" onClick={() => setShowLimitModal(false)}>

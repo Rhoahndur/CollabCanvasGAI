@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import './LayersPanel.css';
+import styles from './LayersPanel.module.css';
 
 /**
  * LayersPanel - Illustrator-style layers panel for shape management
@@ -18,6 +18,7 @@ function LayersPanel({
   const [editingShapeId, setEditingShapeId] = useState(null);
   const [editingName, setEditingName] = useState('');
   const editInputRef = useRef(null);
+  const panelRef = useRef(null);
 
   // Focus input when editing starts
   useEffect(() => {
@@ -32,10 +33,14 @@ function LayersPanel({
     if (!isOpen) return;
 
     const handleClickOutside = (e) => {
-      const panel = document.querySelector('.layers-panel');
       const toggleBtn = document.querySelector('.layers-toggle-btn');
 
-      if (panel && !panel.contains(e.target) && toggleBtn && !toggleBtn.contains(e.target)) {
+      if (
+        panelRef.current &&
+        !panelRef.current.contains(e.target) &&
+        toggleBtn &&
+        !toggleBtn.contains(e.target)
+      ) {
         onTogglePanel();
       }
     };
@@ -57,7 +62,10 @@ function LayersPanel({
     e.stopPropagation();
 
     // Don't select if clicking on visibility toggle or edit input
-    if (e.target.closest('.layer-visibility-toggle') || e.target.closest('.layer-name-input')) {
+    if (
+      e.target.closest('[data-layer-action="visibility"]') ||
+      e.target.closest('[data-layer-action="name-input"]')
+    ) {
       return;
     }
 
@@ -180,20 +188,24 @@ function LayersPanel({
   if (!isOpen) return null;
 
   return (
-    <div className="layers-panel">
+    <div ref={panelRef} className={styles['layers-panel']}>
       {/* Panel Header */}
-      <div className="layers-header">
+      <div className={styles['layers-header']}>
         <h3>Layers</h3>
-        <button className="layers-close-btn" onClick={onTogglePanel} title="Close layers panel">
+        <button
+          className={styles['layers-close-btn']}
+          onClick={onTogglePanel}
+          title="Close layers panel"
+        >
           ✕
         </button>
       </div>
 
       {/* Layers List */}
-      <div className="layers-list-wrapper">
-        <div className="layers-list">
+      <div className={styles['layers-list-wrapper']}>
+        <div className={styles['layers-list']}>
           {sortedShapes.length === 0 ? (
-            <div className="layers-empty">
+            <div className={styles['layers-empty']}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <rect x="3" y="3" width="18" height="18" rx="2" />
                 <path d="M3 9h18M9 21V9" />
@@ -210,12 +222,21 @@ function LayersPanel({
               return (
                 <div
                   key={shape.id}
-                  className={`layer-item ${isShapeSelected ? 'selected' : ''} ${!isVisible ? 'hidden' : ''}`}
+                  role="button"
+                  tabIndex={0}
+                  className={`${styles['layer-item']} ${isShapeSelected ? styles['selected'] : ''} ${!isVisible ? styles['hidden'] : ''}`}
                   onClick={(e) => handleLayerClick(shape.id, e)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleLayerClick(shape.id, e);
+                    }
+                  }}
                 >
                   {/* Visibility Toggle */}
                   <button
-                    className="layer-visibility-toggle"
+                    className={styles['layer-visibility-toggle']}
+                    data-layer-action="visibility"
                     onClick={(e) => handleVisibilityToggle(shape.id, e)}
                     title={isVisible ? 'Hide shape' : 'Show shape'}
                   >
@@ -223,7 +244,7 @@ function LayersPanel({
                   </button>
 
                   {/* Shape Icon */}
-                  <div className="layer-icon" style={{ color: shape.color || '#646cff' }}>
+                  <div className={styles['layer-icon']} style={{ color: shape.color || '#646cff' }}>
                     {getShapeIcon(shape.type)}
                   </div>
 
@@ -232,7 +253,8 @@ function LayersPanel({
                     <input
                       ref={editInputRef}
                       type="text"
-                      className="layer-name-input"
+                      className={styles['layer-name-input']}
+                      data-layer-action="name-input"
                       value={editingName}
                       onChange={handleNameChange}
                       onBlur={() => handleNameBlur(shape.id)}
@@ -241,7 +263,7 @@ function LayersPanel({
                     />
                   ) : (
                     <div
-                      className="layer-name"
+                      className={styles['layer-name']}
                       onDoubleClick={(e) => handleNameDoubleClick(shape, e)}
                       title={shape.name || getDefaultShapeName(shape)}
                     >
@@ -252,7 +274,7 @@ function LayersPanel({
                   {/* Lock Indicator */}
                   {isLocked && (
                     <div
-                      className="layer-lock-indicator"
+                      className={styles['layer-lock-indicator']}
                       title={`Locked by ${shape.lockedByUserName || 'another user'}`}
                     >
                       🔒

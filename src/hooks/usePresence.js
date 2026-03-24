@@ -12,6 +12,7 @@ import {
   PRESENCE_TIMEOUT,
 } from '../utils/constants';
 import { getUserColor } from '../utils/colorUtils';
+import { reportError } from '../utils/errorHandler';
 
 /**
  * Custom hook for managing user presence
@@ -62,11 +63,11 @@ export function usePresence(sessionId, userId, userName, canvasId = DEFAULT_CANV
 
         // Set user as online after cleanup completes
         const userColor = getUserColor(userId);
-        setUserPresence(canvasId, sessionId, userId, userName, userColor, true).catch(
-          console.error
+        setUserPresence(canvasId, sessionId, userId, userName, userColor, true).catch((err) =>
+          reportError(err, { component: 'usePresence' })
         );
       })
-      .catch(console.error);
+      .catch((err) => reportError(err, { component: 'usePresence' }));
     // Subscribe to presence changes from Firestore
     const unsubscribe = subscribeToPresence(canvasId, (presenceData) => {
       setAllPresenceData(presenceData);
@@ -88,19 +89,23 @@ export function usePresence(sessionId, userId, userName, canvasId = DEFAULT_CANV
 
     // Start heartbeat to keep presence alive
     heartbeatIntervalRef.current = setInterval(() => {
-      updatePresenceHeartbeat(canvasId, sessionId).catch(console.error);
+      updatePresenceHeartbeat(canvasId, sessionId).catch((err) =>
+        reportError(err, { component: 'usePresence' })
+      );
     }, PRESENCE_HEARTBEAT_INTERVAL);
 
     // Handle visibility changes (tab switching)
     const handleVisibilityChange = () => {
       if (document.hidden) {
         // Tab hidden - mark as away (online but not active)
-        updatePresenceHeartbeat(canvasId, sessionId, false).catch(console.error);
+        updatePresenceHeartbeat(canvasId, sessionId, false).catch((err) =>
+          reportError(err, { component: 'usePresence' })
+        );
       } else {
         // Tab visible again - mark as active
         const userColor = getUserColor(userId);
-        setUserPresence(canvasId, sessionId, userId, userName, userColor, true, true).catch(
-          console.error
+        setUserPresence(canvasId, sessionId, userId, userName, userColor, true, true).catch((err) =>
+          reportError(err, { component: 'usePresence' })
         );
       }
     };
@@ -119,8 +124,6 @@ export function usePresence(sessionId, userId, userName, canvasId = DEFAULT_CANV
 
     // Cleanup
     return () => {
-      console.log('Cleaning up presence for session:', sessionId);
-
       // Clear intervals
       if (heartbeatIntervalRef.current) {
         clearInterval(heartbeatIntervalRef.current);
@@ -134,7 +137,9 @@ export function usePresence(sessionId, userId, userName, canvasId = DEFAULT_CANV
       window.removeEventListener('beforeunload', handleBeforeUnload);
 
       // Remove presence document immediately
-      removePresence(canvasId, sessionId).catch(console.error);
+      removePresence(canvasId, sessionId).catch((err) =>
+        reportError(err, { component: 'usePresence' })
+      );
 
       // Unsubscribe from Firestore
       unsubscribe();

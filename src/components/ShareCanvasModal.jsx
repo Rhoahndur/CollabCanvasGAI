@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { removeCanvasPermission, getCanvasMetadata } from '../services/canvasService';
 import { CANVAS_ROLE } from '../utils/constants';
-import './ShareCanvasModal.css';
+import { reportError } from '../utils/errorHandler';
+import styles from './ShareCanvasModal.module.css';
 
 /**
  * ShareCanvasModal component - Share canvas with other users
@@ -40,7 +41,7 @@ function ShareCanvasModal({ canvasId, canvasName, currentUserId, isOpen, onClose
         setCollaborators(collabList);
       }
     } catch (err) {
-      console.error('Failed to load collaborators:', err);
+      reportError(err, { component: 'ShareCanvasModal', action: 'loadCollaborators' });
     }
   };
 
@@ -58,7 +59,7 @@ function ShareCanvasModal({ canvasId, canvasName, currentUserId, isOpen, onClose
         }, 2000);
       })
       .catch((err) => {
-        console.error('Failed to copy link:', err);
+        reportError(err, { component: 'ShareCanvasModal', action: 'handleCopyLink' });
         setError('Failed to copy link to clipboard');
       });
   };
@@ -83,7 +84,7 @@ function ShareCanvasModal({ canvasId, canvasName, currentUserId, isOpen, onClose
 
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
-      console.error('Failed to remove collaborator:', err);
+      reportError(err, { component: 'ShareCanvasModal', action: 'handleRemoveCollaborator' });
       setError('Failed to remove collaborator. Please try again.');
     } finally {
       setLoading(false);
@@ -100,60 +101,69 @@ function ShareCanvasModal({ canvasId, canvasName, currentUserId, isOpen, onClose
   if (!isOpen) return null;
 
   return (
-    <div className="share-modal-overlay" onClick={handleClose}>
-      <div className="share-modal" onClick={(e) => e.stopPropagation()}>
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+    <div
+      className={styles['share-modal-overlay']}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) handleClose();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') handleClose();
+      }}
+    >
+      <div className={styles['share-modal']}>
         {/* Header */}
-        <div className="share-modal-header">
+        <div className={styles['share-modal-header']}>
           <h2>Share "{canvasName}"</h2>
-          <button className="share-modal-close" onClick={handleClose} aria-label="Close">
+          <button className={styles['share-modal-close']} onClick={handleClose} aria-label="Close">
             ✕
           </button>
         </div>
 
         {/* Content */}
-        <div className="share-modal-content">
+        <div className={styles['share-modal-content']}>
           {/* Error/Success Messages */}
-          {error && <div className="share-modal-error">{error}</div>}
-          {successMessage && <div className="share-modal-success">{successMessage}</div>}
+          {error && <div className={styles['share-modal-error']}>{error}</div>}
+          {successMessage && <div className={styles['share-modal-success']}>{successMessage}</div>}
 
           {/* Shareable Link Section */}
-          <div className="share-section">
+          <div className={styles['share-section']}>
             <h3>Shareable Link</h3>
-            <p className="share-section-description">
+            <p className={styles['share-section-description']}>
               Choose the access level for people who use this link
             </p>
 
             {/* Role selector for share link */}
-            <div className="share-link-role-selector">
+            <div className={styles['share-link-role-selector']}>
               <button
                 type="button"
-                className={`share-link-role-btn ${shareLinkRole === CANVAS_ROLE.VIEWER ? 'active' : ''}`}
+                className={`${styles['share-link-role-btn']} ${shareLinkRole === CANVAS_ROLE.VIEWER ? styles['active'] : ''}`}
                 onClick={() => setShareLinkRole(CANVAS_ROLE.VIEWER)}
               >
-                <span className="role-icon">👁️</span>
-                <span className="role-label">Viewer</span>
-                <span className="role-desc">Can view only</span>
+                <span className={styles['role-icon']}>👁️</span>
+                <span className={styles['role-label']}>Viewer</span>
+                <span className={styles['role-desc']}>Can view only</span>
               </button>
               <button
                 type="button"
-                className={`share-link-role-btn ${shareLinkRole === CANVAS_ROLE.EDITOR ? 'active' : ''}`}
+                className={`${styles['share-link-role-btn']} ${shareLinkRole === CANVAS_ROLE.EDITOR ? styles['active'] : ''}`}
                 onClick={() => setShareLinkRole(CANVAS_ROLE.EDITOR)}
               >
-                <span className="role-icon">✏️</span>
-                <span className="role-label">Editor</span>
-                <span className="role-desc">Can view & edit</span>
+                <span className={styles['role-icon']}>✏️</span>
+                <span className={styles['role-label']}>Editor</span>
+                <span className={styles['role-desc']}>Can view & edit</span>
               </button>
             </div>
 
-            <div className="share-link-container">
+            <div className={styles['share-link-container']}>
               <input
                 type="text"
                 value={`${shareLink}?role=${shareLinkRole}`}
                 readOnly
-                className="share-link-input"
+                className={styles['share-link-input']}
               />
               <button
-                className={`share-link-copy-btn ${copySuccess ? 'copied' : ''}`}
+                className={`${styles['share-link-copy-btn']} ${copySuccess ? styles['copied'] : ''}`}
                 onClick={handleCopyLink}
               >
                 {copySuccess ? '✓ Copied!' : '📋 Copy'}
@@ -162,26 +172,30 @@ function ShareCanvasModal({ canvasId, canvasName, currentUserId, isOpen, onClose
           </div>
 
           {/* Collaborators List */}
-          <div className="share-section">
+          <div className={styles['share-section']}>
             <h3>Collaborators ({collaborators.length})</h3>
             {collaborators.length === 0 ? (
-              <p className="share-empty-state">
+              <p className={styles['share-empty-state']}>
                 No collaborators yet. Share the link above to invite people!
               </p>
             ) : (
-              <div className="share-collaborators-list">
+              <div className={styles['share-collaborators-list']}>
                 {collaborators.map((collab) => (
-                  <div key={collab.userId} className="share-collaborator-item">
-                    <div className="share-collaborator-info">
-                      <span className="share-collaborator-name">
+                  <div key={collab.userId} className={styles['share-collaborator-item']}>
+                    <div className={styles['share-collaborator-info']}>
+                      <span className={styles['share-collaborator-name']}>
                         {collab.userName}
                         {collab.userId === currentUserId && ' (You)'}
                       </span>
-                      <span className={`share-role-badge role-${collab.role}`}>{collab.role}</span>
+                      <span
+                        className={`${styles['share-role-badge']} ${styles['role-' + collab.role] || ''}`}
+                      >
+                        {collab.role}
+                      </span>
                     </div>
                     {collab.userId !== currentUserId && collab.role !== CANVAS_ROLE.OWNER && (
                       <button
-                        className="share-remove-btn"
+                        className={styles['share-remove-btn']}
                         onClick={() => handleRemoveCollaborator(collab.userId)}
                         disabled={loading}
                         title="Remove collaborator"
@@ -197,8 +211,8 @@ function ShareCanvasModal({ canvasId, canvasName, currentUserId, isOpen, onClose
         </div>
 
         {/* Footer */}
-        <div className="share-modal-footer">
-          <button className="share-modal-done-btn" onClick={handleClose}>
+        <div className={styles['share-modal-footer']}>
+          <button className={styles['share-modal-done-btn']} onClick={handleClose}>
             Done
           </button>
         </div>

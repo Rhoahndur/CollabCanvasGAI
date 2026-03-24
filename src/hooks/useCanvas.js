@@ -6,6 +6,7 @@ import {
   monitorConnection,
 } from '../services/canvasService';
 import { DEFAULT_CANVAS_ID } from '../utils/constants';
+import { reportError } from '../utils/errorHandler';
 
 /**
  * Custom hook for managing canvas state with Firestore sync
@@ -32,7 +33,6 @@ export function useCanvas(userId, userName = '', canvasId = DEFAULT_CANVAS_ID) {
 
   // Subscribe to Firestore objects collection
   useEffect(() => {
-    console.log('Setting up Firestore subscription for canvas:', canvasId);
     setConnectionStatus('connecting');
     setError(null);
 
@@ -42,8 +42,6 @@ export function useCanvas(userId, userName = '', canvasId = DEFAULT_CANVAS_ID) {
       unsubscribe = subscribeToObjects(
         canvasId,
         (objects) => {
-          console.log('Received objects from Firestore:', objects.length);
-
           // Update last update time for connection monitoring
           lastUpdateTimeRef.current = Date.now();
 
@@ -55,7 +53,6 @@ export function useCanvas(userId, userName = '', canvasId = DEFAULT_CANVAS_ID) {
           setShapes((prevShapes) => {
             // If batch deleting, ALWAYS use Firestore data (don't merge)
             if (isBatchDeletingRef.current) {
-              console.log('Batch delete mode: using fresh Firestore data', objects.length);
               return objects;
             }
 
@@ -85,14 +82,14 @@ export function useCanvas(userId, userName = '', canvasId = DEFAULT_CANVAS_ID) {
         },
         (err) => {
           // Error callback
-          console.error('Firestore subscription error:', err);
+          reportError(err, { component: 'useCanvas', action: 'subscribeToObjects' });
           setError(err.message || 'Failed to sync with server');
           setConnectionStatus('error');
           setLoading(false);
         }
       );
     } catch (err) {
-      console.error('Failed to set up Firestore subscription:', err);
+      reportError(err, { component: 'useCanvas', action: 'setupSubscription' });
       setError(err.message || 'Failed to connect to server');
       setConnectionStatus('error');
       setLoading(false);
@@ -100,7 +97,6 @@ export function useCanvas(userId, userName = '', canvasId = DEFAULT_CANVAS_ID) {
 
     // Cleanup subscription on unmount
     return () => {
-      console.log('Cleaning up Firestore subscription');
       if (unsubscribe) {
         unsubscribe();
       }
@@ -109,8 +105,6 @@ export function useCanvas(userId, userName = '', canvasId = DEFAULT_CANVAS_ID) {
 
   // Monitor Realtime Database connection status
   useEffect(() => {
-    console.log('Setting up Realtime Database connection monitoring');
-
     const unsubscribe = monitorConnection((connected) => {
       if (connected) {
         setConnectionStatus('connected');
@@ -123,7 +117,6 @@ export function useCanvas(userId, userName = '', canvasId = DEFAULT_CANVAS_ID) {
     });
 
     return () => {
-      console.log('Cleaning up connection monitor');
       unsubscribe();
     };
   }, []);
@@ -142,7 +135,6 @@ export function useCanvas(userId, userName = '', canvasId = DEFAULT_CANVAS_ID) {
       }
       // If we were reconnecting but have received recent updates, mark as connected
       else if (timeSinceLastUpdate < 5000 && connectionStatus === 'reconnecting') {
-        console.log('Connection restored!');
         setConnectionStatus('connected');
       }
     }, 5000);
@@ -163,7 +155,6 @@ export function useCanvas(userId, userName = '', canvasId = DEFAULT_CANVAS_ID) {
 
       // Don't select if locked by another user
       if (shape && shape.lockedBy && shape.lockedBy !== userId) {
-        console.log('Cannot select - locked by another user');
         return;
       }
 
@@ -171,9 +162,8 @@ export function useCanvas(userId, userName = '', canvasId = DEFAULT_CANVAS_ID) {
         // Lock the object
         await lockObject(canvasId, shapeId, userId, userName);
         setSelectedShapeId(shapeId);
-        console.log('Shape selected and locked:', shapeId);
       } catch (error) {
-        console.error('Failed to lock shape:', error);
+        reportError(error, { component: 'useCanvas', action: 'selectShape' });
       }
     },
     [shapes, userId, userName, canvasId]
@@ -187,9 +177,8 @@ export function useCanvas(userId, userName = '', canvasId = DEFAULT_CANVAS_ID) {
       // Unlock the object
       await unlockObject(canvasId, selectedShapeId);
       setSelectedShapeId(null);
-      console.log('Shape deselected and unlocked');
     } catch (error) {
-      console.error('Failed to unlock shape:', error);
+      reportError(error, { component: 'useCanvas', action: 'deselectShape' });
     }
   }, [selectedShapeId, canvasId]);
 
@@ -197,7 +186,9 @@ export function useCanvas(userId, userName = '', canvasId = DEFAULT_CANVAS_ID) {
   useEffect(() => {
     return () => {
       if (selectedShapeId) {
-        unlockObject(canvasId, selectedShapeId).catch(console.error);
+        unlockObject(canvasId, selectedShapeId).catch((err) =>
+          reportError(err, { component: 'useCanvas', action: 'cleanup.unlock' })
+        );
       }
     };
   }, [selectedShapeId, canvasId]);
@@ -222,7 +213,6 @@ export function useCanvas(userId, userName = '', canvasId = DEFAULT_CANVAS_ID) {
 
   // Function to set batch deleting mode (prevents merge logic during mass deletions)
   const setBatchDeleting = useCallback((isDeleting) => {
-    console.log('Batch delete mode:', isDeleting);
     isBatchDeletingRef.current = isDeleting;
   }, []);
 
