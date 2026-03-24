@@ -1,476 +1,327 @@
-# CollabCanvas 🎨
+# CollabCanvasGAI
 
-> A real-time collaborative canvas application built with React, Firebase, and SVG
+A real-time collaborative canvas application with AI-powered drawing assistance, built with React, Firebase, and OpenAI GPT-4o.
 
-[![Live Demo](https://img.shields.io/badge/demo-live-success)](https://your-project-id.web.app)
-[![Firebase](https://img.shields.io/badge/Firebase-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com/)
-[![React](https://img.shields.io/badge/React-61DAFB?logo=react&logoColor=black)](https://reactjs.org/)
-[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-
-CollabCanvas is a multiplayer drawing application where multiple users can create, move, and interact with rectangles in real-time. See other users' cursors, collaborate seamlessly, and experience smooth 60 FPS performance even with hundreds of objects.
-
-![CollabCanvas Demo](./docs/demo.gif)
+Multiple users can simultaneously draw shapes, see live cursors, chat, and use an AI assistant to generate and manipulate canvas objects — all in real time.
 
 ---
 
-## ✨ Features
+## Features
 
-### Core Functionality
-- 🎨 **Real-time Collaboration** - See what everyone is doing instantly
-- 🖱️ **Live Cursors** - Track other users' mouse positions with name labels
-- 📦 **Object Creation** - Click and drag to create colored rectangles
-- ↔️ **Object Movement** - Select and drag rectangles with automatic locking
-- 🔒 **Conflict Prevention** - Object locking prevents simultaneous editing
-- 👥 **Presence System** - See who's online in the sidebar
-- 🎯 **Click-to-Select** - Clear selection workflow with visual feedback
+### Drawing & Shapes
+- **6 shape types** — Rectangles, circles, regular polygons, custom polygons (vertex-by-vertex), text boxes, and images
+- **Click-and-drag creation** — Draw shapes directly on a 5000x5000 SVG canvas
+- **Transform tools** — Move, resize, rotate any shape
+- **Multi-selection** — Shift+click or drag-select multiple shapes, then move/align/delete as a group
+- **Copy/paste** — Ctrl+C/V for shapes, Ctrl+V for images from clipboard
+- **Undo/redo** — Ctrl+Z / Ctrl+Shift+Z
+- **Layers panel** — Reorder, rename, toggle visibility, z-order (bring to front / send to back)
+- **Context menu** — Right-click for z-order and alignment operations
+- **Color picker** — Per-shape color selection
 
-### Technical Features
-- ⚡ **60 FPS Performance** - Viewport culling renders only visible objects
-- 📱 **Responsive Design** - Works on desktop browsers
-- 🌐 **Offline Support** - Firebase persistence for reliable data sync
-- 🔄 **Auto-Reconnection** - Handles network interruptions gracefully
-- 📊 **Performance Monitoring** - FPS counter in development mode
-- 🎨 **SVG-Based Canvas** - Crisp rendering at any zoom level
+### Real-Time Collaboration
+- **Live shape sync** — All changes broadcast instantly via Firebase Realtime Database
+- **Live cursors** — See other users' mouse positions with name labels
+- **Presence sidebar** — Online/away status for all connected users
+- **Object locking** — Shapes lock when selected, preventing simultaneous editing conflicts
+- **Stale lock cleanup** — Auto-releases locks from disconnected users (30s timeout)
+- **Canvas chat** — Real-time text chat between collaborators
 
-### User Experience
-- 🔐 **GitHub OAuth** - Quick and secure authentication
-- 🎨 **Pseudorandom Colors** - Automatic color assignment for objects
-- 🖼️ **Pan & Zoom** - Navigate large canvases smoothly
-- 📏 **Canvas Boundaries** - Clear visual limits with enforced constraints
-- ⌨️ **Keyboard Shortcuts** - Hold Shift/Cmd to pan
-- 💨 **Smooth Interactions** - Optimistic updates for instant feedback
+### AI Assistant (Canny)
+- **Powered by GPT-4o** — Streaming responses via Vercel serverless functions
+- **Vision** — Captures canvas as JPEG screenshot for visual understanding ("look at the canvas", "what do you see")
+- **9 canvas tools** — createShape, createShapesBatch, alignShapes, distributeShapes, arrangeInGrid, updateShapeProperties, deleteShapes, getCanvasInfo, selectShapes
+- **Safety limits** — Max 50 shapes per batch, 1000 total shapes, all positions clamped to canvas bounds
+
+### Multi-Canvas Dashboard
+- **Create canvases** from templates (blank, brainstorm, wireframe)
+- **Share via link** with role-based access (owner/editor/viewer)
+- **Canvas settings** — Background color, grid toggle
+- **Star, rename, duplicate, delete** canvases
+- **Email invitations** via SendGrid (Firebase Cloud Functions)
+
+### Authentication & Security
+- **GitHub and Google OAuth** via Firebase Auth
+- **Role-based permissions** — Owner, editor, viewer per canvas
+- **Environment validation** — Zod schemas validate all Firebase config at startup
+- **API input validation** — Request body validated with Zod, rate limited (20 req/min per IP)
+- **Security headers** — Helmet middleware on dev server, restricted CORS origins
+- **Firebase security rules** — Enforce auth, ownership, and lock constraints at the database level
+
+### Performance
+- **60 FPS target** with 500+ objects via viewport culling
+- **Throttled updates** — Cursors at 75ms, drag operations at 50ms
+- **Code splitting** — Separate vendor chunks for React and Firebase
+- **Terser minification** — console.log stripped in production
+- **IndexedDB persistence** — Offline support via Firebase
 
 ---
 
-## 🚀 Quick Start
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React 18, Vite 5, SVG canvas |
+| Language | JavaScript + TypeScript (incremental migration) |
+| Routing | React Router v7 |
+| Auth | Firebase Auth (GitHub + Google OAuth) |
+| Database | Firebase Realtime Database |
+| AI | OpenAI GPT-4o (vision + function calling) |
+| AI Client | Vercel AI SDK (`useChat` hook, SSE streaming) |
+| Hosting | Vercel (CDN + serverless) |
+| Email | Firebase Cloud Functions + SendGrid |
+| Testing | Vitest + Testing Library + happy-dom |
+| Linting | ESLint 9 + Prettier + Husky pre-commit hooks |
+| Validation | Zod |
+
+---
+
+## Quick Start
 
 ### Prerequisites
 
-- **Node.js** (v18+)
-- **npm** or **yarn**
-- **Firebase account** ([Sign up free](https://firebase.google.com/))
+- Node.js v18+
+- Firebase project ([console.firebase.google.com](https://console.firebase.google.com/))
+- OpenAI API key (for AI features)
 
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/collabcanvas.git
-   cd collabcanvas
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Set up Firebase**
-   
-   Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com/)
-   
-   Enable these services:
-   - **Authentication** → GitHub provider
-   - **Firestore Database** → Production mode
-   - **Hosting** (optional for deployment)
-
-4. **Configure environment variables**
-   
-   Copy the template and add your Firebase credentials:
-   ```bash
-   cp env.template .env.local
-   ```
-   
-   Edit `.env.local` with your Firebase config:
-   ```env
-   VITE_FIREBASE_API_KEY=your_api_key
-   VITE_FIREBASE_AUTH_DOMAIN=your_auth_domain
-   VITE_FIREBASE_PROJECT_ID=your_project_id
-   VITE_FIREBASE_STORAGE_BUCKET=your_storage_bucket
-   VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-   VITE_FIREBASE_APP_ID=your_app_id
-   ```
-
-5. **Deploy Firestore rules**
-   ```bash
-   firebase deploy --only firestore:rules
-   ```
-
-6. **Start development server**
-   ```bash
-   npm run dev
-   ```
-
-7. **Open in browser**
-   ```
-   http://localhost:5173
-   ```
-
----
-
-## 📚 Documentation
-
-Comprehensive documentation is available in the `docs/` directory:
-
-### Main Documentation
-
-- **[SETUP.md](./docs/SETUP.md)** - Complete setup and deployment guide
-  - Firebase configuration
-  - SendGrid email setup
-  - Canny AI setup
-  - Local development
-  - Vercel deployment
-  
-- **[FEATURES.md](./docs/FEATURES.md)** - Feature documentation
-  - Drawing tools
-  - Multi-canvas system
-  - Canny AI assistant (tools + vision)
-  - Collaboration features
-  - User interface
-  
-- **[TECHNICAL.md](./docs/TECHNICAL.md)** - Technical details
-  - Architecture overview
-  - Database structure
-  - Security & permissions
-  - Real-time systems
-  - Performance optimizations
-  - AI integration
-  
-- **[CHANGELOG.md](./docs/CHANGELOG.md)** - Implementation history
-  - Feature timeline
-  - Phase completions
-  - Bug fixes
-  - Performance improvements
-
-### Recent Updates
-
-- **[CANVAS_BOUNDARIES_FIX.md](./docs/CANVAS_BOUNDARIES_FIX.md)** - Canny AI canvas boundary constraints
-- **[CANNY_BATCH_TOOL_ADDED.md](./docs/CANNY_BATCH_TOOL_ADDED.md)** - Batch shape creation feature
-- **[COPY_PASTE_FEATURE.md](./docs/COPY_PASTE_FEATURE.md)** - Copy/paste functionality
-- **[TROUBLESHOOTING_CANVAS_SETTINGS.md](./docs/TROUBLESHOOTING_CANVAS_SETTINGS.md)** - Canvas settings debug guide
-
-### Initial Project Documents
-
-- **[PRD.md](./docs/init_docs/PRD.md)** - Product Requirements Document
-- **[architecture.md](./docs/init_docs/architecture.md)** - System Architecture
-- **[tasks.md](./docs/init_docs/tasks.md)** - Task Tracking
-
----
-
-## 📖 User Guide
-
-### Creating Rectangles
-1. Click and drag anywhere on the canvas
-2. Release to create a rectangle with a random color
-3. Minimum size: 20x20 pixels
-
-### Selecting & Moving
-1. **Click** a rectangle to select it (shows highlighted border)
-2. **Drag** the selected rectangle to move it
-3. Other users cannot move rectangles you've selected
-4. **Click empty space** to deselect
-
-### Navigation
-- **Pan**: Hold Shift/Cmd/Ctrl + drag, or middle mouse drag
-- **Zoom**: Scroll with mouse wheel
-- **Boundaries**: Canvas edges are visible and prevent infinite scrolling
-
-### Multiplayer
-- See other users in the **Presence Sidebar** on the right
-- **Cursor labels** appear on hover showing user names
-- **Locked objects** show who's currently moving them
-- Real-time sync keeps everyone in sync (< 100ms latency)
-
----
-
-## 🏗️ Architecture
-
-### Tech Stack
-
-**Frontend:**
-- React 18 (with hooks)
-- Vite (build tool)
-- SVG for rendering
-
-**Backend:**
-- Firebase Authentication (GitHub OAuth)
-- Firebase Firestore (real-time database)
-- Firebase Hosting (deployment)
-
-**Key Libraries:**
-- `firebase` v10+ - Backend services
-- No heavy dependencies - lean and fast!
-
-### Project Structure
-
-```
-collabcanvas/
-├── src/
-│   ├── components/          # React components
-│   │   ├── Canvas.jsx       # Main canvas component
-│   │   ├── Rectangle.jsx    # SVG rectangle component
-│   │   ├── Cursor.jsx       # User cursor component
-│   │   ├── PresenceSidebar.jsx
-│   │   ├── LoginPage.jsx
-│   │   └── ErrorBoundary.jsx
-│   ├── hooks/               # Custom React hooks
-│   │   ├── useAuth.js       # Authentication
-│   │   ├── useCanvas.js     # Canvas state
-│   │   ├── useCursors.js    # Cursor tracking
-│   │   └── usePresence.js   # User presence
-│   ├── services/            # Firebase services
-│   │   ├── firebase.js      # Firebase config
-│   │   └── canvasService.js # Firestore operations
-│   ├── utils/               # Utilities
-│   │   ├── canvasUtils.js   # Canvas calculations
-│   │   ├── colorUtils.js    # Color assignment
-│   │   ├── constants.js     # Configuration
-│   │   └── testData.js      # Performance testing
-│   ├── App.jsx              # Main app component
-│   ├── main.jsx             # Entry point
-│   └── App.css              # Global styles
-├── public/                  # Static assets
-├── firebase.json            # Firebase configuration
-├── firestore.rules          # Database security rules
-├── vite.config.js           # Vite configuration
-└── package.json             # Dependencies
-```
-
-### Data Models
-
-**Rectangle:**
-```javascript
-{
-  id: "userId_timestamp",    // Composite ID prevents conflicts
-  x: 100,                     // X position
-  y: 200,                     // Y position
-  width: 150,                 // Width
-  height: 100,                // Height
-  color: "#FF6B6B",           // Fill color
-  createdBy: "userId",        // Creator
-  lockedBy: "userId",         // Current user moving it (or null)
-  lockedByUserName: "Alice",  // Display name
-  timestamp: 1234567890       // Creation time
-}
-```
-
-**Cursor:**
-```javascript
-{
-  sessionId: "session_123",   // Unique per browser tab
-  userId: "userId",           // User identifier
-  x: 500,                     // X position
-  y: 300,                     // Y position
-  userName: "Alice",          // Display name
-  timestamp: 1234567890,      // Last update
-  arrivalTime: 1234567890     // For label priority
-}
-```
-
-**Presence:**
-```javascript
-{
-  sessionId: "session_123",   // Unique per tab
-  userId: "userId",           // User identifier
-  userName: "Alice",          // Display name
-  color: "#4ECDC4",           // Assigned color
-  isOnline: true,             // Online status
-  lastSeen: 1234567890        // Heartbeat timestamp
-}
-```
-
----
-
-## 🎨 Key Design Decisions
-
-1. **SVG vs Canvas API**: SVG chosen for crisp rendering and easier event handling
-2. **Composite Object IDs**: `userId_timestamp` format prevents ID conflicts
-3. **Viewport Culling**: Only render visible objects for performance
-4. **Object Locking**: Prevents race conditions when moving objects
-5. **Session-Based Presence**: Each browser tab = unique session for accurate counts
-6. **Pseudorandom Colors**: Fixed palette for consistent aesthetics
-7. **Optimistic Updates**: Local updates before Firestore sync for smooth UX
-
----
-
-## ⚡ Performance Optimizations
-
-- **React.memo** on Rectangle component prevents unnecessary re-renders
-- **Viewport culling** renders only visible objects (85% reduction with 500+ objects)
-- **useMemo** for expensive calculations (viewBox, grid lines, visible rectangles)
-- **Throttled cursor updates** (75ms interval = ~13 updates/second)
-- **Code splitting** separates React and Firebase bundles
-- **Terser minification** removes console.log in production
-- **IndexedDB persistence** for offline support and faster loads
-
-### Performance Targets
-- ✅ **60 FPS** with 500+ objects
-- ✅ **< 100ms** object sync latency
-- ✅ **< 75ms** cursor sync latency
-- ✅ **5+ users** without degradation
-
----
-
-## 🧪 Testing
-
-### Development Testing
-
-**Test with 500 objects:**
-```javascript
-// Open browser console
-window.testCanvas.generate500()
-
-// Or 1000 objects
-window.testCanvas.generate1000()
-
-// Or a grid pattern
-window.testCanvas.generateGrid(20, 25)  // 500 rectangles
-```
-
-### Multi-User Testing
-
-1. Open 5 browser windows/profiles
-2. Log in with GitHub in each
-3. Test simultaneous:
-   - Object creation
-   - Object movement
-   - Cursor tracking
-   - Lock conflicts
-
-See **[PERFORMANCE_TESTING.md](./PERFORMANCE_TESTING.md)** for detailed testing guide.
-
----
-
-## 🚀 Deployment
-
-### Build for Production
+### Setup
 
 ```bash
-npm run build
+# Clone and install
+git clone https://github.com/yourusername/CollabCanvasGAI.git
+cd CollabCanvasGAI
+npm install
+
+# Configure environment
+cp env.template .env.local
+# Edit .env.local with your Firebase credentials and OpenAI key
+
+# Deploy database rules
+firebase deploy --only database
+
+# Start development (React + API server)
+npm run dev:all
 ```
 
-Creates optimized production build in `dist/` folder.
-
-### Deploy to Firebase Hosting
-
-```bash
-# Deploy everything
-npm run deploy
-
-# Deploy hosting only
-npm run deploy:hosting
-
-# Deploy Firestore rules only
-npm run deploy:rules
-```
+Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ### Environment Variables
 
-Production environment uses same variables as development. Ensure `.env.local` is **not** committed to Git (already in `.gitignore`).
+**Frontend (Vite) — required in `.env.local`:**
+```env
+VITE_FIREBASE_API_KEY=...
+VITE_FIREBASE_AUTH_DOMAIN=...
+VITE_FIREBASE_PROJECT_ID=...
+VITE_FIREBASE_STORAGE_BUCKET=...
+VITE_FIREBASE_MESSAGING_SENDER_ID=...
+VITE_FIREBASE_APP_ID=...
+VITE_FIREBASE_DATABASE_URL=...
+```
 
-For Firebase Hosting, set environment variables in Firebase Console or use:
-```bash
-firebase functions:config:set env.key="value"
+**Server — required for AI features:**
+```env
+OPENAI_API_KEY=...
 ```
 
 ---
 
-## 🔐 Security
+## Scripts
 
-### Firestore Security Rules
-
-Rules enforce:
-- ✅ Authentication required for all operations
-- ✅ Users can only lock/unlock their own objects
-- ✅ Read access for all authenticated users
-- ✅ Write access only for object creators or when unlocked
-
-See **[firestore.rules](./firestore.rules)** for full rules.
-
-### Best Practices
-
-- **Never commit** `.env.local` (contains secrets)
-- **Use environment variables** for all Firebase config
-- **Enable GitHub OAuth** only from your domain
-- **Set up Firestore rules** before going live
-- **Monitor Firebase usage** in console to prevent abuse
-
----
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-**"Authentication failed"**
-- Check GitHub OAuth is enabled in Firebase Console
-- Verify callback URL is set correctly
-- Ensure domain is whitelisted
-
-**"Connection status shows reconnecting"**
-- Check internet connection
-- Verify Firestore rules allow read/write
-- Check Firebase quota hasn't been exceeded
-
-**"Objects not syncing"**
-- Verify Firestore rules are deployed
-- Check browser console for errors
-- Ensure authenticated user has valid token
-
-**"Safari loads slowly"**
-- First load may take longer due to IndexedDB setup
-- Subsequent loads should be faster
-- Clear browser cache if problems persist
-
-**"User count incorrect"**
-- Multiple stale sessions may exist
-- Wait 40 seconds for automatic cleanup
-- Refresh the page to clean up immediately
-
-### Debug Mode
-
-Development mode shows FPS counter with:
-- Current FPS
-- Render time
-- Visible/total objects
-- Zoom level
-- Canvas position
-- Firestore connection status
-
-Set `SHOW_FPS_COUNTER = true` in `constants.js` to enable.
+| Command | Description |
+|---|---|
+| `npm run dev` | Vite dev server (port 5173) |
+| `npm run server` | Express API server (port 3001) |
+| `npm run dev:all` | Both servers concurrently |
+| `npm run build` | Production build |
+| `npm run preview` | Preview production build locally |
+| `npm run test` | Run tests (Vitest) |
+| `npm run test:watch` | Tests in watch mode |
+| `npm run test:ui` | Vitest UI dashboard |
+| `npm run test:coverage` | Tests with coverage report |
+| `npm run lint` | ESLint check |
+| `npm run lint:fix` | ESLint with auto-fix |
+| `npm run typecheck` | TypeScript check (`tsc --noEmit`) |
+| `npm run format` | Prettier formatting |
+| `npm run format:check` | Prettier check (no write) |
+| `npm run deploy:vercel` | Deploy to Vercel |
+| `npm run deploy:hosting` | Deploy to Firebase Hosting |
+| `npm run deploy:database:rules` | Deploy Firebase Realtime DB rules |
 
 ---
 
-## 📝 License
+## Project Structure
 
-MIT License - see [LICENSE](LICENSE) file for details.
+```
+CollabCanvasGAI/
+├── api/
+│   └── chat.js                    # Vercel serverless function (GPT-4o proxy, Zod, rate limiting)
+├── functions/
+│   └── index.js                   # Firebase Cloud Functions (SendGrid invitation emails)
+├── src/
+│   ├── main.jsx                   # Entry point (ErrorBoundary + BrowserRouter)
+│   ├── App.jsx                    # Route definitions, session ID generation
+│   ├── App.css                    # Global layout styles
+│   ├── themes.css                 # Light/dark theme CSS custom properties
+│   ├── vite-env.d.ts              # Vite global type declarations
+│   ├── types/
+│   │   └── canvas.ts              # TypeScript interfaces (Shape, Viewport, User, ...)
+│   ├── components/
+│   │   ├── Canvas.jsx             # Main SVG canvas (1,345 lines, wires 13 hooks)
+│   │   ├── CanvasRoute.jsx        # Canvas page wrapper (access control, settings, presence)
+│   │   ├── CanvasDashboard.jsx    # Multi-canvas list/grid view
+│   │   ├── ChatPanel.jsx          # Canny AI + canvas chat (tabbed)
+│   │   ├── LoginPage.jsx          # GitHub/Google OAuth buttons
+│   │   ├── NotFoundPage.jsx       # 404 page
+│   │   ├── ErrorBoundary.jsx      # React error boundary with reportError
+│   │   ├── ShapePalette.jsx       # Drawing tool selection toolbar
+│   │   ├── ShapeRenderer.jsx      # Shape type dispatch loop
+│   │   ├── ShapePreview.jsx       # Drawing preview overlay
+│   │   ├── Rectangle.jsx          # Rectangle shape component
+│   │   ├── Circle.jsx             # Circle shape component
+│   │   ├── Polygon.jsx            # Regular polygon shape component
+│   │   ├── CustomPolygon.jsx      # Custom polygon (vertex-by-vertex)
+│   │   ├── CustomPolygonPreview.jsx # Vertex visualization during drawing
+│   │   ├── TextBox.jsx            # Text shape component
+│   │   ├── Image.jsx              # Image shape component
+│   │   ├── MultiSelectionBox.jsx  # Multi-select bounding box + transform handles
+│   │   ├── SelectionBox.jsx       # Drag-to-select rectangle
+│   │   ├── InlineTextEditor.jsx   # In-place text editing overlay
+│   │   ├── ZoomControls.jsx       # Zoom in/out/fit/reset (CSS Module)
+│   │   ├── ColorPicker.jsx        # Color selection
+│   │   ├── ContextMenu.jsx        # Right-click menu (keyboard accessible)
+│   │   ├── LayersPanel.jsx        # Layer ordering + visibility toggle
+│   │   ├── Cursor.jsx             # Remote user cursor display
+│   │   ├── PresenceSidebar.jsx    # Online users list
+│   │   ├── DebugPanel.jsx         # Dev-only FPS/connection overlay
+│   │   ├── CanvasSettingsModal.jsx # Canvas background/grid settings
+│   │   ├── UserSettingsModal.jsx  # User display name settings
+│   │   ├── ShareCanvasModal.jsx   # Share canvas with role assignment
+│   │   ├── CreateCanvasModal.jsx  # New canvas creation with templates
+│   │   └── CanvasCard.jsx         # Canvas card in dashboard grid
+│   ├── hooks/
+│   │   ├── useAuth.js             # Firebase auth state + token refresh
+│   │   ├── useCanvas.js           # Shape CRUD + real-time sync + locking
+│   │   ├── useCursors.js          # Remote cursor tracking + deduplication
+│   │   ├── usePresence.js         # Online user presence + heartbeat
+│   │   ├── useHistory.js          # Undo/redo stack
+│   │   ├── useTheme.js            # Light/dark theme toggle (localStorage)
+│   │   ├── useViewport.js         # Pan, zoom, viewBox, coordinate transforms
+│   │   ├── useSelection.js        # Single + multi-selection with drag rectangle
+│   │   ├── useShapeDrawing.js     # Shape creation preview + completion
+│   │   ├── useShapeTransform.js   # Drag, resize, rotate handlers
+│   │   ├── useCanvasKeyboard.js   # All keyboard shortcuts (Delete, Ctrl+Z, etc.)
+│   │   ├── useCanvasClipboard.js  # Copy/paste shapes + image paste from clipboard
+│   │   └── useCustomPolygon.js    # Custom polygon vertex-by-vertex drawing
+│   ├── services/
+│   │   ├── firebase.js            # Firebase init (Auth, Realtime DB) + OAuth providers
+│   │   ├── canvasService.js       # All Realtime DB operations (1,251 lines)
+│   │   ├── lockCleanupService.js  # Stale lock auto-release (30s timeout, 10s poll)
+│   │   ├── canvasMigration.js     # Single-to-multi canvas data migration
+│   │   └── imageService.js        # Image resize + base64 conversion
+│   ├── utils/
+│   │   ├── constants.ts           # Canvas size, colors, thresholds, role enums
+│   │   ├── canvasUtils.ts         # screenToCanvas, canvasToScreen, collision detection
+│   │   ├── colorUtils.ts          # Color assignment, contrast, grid colors
+│   │   ├── errorHandler.ts        # Centralized error reporting (dev console + Sentry)
+│   │   ├── envValidation.ts       # Zod schema for Firebase env var validation
+│   │   ├── canvasTools.js         # AI tool definitions + executeCanvasTool()
+│   │   ├── canvasCapture.js       # SVG-to-JPEG screenshot for AI vision
+│   │   └── testData.js            # Performance test shape generators (dev only)
+│   └── tests/
+│       ├── setup.js               # Vitest setup (Firebase + browser API mocks)
+│       ├── hooks/                  # Hook tests (useAuth, useHistory, useTheme)
+│       ├── components/             # Component tests (ErrorBoundary, ZoomControls)
+│       ├── services/               # Service tests (canvasService, lockCleanupService)
+│       └── utils/                  # Utility tests (canvasTools, constants)
+├── server.js                      # Local Express dev server (Helmet, CORS, /api/chat proxy)
+├── vite.config.js                 # Vite build config (code splitting, Terser)
+├── vitest.config.js               # Test config (forks pool, 6GB heap, coverage thresholds)
+├── tsconfig.json                  # TypeScript config (strict, allowJs, incremental)
+├── eslint.config.js               # ESLint 9 flat config (React + TS + API rules)
+├── .prettierrc.json               # Prettier formatting config
+├── database.rules.json            # Firebase Realtime DB security rules
+├── firebase.json                  # Firebase project config (hosting, database, functions)
+├── vercel.json                    # Vercel deployment config (rewrites, caching, functions)
+├── env.template                   # Environment variable template
+└── .github/workflows/ci.yml      # GitHub Actions (lint -> test -> build)
+```
 
 ---
 
-## 🤝 Contributing
+## Testing
 
-Contributions are welcome! Please:
+```bash
+npm run test             # Run all 130 tests
+npm run test:watch       # Watch mode
+npm run test:coverage    # With coverage report
+npm run test:ui          # Vitest UI dashboard
+```
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+**Test stack:** Vitest + Testing Library (React) + happy-dom
 
----
+Tests are behavioral — hooks tested with `renderHook` + `act`, components with `render` + `screen` + `fireEvent`, services with mocked Firebase, utilities with direct function calls.
 
-## 📧 Contact
+11 test suites covering hooks, components, services, and utilities.
 
-**Project Link**: [https://github.com/yourusername/collabcanvas](https://github.com/yourusername/collabcanvas)
-
-**Live Demo**: [https://your-project-id.web.app](https://your-project-id.web.app)
-
----
-
-## 🙏 Acknowledgments
-
-- [React](https://reactjs.org/) - UI framework
-- [Firebase](https://firebase.google.com/) - Backend platform
-- [Vite](https://vitejs.dev/) - Build tool
-- [SVG](https://developer.mozilla.org/en-US/docs/Web/SVG) - Graphics format
+Coverage thresholds: 15% statements/lines, 50% branches, 30% functions.
 
 ---
 
-**Built with ❤️ using React, Firebase, and SVG**
+## Deployment
+
+**Vercel (frontend + API):**
+```bash
+npm run deploy:vercel
+```
+- Frontend served from Vercel Edge CDN with 1-year cache for hashed assets
+- `/api/chat` runs as a serverless function (60s timeout, 1GB memory)
+- SPA routing via `vercel.json` rewrites
+- Auto-deploys on push to `main` and `dev` branches
+
+**Firebase (database + auth + functions):**
+```bash
+firebase deploy --only database   # Security rules
+firebase deploy --only functions  # Cloud functions (invitation emails)
+```
+
+---
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|---|---|
+| Ctrl+C | Copy selected shapes |
+| Ctrl+V | Paste shapes (or paste image from clipboard) |
+| Ctrl+D | Duplicate selected shapes |
+| Ctrl+Z | Undo |
+| Ctrl+Shift+Z | Redo |
+| Ctrl+] | Bring to front |
+| Ctrl+[ | Send to back |
+| Ctrl+=/- | Zoom in/out |
+| Ctrl+0 | Reset zoom |
+| Delete/Backspace | Delete selected shapes |
+| Enter | Finish custom polygon |
+| Escape | Cancel custom polygon / deselect |
+
+---
+
+## CI/CD
+
+GitHub Actions pipeline (`.github/workflows/ci.yml`):
+1. **Lint** — ESLint + Prettier check
+2. **Test** — Vitest with coverage (uploaded as artifact)
+3. **Build** — Vite production build (dummy env vars)
+
+Triggers on push to `main`/`dev` and pull requests.
+
+---
+
+## Architecture
+
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed system design, data flow diagrams, database schema, and AI integration details.
+
+---
+
+## License
+
+MIT
