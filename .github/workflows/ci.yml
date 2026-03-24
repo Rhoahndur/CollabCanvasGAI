@@ -16,7 +16,8 @@ jobs:
           cache: npm
       - run: npm ci --legacy-peer-deps
       - run: npx eslint src/ api/
-      - run: npx prettier --check "src/**/*.{js,jsx,css,json}" "api/**/*.js"
+      - run: npx prettier --check "src/**/*.{js,jsx,ts,tsx,css,json}" "api/**/*.js"
+      - run: npx tsc --noEmit
 
   test:
     runs-on: ubuntu-latest
