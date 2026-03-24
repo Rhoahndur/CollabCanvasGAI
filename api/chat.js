@@ -1,7 +1,54 @@
+const { z } = require('zod');
+
+// --- CORS & Rate Limiting Configuration ---
+const ALLOWED_ORIGINS = [
+  'https://collabcanvas.vercel.app',
+  'https://collabcanvasgai.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:4173',
+];
+
+// Simple in-memory rate limiting (20 req/min per IP)
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX = 20;
+
+function isRateLimited(ip) {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+
+  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
+    rateLimitMap.set(ip, { windowStart: now, count: 1 });
+    return false;
+  }
+
+  entry.count++;
+  return entry.count > RATE_LIMIT_MAX;
+}
+
+// --- Request Body Validation ---
+const messageSchema = z.object({
+  role: z.enum(['user', 'assistant', 'system']),
+  content: z.union([
+    z.string().max(50_000, 'Message content too long'),
+    z.array(z.object({}).passthrough()), // Allow vision content arrays
+  ]),
+});
+
+const chatRequestSchema = z.object({
+  messages: z
+    .array(messageSchema)
+    .min(1, 'At least one message is required')
+    .max(100, 'Too many messages'),
+});
+
 // Vercel serverless function handler (Node.js runtime)
 module.exports = async function handler(req, res) {
-  // Enable CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  // Enable CORS — restrict to known origins
+  const origin = req.headers.origin;
+  if (ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
@@ -15,12 +62,24 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  try {
-    // Log for debugging
-    console.log('🔍 Received chat request');
-    console.log('📦 Body:', JSON.stringify(req.body).substring(0, 100));
+  // Rate limiting
+  const clientIp =
+    req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+  if (isRateLimited(clientIp)) {
+    return res.status(429).json({ error: 'Too many requests. Try again later.' });
+  }
 
-    const { messages } = req.body;
+  try {
+    // Validate request body
+    const parseResult = chatRequestSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return res.status(400).json({
+        error: 'Invalid request body',
+        issues: parseResult.error.issues.map((i) => i.message),
+      });
+    }
+
+    const { messages } = parseResult.data;
 
     if (!process.env.OPENAI_API_KEY) {
       console.error('❌ OpenAI API key not configured');
@@ -367,11 +426,9 @@ Grid Examples:
 
     res.end();
   } catch (error) {
-    console.error('❌ Chat API error:', error);
-    console.error('❌ Error stack:', error.stack);
+    console.error('❌ Chat API error:', error.message);
     return res.status(500).json({
-      error: error.message || 'Internal server error',
-      details: error.stack,
+      error: 'Internal server error',
     });
   }
 };
