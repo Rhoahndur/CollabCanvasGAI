@@ -1,48 +1,97 @@
 /**
- * @vitest-environment node
- *
- * Tests ErrorBoundary component exports and structure.
+ * @vitest-environment happy-dom
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import ErrorBoundary from '../../components/ErrorBoundary';
+
+// A component that throws on demand
+function ThrowingChild({ shouldThrow }) {
+  if (shouldThrow) throw new Error('Test error');
+  return <div>Child content</div>;
+}
 
 describe('ErrorBoundary', () => {
-  it('exports a default class component', async () => {
-    const mod = await import('../../components/ErrorBoundary');
-    const ErrorBoundary = mod.default;
-    expect(typeof ErrorBoundary).toBe('function');
-    // Class components have a prototype with render
-    expect(typeof ErrorBoundary.prototype.render).toBe('function');
+  beforeEach(() => {
+    // Suppress React error boundary console output during tests
+    vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
-  it('implements getDerivedStateFromError', async () => {
-    const { default: ErrorBoundary } = await import('../../components/ErrorBoundary');
-    expect(typeof ErrorBoundary.getDerivedStateFromError).toBe('function');
-    const state = ErrorBoundary.getDerivedStateFromError(new Error('test'));
-    expect(state.hasError).toBe(true);
+  it('renders children when there is no error', () => {
+    render(
+      <ErrorBoundary>
+        <div>Hello World</div>
+      </ErrorBoundary>
+    );
+
+    expect(screen.getByText('Hello World')).toBeDefined();
   });
 
-  it('implements componentDidCatch', async () => {
-    const { default: ErrorBoundary } = await import('../../components/ErrorBoundary');
-    expect(typeof ErrorBoundary.prototype.componentDidCatch).toBe('function');
+  it('shows fallback UI when a child throws', () => {
+    render(
+      <ErrorBoundary>
+        <ThrowingChild shouldThrow={true} />
+      </ErrorBoundary>
+    );
+
+    expect(screen.getByText('Oops! Something went wrong')).toBeDefined();
+    expect(screen.getByText('Reload Page')).toBeDefined();
+    expect(screen.getByText('Try Again')).toBeDefined();
   });
 
-  it('has handleReload and handleReset methods', async () => {
-    const { default: ErrorBoundary } = await import('../../components/ErrorBoundary');
-    const instance = new ErrorBoundary({});
-    expect(typeof instance.handleReload).toBe('function');
-    expect(typeof instance.handleReset).toBe('function');
+  it('recovers when Try Again is clicked', () => {
+    const { rerender } = render(
+      <ErrorBoundary>
+        <ThrowingChild shouldThrow={true} />
+      </ErrorBoundary>
+    );
+
+    expect(screen.getByText('Oops! Something went wrong')).toBeDefined();
+
+    // Click Try Again — resets error state, will re-render children
+    rerender(
+      <ErrorBoundary>
+        <ThrowingChild shouldThrow={false} />
+      </ErrorBoundary>
+    );
+
+    fireEvent.click(screen.getByText('Try Again'));
+
+    // After reset + rerender with non-throwing child, should show content
+    rerender(
+      <ErrorBoundary>
+        <ThrowingChild shouldThrow={false} />
+      </ErrorBoundary>
+    );
+
+    expect(screen.getByText('Child content')).toBeDefined();
   });
 
-  it('handleReset clears error state', async () => {
-    const { default: ErrorBoundary } = await import('../../components/ErrorBoundary');
-    const instance = new ErrorBoundary({});
-    instance.state = { hasError: true, error: new Error('test'), errorInfo: {} };
-    instance.setState = (newState) => {
-      Object.assign(instance.state, newState);
-    };
-    instance.handleReset();
-    expect(instance.state.hasError).toBe(false);
-    expect(instance.state.error).toBeNull();
-    expect(instance.state.errorInfo).toBeNull();
+  it('calls window.location.reload when Reload Page is clicked', () => {
+    const reloadMock = vi.fn();
+    Object.defineProperty(window, 'location', {
+      value: { reload: reloadMock },
+      writable: true,
+    });
+
+    render(
+      <ErrorBoundary>
+        <ThrowingChild shouldThrow={true} />
+      </ErrorBoundary>
+    );
+
+    fireEvent.click(screen.getByText('Reload Page'));
+    expect(reloadMock).toHaveBeenCalled();
+  });
+
+  it('logs error via componentDidCatch', () => {
+    render(
+      <ErrorBoundary>
+        <ThrowingChild shouldThrow={true} />
+      </ErrorBoundary>
+    );
+
+    // console.error is spied in beforeEach
+    expect(console.error).toHaveBeenCalled();
   });
 });

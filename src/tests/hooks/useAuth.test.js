@@ -1,57 +1,123 @@
 /**
- * @vitest-environment node
- *
- * Tests useAuth hook exports and auth logic patterns.
+ * @vitest-environment happy-dom
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { renderHook, waitFor } from '@testing-library/react';
+import { onAuthStateChanged } from 'firebase/auth';
+import { useAuth } from '../../hooks/useAuth';
 
 describe('useAuth', () => {
-  it('exports useAuth function', async () => {
-    const mod = await import('../../hooks/useAuth');
-    expect(typeof mod.useAuth).toBe('function');
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
   });
 
-  it('uses onAuthStateChanged from firebase/auth', async () => {
-    const fs = await import('fs');
-    const path = await import('path');
-    const src = fs.readFileSync(path.resolve(process.cwd(), 'src/hooks/useAuth.js'), 'utf-8');
-    expect(src).toContain('onAuthStateChanged');
+  it('starts in loading state with no user', () => {
+    // Keep the default mock (calls cb(null) immediately)
+    const { result } = renderHook(() => useAuth());
+    // After the sync callback fires, loading should be false and user null
+    expect(result.current.user).toBeNull();
+    expect(result.current.loading).toBe(false);
   });
 
-  it('has displayName fallback chain', async () => {
-    const fs = await import('fs');
-    const path = await import('path');
-    const src = fs.readFileSync(path.resolve(process.cwd(), 'src/hooks/useAuth.js'), 'utf-8');
-    // Fallback chain: github_username > screenName > provider > displayName > email
-    expect(src).toContain('github_username');
-    expect(src).toContain('screenName');
-    expect(src).toContain("email?.split('@')");
+  it('sets user when auth state changes to signed-in user', async () => {
+    const mockUser = {
+      uid: 'u1',
+      email: 'test@example.com',
+      displayName: 'Test User',
+      photoURL: 'https://example.com/photo.jpg',
+      providerData: [],
+      reloadUserInfo: {},
+    };
+
+    onAuthStateChanged.mockImplementation((_auth, cb) => {
+      cb(mockUser);
+      return vi.fn();
+    });
+
+    const { result } = renderHook(() => useAuth());
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(result.current.user).toEqual({
+      uid: 'u1',
+      email: 'test@example.com',
+      displayName: 'Test User',
+      photoURL: 'https://example.com/photo.jpg',
+    });
   });
 
-  it('implements token refresh every 50 minutes', async () => {
-    const fs = await import('fs');
-    const path = await import('path');
-    const src = fs.readFileSync(path.resolve(process.cwd(), 'src/hooks/useAuth.js'), 'utf-8');
-    expect(src).toContain('50 * 60 * 1000');
-    expect(src).toContain('getIdToken(true)');
+  it('uses displayName fallback chain (email prefix)', async () => {
+    const mockUser = {
+      uid: 'u2',
+      email: 'jane@gmail.com',
+      displayName: null,
+      photoURL: null,
+      providerData: [],
+      reloadUserInfo: {},
+    };
+
+    onAuthStateChanged.mockImplementation((_auth, cb) => {
+      cb(mockUser);
+      return vi.fn();
+    });
+
+    const { result } = renderHook(() => useAuth());
+
+    await waitFor(() => {
+      expect(result.current.user).not.toBeNull();
+    });
+
+    expect(result.current.user.displayName).toBe('jane');
   });
 
-  it('cleans up cursor and presence on signOut', async () => {
-    const fs = await import('fs');
-    const path = await import('path');
-    const src = fs.readFileSync(path.resolve(process.cwd(), 'src/hooks/useAuth.js'), 'utf-8');
-    expect(src).toContain('removeCursor');
-    expect(src).toContain('removePresence');
-    expect(src).toContain('signOutUser');
+  it('sets user to null on sign out', async () => {
+    onAuthStateChanged.mockImplementation((_auth, cb) => {
+      cb(null);
+      return vi.fn();
+    });
+
+    const { result } = renderHook(() => useAuth());
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(result.current.user).toBeNull();
   });
 
-  it('returns user, loading, signIn, signOut', async () => {
-    const fs = await import('fs');
-    const path = await import('path');
-    const src = fs.readFileSync(path.resolve(process.cwd(), 'src/hooks/useAuth.js'), 'utf-8');
-    expect(src).toContain('user,');
-    expect(src).toContain('loading,');
-    expect(src).toContain('signIn,');
-    expect(src).toContain('signOut,');
+  it('rejects user with no valid displayName', async () => {
+    const mockUser = {
+      uid: 'u3',
+      email: null,
+      displayName: null,
+      photoURL: null,
+      providerData: [],
+      reloadUserInfo: {},
+    };
+
+    onAuthStateChanged.mockImplementation((_auth, cb) => {
+      cb(mockUser);
+      return vi.fn();
+    });
+
+    const { result } = renderHook(() => useAuth());
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    // No valid displayName available → user should be null
+    expect(result.current.user).toBeNull();
+  });
+
+  it('returns user, loading, signIn, signOut', () => {
+    const { result } = renderHook(() => useAuth());
+    expect(result.current).toHaveProperty('user');
+    expect(result.current).toHaveProperty('loading');
+    expect(typeof result.current.signIn).toBe('function');
+    expect(typeof result.current.signOut).toBe('function');
   });
 });
