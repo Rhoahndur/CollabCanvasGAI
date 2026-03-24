@@ -131,7 +131,18 @@ function CanvasCard({
   }, [showMenu, canvas.id]);
 
   return (
-    <div className={`canvas-card ${showMenu ? 'menu-open' : ''}`} onClick={handleOpen}>
+    <div
+      className={`canvas-card ${showMenu ? 'menu-open' : ''}`}
+      onClick={handleOpen}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleOpen(e);
+        }
+      }}
+      role="button"
+      tabIndex={0}
+    >
       {/* Canvas Thumbnail */}
       <div className="canvas-thumbnail">
         <div className="canvas-thumbnail-placeholder">
@@ -150,7 +161,13 @@ function CanvasCard({
       {/* Canvas Info */}
       <div className="canvas-info">
         {isRenaming ? (
-          <form onSubmit={handleRenameSubmit} onClick={(e) => e.stopPropagation()}>
+          // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
+          <form
+            onSubmit={handleRenameSubmit}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            {/* eslint-disable jsx-a11y/no-autofocus */}
             <input
               type="text"
               value={newName}
@@ -163,6 +180,7 @@ function CanvasCard({
               maxLength={50}
               className="canvas-name-input"
             />
+            {/* eslint-enable jsx-a11y/no-autofocus */}
           </form>
         ) : (
           <h3 className="canvas-name" title={canvas.name}>
@@ -202,12 +220,15 @@ function CanvasCard({
             <div
               id={`canvas-menu-${canvas.id}`}
               className="canvas-menu canvas-menu-portal"
+              role="menu"
+              tabIndex={-1}
               style={{
                 position: 'fixed',
                 top: `${menuPosition.top}px`,
                 left: `${menuPosition.left}px`,
               }}
               onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
             >
               <button onClick={handleRename} disabled={canvas.role !== 'owner'}>
                 ✏️ Rename

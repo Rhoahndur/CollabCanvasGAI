@@ -75,8 +75,17 @@ function CreateCanvasModal({ isOpen, onClose, onCreateCanvas, userCanvasCount = 
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={handleClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+    <div
+      className="modal-overlay"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) handleClose();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') handleClose();
+      }}
+    >
+      <div className="modal-content">
         <div className="modal-header">
           <div className="header-content">
             <h2>Create New Canvas</h2>
@@ -98,6 +107,7 @@ function CreateCanvasModal({ isOpen, onClose, onCreateCanvas, userCanvasCount = 
           {/* Canvas Name Input */}
           <div className="form-group">
             <label htmlFor="canvas-name">Canvas Name</label>
+            {/* eslint-disable jsx-a11y/no-autofocus */}
             <input
               id="canvas-name"
               type="text"
@@ -108,10 +118,12 @@ function CreateCanvasModal({ isOpen, onClose, onCreateCanvas, userCanvasCount = 
               autoFocus
               disabled={isCreating}
             />
+            {/* eslint-enable jsx-a11y/no-autofocus */}
           </div>
 
           {/* Template Selector */}
           <div className="form-group">
+            {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
             <label>Choose a Template</label>
             <div className="template-grid">
               {templates.map((template) => (

@@ -47,7 +47,14 @@ export default function UserSettingsModal({ isOpen, onClose, theme, onThemeChang
   ];
 
   return (
-    <div className="settings-modal-overlay" onClick={handleOverlayClick}>
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+    <div
+      className="settings-modal-overlay"
+      onClick={handleOverlayClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') onClose();
+      }}
+    >
       <div className="settings-modal">
         <div className="settings-modal-header">
           <h2>Settings</h2>

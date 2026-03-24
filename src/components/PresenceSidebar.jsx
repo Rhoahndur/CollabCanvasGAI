@@ -17,6 +17,14 @@ function PresenceSidebar({ onlineUsers, currentSessionId }) {
           className="presence-minimized-tab"
           onMouseEnter={() => setIsExpanded(true)}
           onClick={() => setIsExpanded(true)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setIsExpanded(true);
+            }
+          }}
+          role="button"
+          tabIndex={0}
         >
           <div className="minimized-icon">
             <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor">
