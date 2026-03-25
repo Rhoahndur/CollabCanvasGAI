@@ -307,7 +307,7 @@ Grid Examples:
     ];
 
     // Call OpenRouter API with streaming and tool support
-    const model = process.env.OPENROUTER_MODEL || 'openrouter/free';
+    const model = process.env.OPENROUTER_MODEL || 'nvidia/nemotron-nano-12b-v2-vl:free';
     const stream = await openai.chat.completions.create({
       model,
       stream: true,

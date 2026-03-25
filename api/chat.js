@@ -4,6 +4,7 @@ const { z } = require('zod');
 const ALLOWED_ORIGINS = [
   'https://collabcanvas.vercel.app',
   'https://collabcanvasgai.vercel.app',
+  'https://collab-canvas-gai.vercel.app',
   'http://localhost:5173',
   'http://localhost:4173',
 ];
@@ -354,7 +355,7 @@ Grid Examples:
     ];
 
     // Call OpenRouter API with streaming and tool support
-    const model = process.env.OPENROUTER_MODEL || 'openrouter/free';
+    const model = process.env.OPENROUTER_MODEL || 'nvidia/nemotron-nano-12b-v2-vl:free';
     const stream = await openai.chat.completions.create({
       model,
       messages: [systemMessage, ...messages],
@@ -431,9 +432,9 @@ Grid Examples:
 
     res.end();
   } catch (error) {
-    console.error('❌ Chat API error:', error.message);
-    return res.status(500).json({
-      error: 'Internal server error',
+    console.error('❌ Chat API error:', error.message, error.status, error.code);
+    return res.status(error.status || 500).json({
+      error: error.message || 'Internal server error',
     });
   }
 };
