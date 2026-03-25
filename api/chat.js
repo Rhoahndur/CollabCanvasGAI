@@ -43,6 +43,11 @@ const chatRequestSchema = z.object({
     .max(100, 'Too many messages'),
 });
 
+// Vercel serverless function config — extend timeout for slow free-tier models
+module.exports.config = {
+  maxDuration: 60, // seconds (Hobby plan max)
+};
+
 // Vercel serverless function handler (Node.js runtime)
 module.exports = async function handler(req, res) {
   // Enable CORS — restrict to known origins
