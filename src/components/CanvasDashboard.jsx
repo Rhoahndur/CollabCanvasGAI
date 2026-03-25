@@ -47,6 +47,7 @@ function CanvasDashboard() {
     }
 
     loadCanvases();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadCanvases only closes over `user`, which is already in the dep array
   }, [user]);
 
   const loadCanvases = async () => {
@@ -120,7 +121,7 @@ function CanvasDashboard() {
   const handleDuplicateCanvas = async (canvasId, canvasName) => {
     try {
       const newName = `${canvasName} (Copy)`;
-      const newCanvasId = await duplicateCanvas(canvasId, user.uid, newName);
+      await duplicateCanvas(canvasId, user.uid, newName);
 
       // Reload canvases
       await loadCanvases();

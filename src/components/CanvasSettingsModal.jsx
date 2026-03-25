@@ -34,6 +34,7 @@ function CanvasSettingsModal({ canvasId, canvasName, isOpen, onClose, onSettings
     if (isOpen && canvasId) {
       loadSettings();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadSettings only closes over `canvasId`, which is already in the dep array
   }, [isOpen, canvasId]);
 
   const loadSettings = async () => {

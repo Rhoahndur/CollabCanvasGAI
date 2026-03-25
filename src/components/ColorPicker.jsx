@@ -193,7 +193,7 @@ function ColorPicker({ value, onChange, label = 'Color', allowTransparent = fals
             <div className={styles['color-section']}>
               <div className={styles['color-section-title']}>Recent Colors</div>
               <div className={styles['color-grid']}>
-                {recentColors.map((color, index) => (
+                {recentColors.map((color) => (
                   <button
                     key={color}
                     className={`${styles['color-tile']} ${value === color ? styles['active'] : ''}`}

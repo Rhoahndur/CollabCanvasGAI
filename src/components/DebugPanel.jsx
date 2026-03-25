@@ -35,7 +35,7 @@ function DebugPanel() {
   const formatJson = (obj) => {
     try {
       return JSON.stringify(obj, null, 2);
-    } catch (e) {
+    } catch {
       return String(obj);
     }
   };
@@ -116,7 +116,7 @@ function DebugPanel() {
                 No logs yet. Send a message to Canny to see debug info.
               </div>
             ) : (
-              logs.map((log, index) => (
+              logs.map((log) => (
                 <div
                   key={log.timestamp}
                   className={`${styles['debug-log']} ${styles[getLogStyle(log.type)] || ''}`}

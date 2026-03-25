@@ -7,9 +7,6 @@ import { captureCanvasImage, shouldUseVision, getVisionReason } from '../utils/c
 import { reportError } from '../utils/errorHandler';
 import styles from './ChatPanel.module.css';
 
-// Track executed tool calls to prevent infinite loops
-const executedToolCalls = new Set();
-
 // Guardrails
 const MAX_MESSAGE_LENGTH = 2000; // ~500 tokens
 const REQUEST_COOLDOWN = 2000; // 2 seconds between requests
@@ -100,6 +97,7 @@ function ChatPanel({
   const resizeStartX = useRef(0);
   const resizeStartWidth = useRef(0);
   const exampleSubmitTimeoutRef = useRef(null);
+  const executedToolCallsRef = useRef(new Set());
 
   // Use AI SDK's useChat hook for streaming with tool support
   // In production (Vercel), uses /api/chat
@@ -490,12 +488,12 @@ function ChatPanel({
         const toolCallId = `${messageId}_${toolCall.id || toolCall.function?.name}`;
 
         // Skip if already executed
-        if (executedToolCalls.has(toolCallId)) {
+        if (executedToolCallsRef.current.has(toolCallId)) {
           continue;
         }
 
         // Mark as executed BEFORE running to prevent race conditions
-        executedToolCalls.add(toolCallId);
+        executedToolCallsRef.current.add(toolCallId);
 
         if (toolCall.type === 'function' && toolCall.function) {
           const toolName = toolCall.function.name;
@@ -523,11 +521,12 @@ function ChatPanel({
           };
 
           // Execute the tool
-          const result = executeCanvasTool(toolName, args, context);
+          executeCanvasTool(toolName, args, context);
         }
       }
     }
-  }, [messages]); // CRITICAL: Only depend on messages, NOT shapes!
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only re-run on new messages, not on shapes/viewport changes
+  }, [messages]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -825,7 +824,7 @@ function ChatPanel({
         {activeTab === 'canny' && (
           <>
             <div className={styles['chat-messages']}>
-              {messages.map((message, index) => {
+              {messages.map((message) => {
                 // Skip rendering messages that only contain tool calls (no text content)
                 if (message.tool_calls && !message.content) {
                   return null;
@@ -953,11 +952,11 @@ function ChatPanel({
                       <span className={styles['example-icon']}>💡</span>
                       <h4>Try asking Canny...</h4>
                     </div>
-                    {EXAMPLE_PROMPTS.map((category, catIndex) => (
+                    {EXAMPLE_PROMPTS.map((category) => (
                       <div key={category.category} className={styles['example-category']}>
                         <div className={styles['category-title']}>{category.category}</div>
                         <div className={styles['category-prompts']}>
-                          {category.prompts.map((prompt, promptIndex) => (
+                          {category.prompts.map((prompt) => (
                             <button
                               key={prompt}
                               className={styles['example-prompt-btn']}
