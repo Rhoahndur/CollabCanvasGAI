@@ -99,6 +99,22 @@ function ChatPanel({
   const exampleSubmitTimeoutRef = useRef(null);
   const executedToolCallsRef = useRef(new Set());
 
+  // Ref that always holds the latest canvas context, so async callbacks
+  // (experimental_onToolCall, manual tool-call effect) never read stale props.
+  const canvasContextRef = useRef(null);
+  canvasContextRef.current = {
+    shapes,
+    selectedShapeIds,
+    createShape,
+    updateShape,
+    deleteShape,
+    selectShape,
+    deselectShape,
+    viewport,
+    canvasId,
+    userId: user?.uid,
+  };
+
   // Use AI SDK's useChat hook for streaming with tool support
   // In production (Vercel), uses /api/chat
   // In development, uses localhost:3001/api/chat
@@ -131,21 +147,8 @@ function ChatPanel({
         })
       );
 
-      // Execute the tool
-      const context = {
-        shapes,
-        selectedShapeIds,
-        createShape,
-        updateShape,
-        deleteShape,
-        selectShape,
-        deselectShape,
-        viewport,
-        canvasId,
-        userId: user?.uid,
-      };
-
-      const result = executeCanvasTool(toolCall.toolName, toolCall.args, context);
+      // Execute the tool using the ref so we always get the latest canvas state
+      const result = executeCanvasTool(toolCall.toolName, toolCall.args, canvasContextRef.current);
 
       // Emit debug event for tool result
       window.dispatchEvent(
@@ -506,26 +509,11 @@ function ChatPanel({
             continue;
           }
 
-          // Build context (use latest values from closure)
-          const context = {
-            shapes,
-            selectedShapeIds,
-            createShape,
-            updateShape,
-            deleteShape,
-            selectShape,
-            deselectShape,
-            viewport,
-            canvasId,
-            userId: user?.uid,
-          };
-
-          // Execute the tool
-          executeCanvasTool(toolName, args, context);
+          // Execute the tool using the ref so we always get the latest canvas state
+          executeCanvasTool(toolName, args, canvasContextRef.current);
         }
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only re-run on new messages, not on shapes/viewport changes
   }, [messages]);
 
   // Auto-scroll to bottom when new messages arrive
