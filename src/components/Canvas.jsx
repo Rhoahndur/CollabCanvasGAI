@@ -40,6 +40,7 @@ import {
   testFirestoreConnection,
   createShape,
   updateShape,
+  batchUpdateShapes,
   deleteShape,
   updateCursor,
   removeCursor,
@@ -506,6 +507,7 @@ function Canvas({
         selectedShapeIds:
           selectedShapeIds.length > 0 ? selectedShapeIds : selectedShapeId ? [selectedShapeId] : [],
         updateShape: (id, updates) => updateShape(canvasId, id, updates),
+        batchUpdateShapes: (updates) => batchUpdateShapes(canvasId, updates),
         canvasId,
         userId: user.uid,
         viewport,
@@ -556,6 +558,20 @@ function Canvas({
         return true;
       } catch (error) {
         reportError(error, { component: 'Canvas', action: 'cannyUpdateShape' });
+        return false;
+      }
+    },
+    [canvasId]
+  );
+
+  const handleBatchUpdateShapesForCanny = useCallback(
+    (updates) => {
+      if (!canvasId) return false;
+      try {
+        batchUpdateShapes(canvasId, updates);
+        return true;
+      } catch (error) {
+        reportError(error, { component: 'Canvas', action: 'cannyBatchUpdateShapes' });
         return false;
       }
     },
@@ -1590,6 +1606,7 @@ function Canvas({
         selectedShapeIds={selectedShapeIds}
         createShape={handleCreateShapeForCanny}
         updateShape={handleUpdateShapeForCanny}
+        batchUpdateShapes={handleBatchUpdateShapesForCanny}
         deleteShape={handleDeleteShapeForCanny}
         selectShape={selectShape}
         deselectShape={deselectShape}
