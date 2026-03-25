@@ -5,6 +5,9 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import OpenAI from 'openai';
+import parseTextToolCallsModule from './lib/parseTextToolCalls.cjs';
+
+const { parseTextToolCalls } = parseTextToolCallsModule;
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -325,14 +328,16 @@ Grid Examples:
     // Stream the response in AI SDK format
     let chunkCount = 0;
     let toolCalls = [];
-    
+    let accumulatedText = '';
+
     try {
       for await (const chunk of stream) {
         const delta = chunk.choices[0]?.delta;
-        
+
         // Handle text content
         const content = delta?.content || '';
         if (content) {
+          accumulatedText += content;
           chunkCount++;
           // AI SDK v3 expects this specific format for text
           res.write(`0:${JSON.stringify(content)}\n`);
@@ -365,6 +370,14 @@ Grid Examples:
               toolCalls[index].function.arguments += toolCall.function.arguments;
             }
           }
+        }
+      }
+
+      // Detect text-based tool calls (some models emit TOOLCALL>[...] as text)
+      if (toolCalls.length === 0) {
+        const textToolCalls = parseTextToolCalls(accumulatedText);
+        if (textToolCalls.length > 0) {
+          toolCalls = textToolCalls;
         }
       }
 

@@ -474,7 +474,12 @@ function ChatPanel({
     }
 
     // Method 2: Check if message content contains our special marker
-    if (lastMessage?.content && typeof lastMessage.content === 'string') {
+    // Short-circuit with includes() — avoids regex cost on every streamed chunk
+    if (
+      lastMessage?.content &&
+      typeof lastMessage.content === 'string' &&
+      lastMessage.content.includes('__TOOL_CALLS__')
+    ) {
       const markerMatch = lastMessage.content.match(/__TOOL_CALLS__(.+?)__END_TOOL_CALLS__/);
       if (markerMatch) {
         try {
@@ -824,9 +829,10 @@ function ChatPanel({
                 let cleanContent = '';
 
                 if (typeof message.content === 'string') {
-                  // Simple string content
+                  // Simple string content — strip both marker formats
                   cleanContent = message.content
                     .replace(/__TOOL_CALLS__.+?__END_TOOL_CALLS__/g, '')
+                    .replace(/TOOLCALL>[\s\S]*/g, '')
                     .trim();
                 } else if (Array.isArray(message.content)) {
                   // Multimodal content (text + image) - extract text parts only
@@ -835,6 +841,7 @@ function ChatPanel({
                     .map((part) => part.text)
                     .join(' ')
                     .replace(/__TOOL_CALLS__.+?__END_TOOL_CALLS__/g, '')
+                    .replace(/TOOLCALL>[\s\S]*/g, '')
                     .trim();
                 }
 
