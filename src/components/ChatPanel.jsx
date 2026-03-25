@@ -122,7 +122,7 @@ function ChatPanel({
   // In development, uses localhost:3001/api/chat
   const apiEndpoint = import.meta.env.PROD ? '/api/chat' : 'http://localhost:3001/api/chat';
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading, error, append } = useChat({
+  const { messages, input, setInput, handleInputChange, isLoading, error, append } = useChat({
     api: apiEndpoint,
     maxToolRoundtrips: 5, // Allow automatic tool execution
     initialMessages: [
@@ -289,7 +289,8 @@ function ChatPanel({
           })
         );
 
-        // Send message with image using append()
+        // Clear input before awaiting so it's responsive during streaming
+        setInput('');
         await append({
           role: 'user',
           content: [
@@ -306,11 +307,6 @@ function ChatPanel({
           ],
         });
 
-        // Clear input after sending if we used override
-        if (overrideInput !== null) {
-          handleInputChange({ target: { value: '' } });
-        }
-
         setIsCapturingCanvas(false);
         setVisionReason(null);
       } catch (error) {
@@ -320,13 +316,12 @@ function ChatPanel({
 
         // Fallback: send without vision
         if (error.name !== 'AbortError') {
-          handleSubmit(e);
+          setInput('');
+          append({ role: 'user', content: trimmedInput });
         }
       }
     } else {
-      // No vision needed, use regular submit
       try {
-        // Emit debug event for regular request
         window.dispatchEvent(
           new CustomEvent('canny-debug', {
             detail: {
@@ -340,18 +335,12 @@ function ChatPanel({
           })
         );
 
-        // If we have an override input, use append() to send directly
-        // This ensures we send the correct message even if input state changed
-        if (overrideInput !== null) {
-          await append({
-            role: 'user',
-            content: trimmedInput,
-          });
-          // Clear input after sending
-          handleInputChange({ target: { value: '' } });
-        } else {
-          await handleSubmit(e);
-        }
+        // Use append() directly — handleSubmit() from useChat was unreliable at clearing input
+        setInput('');
+        await append({
+          role: 'user',
+          content: trimmedInput,
+        });
       } catch (error) {
         if (error.name !== 'AbortError') {
           reportError(error, { component: 'ChatPanel', action: 'sendMessage' });
