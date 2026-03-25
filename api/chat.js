@@ -81,21 +81,26 @@ module.exports = async function handler(req, res) {
 
     const { messages } = parseResult.data;
 
-    if (!process.env.OPENAI_API_KEY) {
-      console.error('❌ OpenAI API key not configured');
-      return res.status(500).json({ error: 'OpenAI API key not configured' });
+    if (!process.env.OPENROUTER_API_KEY) {
+      console.error('❌ OpenRouter API key not configured');
+      return res.status(500).json({ error: 'OpenRouter API key not configured' });
     }
 
-    console.log('✅ API key found, initializing OpenAI...');
+    console.log('✅ API key found, initializing OpenRouter...');
 
-    // Initialize OpenAI client - handle both ESM and CJS exports
+    // Initialize OpenAI-compatible client pointed at OpenRouter
     const OpenAI = require('openai');
     const OpenAIConstructor = OpenAI.default || OpenAI;
     const openai = new OpenAIConstructor({
-      apiKey: process.env.OPENAI_API_KEY,
+      apiKey: process.env.OPENROUTER_API_KEY,
+      baseURL: 'https://openrouter.ai/api/v1',
+      defaultHeaders: {
+        'HTTP-Referer': 'https://collabcanvasgai.vercel.app',
+        'X-Title': 'CollabCanvas',
+      },
     });
 
-    console.log('✅ OpenAI initialized, creating completion...');
+    console.log('✅ OpenRouter initialized, creating completion...');
 
     // System prompt for Canny with tool usage and vision instructions
     const systemMessage = {
@@ -348,10 +353,10 @@ Grid Examples:
       },
     ];
 
-    // Call OpenAI API with streaming, tools, and vision support
-    // Note: gpt-4o supports both vision and function calling
+    // Call OpenRouter API with streaming and tool support
+    const model = process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.3-70b-instruct:free';
     const stream = await openai.chat.completions.create({
-      model: 'gpt-4o', // Changed from gpt-4-turbo-preview to support vision
+      model,
       messages: [systemMessage, ...messages],
       tools: tools,
       tool_choice: 'auto',
