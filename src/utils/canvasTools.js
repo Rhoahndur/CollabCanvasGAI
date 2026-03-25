@@ -6,7 +6,7 @@
  */
 
 import { SHAPE_TYPES, CANVAS_WIDTH, CANVAS_HEIGHT } from './constants';
-import { constrainRectangle, constrainCircle, clamp, getShapeBounds } from './canvasUtils';
+import { constrainShapePosition, clamp, getShapeBounds } from './canvasUtils';
 import { reportError } from './errorHandler';
 
 // Safety limits to prevent accidental mass creation
@@ -410,25 +410,20 @@ function handleCreateShape(args, context) {
       let finalY = y;
 
       // Apply canvas boundary constraints based on shape type
-      if (shapeType === SHAPE_TYPES.RECTANGLE || shapeType === SHAPE_TYPES.TEXT) {
-        const constrained = constrainRectangle(
+      if (shapeType === SHAPE_TYPES.CUSTOM_POLYGON) {
+        finalX = clamp(finalX, 100, CANVAS_WIDTH - 100);
+        finalY = clamp(finalY, 100, CANVAS_HEIGHT - 100);
+      } else {
+        const constrained = constrainShapePosition(
+          shapeType,
           finalX,
           finalY,
-          width,
-          height,
+          { width, height, radius },
           CANVAS_WIDTH,
           CANVAS_HEIGHT
         );
         finalX = constrained.x;
         finalY = constrained.y;
-      } else if (shapeType === SHAPE_TYPES.CIRCLE || shapeType === SHAPE_TYPES.POLYGON) {
-        const constrained = constrainCircle(finalX, finalY, radius, CANVAS_WIDTH, CANVAS_HEIGHT);
-        finalX = constrained.x;
-        finalY = constrained.y;
-      } else if (shapeType === SHAPE_TYPES.CUSTOM_POLYGON) {
-        // For custom polygons, just ensure the center point is within bounds
-        finalX = clamp(finalX, 100, CANVAS_WIDTH - 100); // Leave margin for vertices
-        finalY = clamp(finalY, 100, CANVAS_HEIGHT - 100);
       }
 
       const shapeData = {
@@ -528,24 +523,20 @@ function handleCreateShapesBatch(args, context) {
       let finalY = y;
 
       // Apply canvas boundary constraints based on shape type
-      if (shapeType === SHAPE_TYPES.RECTANGLE || shapeType === SHAPE_TYPES.TEXT) {
-        const constrained = constrainRectangle(
+      if (shapeType === SHAPE_TYPES.CUSTOM_POLYGON) {
+        finalX = clamp(finalX, 100, CANVAS_WIDTH - 100);
+        finalY = clamp(finalY, 100, CANVAS_HEIGHT - 100);
+      } else {
+        const constrained = constrainShapePosition(
+          shapeType,
           finalX,
           finalY,
-          width,
-          height,
+          { width, height, radius },
           CANVAS_WIDTH,
           CANVAS_HEIGHT
         );
         finalX = constrained.x;
         finalY = constrained.y;
-      } else if (shapeType === SHAPE_TYPES.CIRCLE || shapeType === SHAPE_TYPES.POLYGON) {
-        const constrained = constrainCircle(finalX, finalY, radius, CANVAS_WIDTH, CANVAS_HEIGHT);
-        finalX = constrained.x;
-        finalY = constrained.y;
-      } else if (shapeType === SHAPE_TYPES.CUSTOM_POLYGON) {
-        finalX = clamp(finalX, 100, CANVAS_WIDTH - 100);
-        finalY = clamp(finalY, 100, CANVAS_HEIGHT - 100);
       }
 
       const shapeData = {
@@ -613,7 +604,7 @@ function handleCreateShapesBatch(args, context) {
  * Align shapes
  */
 function handleAlignShapes(args, context) {
-  const { shapes, selectedShapeIds, updateShape } = context;
+  const { shapes, selectedShapeIds, batchUpdateShapes } = context;
   const { alignment, useSelected = true } = args;
 
   const shapesToAlign =
@@ -632,17 +623,16 @@ function handleAlignShapes(args, context) {
     // Calculate bounds of all shapes
     const bounds = calculateShapesBounds(shapesToAlign);
 
+    const batchUpdates = {};
     let skipped = 0;
     shapesToAlign.forEach((shape) => {
       const updates = {};
       const sb = getShapeBounds(shape);
 
-      // Coerce to number — shapes from Firebase may have non-numeric x/y
+      // Coerce position to number (separate from getShapeBounds coercion, which protects bounds)
       const sx = Number(shape.x) || 0;
       const sy = Number(shape.y) || 0;
 
-      // Use delta-based positioning so it works regardless of
-      // whether shape.x is top-left (rect/text) or center (circle/image).
       switch (alignment) {
         case 'left':
           updates.x = sx + (bounds.minX - sb.minX);
@@ -665,37 +655,19 @@ function handleAlignShapes(args, context) {
       }
 
       if (Object.keys(updates).length > 0) {
-        // Apply boundary constraints (only on the axis that was aligned)
         const newX = updates.x !== undefined ? updates.x : sx;
         const newY = updates.y !== undefined ? updates.y : sy;
+        const constrained = constrainShapePosition(
+          shape.type,
+          newX,
+          newY,
+          shape,
+          CANVAS_WIDTH,
+          CANVAS_HEIGHT
+        );
+        if (updates.x !== undefined) updates.x = constrained.x;
+        if (updates.y !== undefined) updates.y = constrained.y;
 
-        if (shape.type === SHAPE_TYPES.RECTANGLE || shape.type === SHAPE_TYPES.TEXT) {
-          const constrained = constrainRectangle(
-            newX,
-            newY,
-            shape.width || 100,
-            shape.height || 100,
-            CANVAS_WIDTH,
-            CANVAS_HEIGHT
-          );
-          if (updates.x !== undefined) updates.x = constrained.x;
-          if (updates.y !== undefined) updates.y = constrained.y;
-        } else if (shape.type === SHAPE_TYPES.CIRCLE || shape.type === SHAPE_TYPES.POLYGON) {
-          const constrained = constrainCircle(
-            newX,
-            newY,
-            shape.radius || 50,
-            CANVAS_WIDTH,
-            CANVAS_HEIGHT
-          );
-          if (updates.x !== undefined) updates.x = constrained.x;
-          if (updates.y !== undefined) updates.y = constrained.y;
-        } else {
-          if (updates.x !== undefined) updates.x = clamp(updates.x, 0, CANVAS_WIDTH);
-          if (updates.y !== undefined) updates.y = clamp(updates.y, 0, CANVAS_HEIGHT);
-        }
-
-        // Guard against NaN — Firebase rejects NaN values
         if (Number.isNaN(updates.x) || Number.isNaN(updates.y)) {
           skipped++;
           reportError('Alignment produced NaN', {
@@ -708,9 +680,11 @@ function handleAlignShapes(args, context) {
           return;
         }
 
-        updateShape(shape.id, updates);
+        batchUpdates[shape.id] = updates;
       }
     });
+
+    batchUpdateShapes(batchUpdates);
 
     const aligned = shapesToAlign.length - skipped;
     return {
@@ -730,7 +704,7 @@ function handleAlignShapes(args, context) {
  * Distribute shapes evenly
  */
 function handleDistributeShapes(args, context) {
-  const { shapes, selectedShapeIds, updateShape } = context;
+  const { shapes, selectedShapeIds, batchUpdateShapes } = context;
   const { direction, spacing, useSelected = true } = args;
 
   const shapesToDistribute =
@@ -761,11 +735,13 @@ function handleDistributeShapes(args, context) {
 
     const firstBounds = getShapeBounds(sorted[0]);
 
+    const batchUpdates = {};
     let skipped = 0;
     sorted.forEach((shape, index) => {
       if (index === 0) return; // Keep first shape in place
 
       const sb = getShapeBounds(shape);
+      // Coerce position to number (separate from getShapeBounds coercion, which protects bounds)
       const sx = Number(shape.x) || 0;
       const sy = Number(shape.y) || 0;
       const updates = {};
@@ -777,37 +753,19 @@ function handleDistributeShapes(args, context) {
         updates.y = sy + (targetCenterY - sb.centerY);
       }
 
-      // Apply boundary constraints (only on the axis being distributed)
       const newX = updates.x !== undefined ? updates.x : sx;
       const newY = updates.y !== undefined ? updates.y : sy;
+      const constrained = constrainShapePosition(
+        shape.type,
+        newX,
+        newY,
+        shape,
+        CANVAS_WIDTH,
+        CANVAS_HEIGHT
+      );
+      if (updates.x !== undefined) updates.x = constrained.x;
+      if (updates.y !== undefined) updates.y = constrained.y;
 
-      if (shape.type === SHAPE_TYPES.RECTANGLE || shape.type === SHAPE_TYPES.TEXT) {
-        const constrained = constrainRectangle(
-          newX,
-          newY,
-          shape.width || 100,
-          shape.height || 100,
-          CANVAS_WIDTH,
-          CANVAS_HEIGHT
-        );
-        if (updates.x !== undefined) updates.x = constrained.x;
-        if (updates.y !== undefined) updates.y = constrained.y;
-      } else if (shape.type === SHAPE_TYPES.CIRCLE || shape.type === SHAPE_TYPES.POLYGON) {
-        const constrained = constrainCircle(
-          newX,
-          newY,
-          shape.radius || 50,
-          CANVAS_WIDTH,
-          CANVAS_HEIGHT
-        );
-        if (updates.x !== undefined) updates.x = constrained.x;
-        if (updates.y !== undefined) updates.y = constrained.y;
-      } else {
-        if (updates.x !== undefined) updates.x = clamp(updates.x, 0, CANVAS_WIDTH);
-        if (updates.y !== undefined) updates.y = clamp(updates.y, 0, CANVAS_HEIGHT);
-      }
-
-      // Guard against NaN — Firebase rejects NaN values
       if (Number.isNaN(updates.x) || Number.isNaN(updates.y)) {
         skipped++;
         reportError('Distribution produced NaN', {
@@ -820,8 +778,10 @@ function handleDistributeShapes(args, context) {
         return;
       }
 
-      updateShape(shape.id, updates);
+      batchUpdates[shape.id] = updates;
     });
+
+    batchUpdateShapes(batchUpdates);
 
     const distributed = sorted.length - skipped;
     return {
@@ -841,7 +801,7 @@ function handleDistributeShapes(args, context) {
  * Arrange shapes in a grid
  */
 function handleArrangeInGrid(args, context) {
-  const { shapes, selectedShapeIds, updateShape, viewport } = context;
+  const { shapes, selectedShapeIds, batchUpdateShapes, viewport } = context;
   const { rows, columns, spacing = 20, useSelected = true } = args;
 
   const shapesToArrange =
@@ -870,44 +830,27 @@ function handleArrangeInGrid(args, context) {
     if (startX + gridWidth > CANVAS_WIDTH - 100) startX = CANVAS_WIDTH - gridWidth - 100;
     if (startY + gridHeight > CANVAS_HEIGHT - 100) startY = CANVAS_HEIGHT - gridHeight - 100;
 
+    const batchUpdates = {};
     shapesToArrange.forEach((shape, index) => {
       const row = Math.floor(index / columns);
       const col = index % columns;
 
       if (row >= rows) return; // Skip extra shapes
 
-      let posX = startX + col * spacing;
-      let posY = startY + row * spacing;
-
-      // Apply per-shape boundary constraints
-      if (shape.type === SHAPE_TYPES.RECTANGLE || shape.type === SHAPE_TYPES.TEXT) {
-        const constrained = constrainRectangle(
-          posX,
-          posY,
-          shape.width || 100,
-          shape.height || 100,
-          CANVAS_WIDTH,
-          CANVAS_HEIGHT
-        );
-        posX = constrained.x;
-        posY = constrained.y;
-      } else if (shape.type === SHAPE_TYPES.CIRCLE || shape.type === SHAPE_TYPES.POLYGON) {
-        const constrained = constrainCircle(
-          posX,
-          posY,
-          shape.radius || 50,
-          CANVAS_WIDTH,
-          CANVAS_HEIGHT
-        );
-        posX = constrained.x;
-        posY = constrained.y;
-      } else {
-        posX = clamp(posX, 0, CANVAS_WIDTH);
-        posY = clamp(posY, 0, CANVAS_HEIGHT);
-      }
-
-      updateShape(shape.id, { x: posX, y: posY });
+      const posX = startX + col * spacing;
+      const posY = startY + row * spacing;
+      const constrained = constrainShapePosition(
+        shape.type,
+        posX,
+        posY,
+        shape,
+        CANVAS_WIDTH,
+        CANVAS_HEIGHT
+      );
+      batchUpdates[shape.id] = { x: constrained.x, y: constrained.y };
     });
+
+    batchUpdateShapes(batchUpdates);
 
     const arranged = Math.min(shapesToArrange.length, rows * columns);
 
@@ -928,7 +871,7 @@ function handleArrangeInGrid(args, context) {
  * Update shape properties
  */
 function handleUpdateShapeProperties(args, context) {
-  const { shapes, selectedShapeIds, updateShape } = context;
+  const { shapes, selectedShapeIds, batchUpdateShapes } = context;
   const { useSelected = true, ...properties } = args;
 
   const shapesToUpdate =
@@ -944,45 +887,29 @@ function handleUpdateShapeProperties(args, context) {
   }
 
   try {
+    const batchUpdates = {};
     shapesToUpdate.forEach((shape) => {
-      // Apply boundary constraints if updating position
       const constrainedProperties = { ...properties };
 
       if ('x' in properties || 'y' in properties) {
         const newX = properties.x !== undefined ? properties.x : shape.x;
         const newY = properties.y !== undefined ? properties.y : shape.y;
-
-        // Apply constraints based on shape type
-        if (shape.type === SHAPE_TYPES.RECTANGLE || shape.type === SHAPE_TYPES.TEXT) {
-          const constrained = constrainRectangle(
-            newX,
-            newY,
-            shape.width || 100,
-            shape.height || 100,
-            CANVAS_WIDTH,
-            CANVAS_HEIGHT
-          );
-          constrainedProperties.x = constrained.x;
-          constrainedProperties.y = constrained.y;
-        } else if (shape.type === SHAPE_TYPES.CIRCLE || shape.type === SHAPE_TYPES.POLYGON) {
-          const constrained = constrainCircle(
-            newX,
-            newY,
-            shape.radius || 50,
-            CANVAS_WIDTH,
-            CANVAS_HEIGHT
-          );
-          constrainedProperties.x = constrained.x;
-          constrainedProperties.y = constrained.y;
-        } else {
-          // For other types, just clamp to canvas bounds
-          constrainedProperties.x = clamp(newX, 0, CANVAS_WIDTH);
-          constrainedProperties.y = clamp(newY, 0, CANVAS_HEIGHT);
-        }
+        const constrained = constrainShapePosition(
+          shape.type,
+          newX,
+          newY,
+          shape,
+          CANVAS_WIDTH,
+          CANVAS_HEIGHT
+        );
+        constrainedProperties.x = constrained.x;
+        constrainedProperties.y = constrained.y;
       }
 
-      updateShape(shape.id, constrainedProperties);
+      batchUpdates[shape.id] = constrainedProperties;
     });
+
+    batchUpdateShapes(batchUpdates);
 
     return {
       success: true,
