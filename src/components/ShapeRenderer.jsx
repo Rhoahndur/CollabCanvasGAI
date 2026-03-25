@@ -53,7 +53,7 @@ export default function ShapeRenderer({
     const shapeProps = {
       ...shape,
       isSelected: shape.id === selectedShapeId || selectedShapeIds.includes(shape.id),
-      isLocked: shape.lockedBy !== null && shape.lockedBy !== user?.uid,
+      isLocked: !!shape.lockedBy && shape.lockedBy !== user?.uid,
       lockedByUserName: shape.lockedByUserName,
       onClick: onShapeClick,
       onMouseDown: onShapeMouseDown,
