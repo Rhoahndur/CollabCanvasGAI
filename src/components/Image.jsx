@@ -29,6 +29,7 @@ const Image = memo(function Image({
   rotation = 0,
   isSelected,
   isLocked,
+  cursorStyle = 'default',
   lockedBy,
   lockedByUserName,
   onClick,
@@ -82,7 +83,7 @@ const Image = memo(function Image({
         onDoubleClick={handleDoubleClick}
         onContextMenu={handleContextMenu}
         style={{
-          cursor: isLocked && !isSelected ? 'not-allowed' : 'pointer',
+          cursor: cursorStyle,
         }}
       />
 

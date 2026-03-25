@@ -22,6 +22,7 @@ const Rectangle = memo(function Rectangle({
   textColor = null,
   isSelected = false,
   isLocked = false,
+  cursorStyle = 'default',
   lockedBy = null,
   lockedByUserName = null,
   onClick,
@@ -73,7 +74,7 @@ const Rectangle = memo(function Rectangle({
         fill={color}
         className={`canvas-rectangle ${isLocked ? 'locked' : ''}`}
         style={{
-          cursor: isLocked && !isSelected ? 'not-allowed' : 'pointer',
+          cursor: cursorStyle,
         }}
         onClick={handleClick}
         onMouseDown={handleMouseDown}

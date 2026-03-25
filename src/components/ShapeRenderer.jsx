@@ -50,10 +50,14 @@ export default function ShapeRenderer({
       });
     };
 
+    const isSelected = shape.id === selectedShapeId || selectedShapeIds.includes(shape.id);
+    const isLocked = !!shape.lockedBy && shape.lockedBy !== user?.uid;
+
     const shapeProps = {
       ...shape,
-      isSelected: shape.id === selectedShapeId || selectedShapeIds.includes(shape.id),
-      isLocked: !!shape.lockedBy && shape.lockedBy !== user?.uid,
+      isSelected,
+      isLocked,
+      cursorStyle: isLocked && !isSelected ? 'not-allowed' : 'default',
       lockedByUserName: shape.lockedByUserName,
       onClick: onShapeClick,
       onMouseDown: onShapeMouseDown,

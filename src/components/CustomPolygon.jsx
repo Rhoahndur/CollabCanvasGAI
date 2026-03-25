@@ -19,6 +19,7 @@ const CustomPolygon = memo(function CustomPolygon({
   textColor = null,
   isSelected = false,
   isLocked = false,
+  cursorStyle = 'default',
   lockedBy = null,
   lockedByUserName = null,
   onClick,
@@ -76,7 +77,7 @@ const CustomPolygon = memo(function CustomPolygon({
         fill={color}
         className={`canvas-custom-polygon ${isLocked ? 'locked' : ''}`}
         style={{
-          cursor: isLocked && !isSelected ? 'not-allowed' : 'pointer',
+          cursor: cursorStyle,
         }}
         onClick={handleClick}
         onMouseDown={handleMouseDown}

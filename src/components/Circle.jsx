@@ -21,6 +21,7 @@ const Circle = memo(function Circle({
   textColor = null,
   isSelected = false,
   isLocked = false,
+  cursorStyle = 'default',
   lockedBy = null,
   lockedByUserName = null,
   onClick,
@@ -69,7 +70,7 @@ const Circle = memo(function Circle({
         fill={color}
         className={`canvas-circle ${isLocked ? 'locked' : ''}`}
         style={{
-          cursor: isLocked && !isSelected ? 'not-allowed' : 'pointer',
+          cursor: cursorStyle,
         }}
         onClick={handleClick}
         onMouseDown={handleMouseDown}

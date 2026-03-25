@@ -210,7 +210,6 @@
 
 .canvas-rectangle.locked {
   opacity: 0.7;
-  cursor: not-allowed !important;
 }
 
 .selection-highlight {
