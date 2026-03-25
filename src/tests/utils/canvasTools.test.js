@@ -8,6 +8,7 @@ function makeContext(overrides = {}) {
     selectedShapeIds: [],
     createShape: vi.fn((data) => ({ id: `mock_${Date.now()}`, ...data })),
     updateShape: vi.fn(),
+    batchUpdateShapes: vi.fn(),
     deleteShape: vi.fn(),
     selectShape: vi.fn(),
     deselectShape: vi.fn(),
@@ -137,7 +138,7 @@ describe('executeCanvasTool', () => {
         ctx
       );
       expect(result.success).toBe(true);
-      expect(ctx.updateShape).toHaveBeenCalledTimes(2);
+      expect(ctx.batchUpdateShapes).toHaveBeenCalledTimes(1);
     });
 
     it('returns error when no shapes exist', () => {
@@ -226,7 +227,7 @@ describe('executeCanvasTool', () => {
         ctx
       );
       expect(result.success).toBe(true);
-      expect(ctx.updateShape).toHaveBeenCalledTimes(2);
+      expect(ctx.batchUpdateShapes).toHaveBeenCalledTimes(1);
     });
 
     it('returns error with no shapes', () => {
