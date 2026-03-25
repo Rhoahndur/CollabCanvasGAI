@@ -307,7 +307,7 @@ Grid Examples:
     ];
 
     // Call OpenRouter API with streaming and tool support
-    const model = process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.3-70b-instruct:free';
+    const model = process.env.OPENROUTER_MODEL || 'openrouter/free';
     const stream = await openai.chat.completions.create({
       model,
       stream: true,
