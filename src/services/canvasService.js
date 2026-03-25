@@ -145,6 +145,29 @@ export const updateShape = async (canvasId = DEFAULT_CANVAS_ID, shapeId, updates
 };
 
 /**
+ * Batch-update multiple shapes in a single Firebase write.
+ * @param {string} canvasId - Canvas ID
+ * @param {Object<string, Object>} updates - Map of shapeId → property updates
+ * @returns {Promise<void>}
+ */
+export const batchUpdateShapes = async (canvasId = DEFAULT_CANVAS_ID, updates) => {
+  if (!updates || Object.keys(updates).length === 0) return;
+  try {
+    const objectsRef = getObjectsRef(canvasId);
+    const multiPathUpdates = {};
+    for (const [shapeId, shapeUpdates] of Object.entries(updates)) {
+      for (const [key, value] of Object.entries(shapeUpdates)) {
+        multiPathUpdates[`${shapeId}/${key}`] = value;
+      }
+    }
+    await update(objectsRef, multiPathUpdates);
+  } catch (error) {
+    reportError(error, { component: 'canvasService', action: 'batchUpdateShapes' });
+    throw error;
+  }
+};
+
+/**
  * Delete a shape
  * @param {string} canvasId - Canvas ID
  * @param {string} shapeId - Shape ID
