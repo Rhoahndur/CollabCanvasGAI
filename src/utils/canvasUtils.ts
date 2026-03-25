@@ -108,56 +108,60 @@ export function getShapeBounds(shape: {
 }): ShapeBounds {
   let minX: number, maxX: number, minY: number, maxY: number;
 
+  // Coerce to number — shapes from Firebase may have non-numeric values
+  const x = Number(shape.x) || 0;
+  const y = Number(shape.y) || 0;
+
   switch (shape.type) {
     case 'rectangle':
     case 'text': {
-      const w = shape.width || 100;
-      const h = shape.height || 100;
-      minX = shape.x;
-      maxX = shape.x + w;
-      minY = shape.y;
-      maxY = shape.y + h;
+      const w = Number(shape.width) || 100;
+      const h = Number(shape.height) || 100;
+      minX = x;
+      maxX = x + w;
+      minY = y;
+      maxY = y + h;
       break;
     }
     case 'image': {
-      const w = shape.width || 200;
-      const h = shape.height || 200;
-      minX = shape.x - w / 2;
-      maxX = shape.x + w / 2;
-      minY = shape.y - h / 2;
-      maxY = shape.y + h / 2;
+      const w = Number(shape.width) || 200;
+      const h = Number(shape.height) || 200;
+      minX = x - w / 2;
+      maxX = x + w / 2;
+      minY = y - h / 2;
+      maxY = y + h / 2;
       break;
     }
     case 'circle':
     case 'polygon': {
-      const r = shape.radius || 50;
-      minX = shape.x - r;
-      maxX = shape.x + r;
-      minY = shape.y - r;
-      maxY = shape.y + r;
+      const r = Number(shape.radius) || 50;
+      minX = x - r;
+      maxX = x + r;
+      minY = y - r;
+      maxY = y + r;
       break;
     }
     case 'customPolygon': {
       if (shape.vertices && shape.vertices.length > 0) {
-        const xs = shape.vertices.map((v) => v.x);
-        const ys = shape.vertices.map((v) => v.y);
+        const xs = shape.vertices.map((v) => Number(v.x) || 0);
+        const ys = shape.vertices.map((v) => Number(v.y) || 0);
         minX = Math.min(...xs);
         maxX = Math.max(...xs);
         minY = Math.min(...ys);
         maxY = Math.max(...ys);
       } else {
-        minX = shape.x;
-        maxX = shape.x;
-        minY = shape.y;
-        maxY = shape.y;
+        minX = x;
+        maxX = x;
+        minY = y;
+        maxY = y;
       }
       break;
     }
     default: {
-      minX = shape.x;
-      maxX = shape.x + (shape.width || 0);
-      minY = shape.y;
-      maxY = shape.y + (shape.height || 0);
+      minX = x;
+      maxX = x + (Number(shape.width) || 0);
+      minY = y;
+      maxY = y + (Number(shape.height) || 0);
       break;
     }
   }

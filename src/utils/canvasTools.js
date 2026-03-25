@@ -632,37 +632,42 @@ function handleAlignShapes(args, context) {
     // Calculate bounds of all shapes
     const bounds = calculateShapesBounds(shapesToAlign);
 
+    let skipped = 0;
     shapesToAlign.forEach((shape) => {
       const updates = {};
       const sb = getShapeBounds(shape);
+
+      // Coerce to number — shapes from Firebase may have non-numeric x/y
+      const sx = Number(shape.x) || 0;
+      const sy = Number(shape.y) || 0;
 
       // Use delta-based positioning so it works regardless of
       // whether shape.x is top-left (rect/text) or center (circle/image).
       switch (alignment) {
         case 'left':
-          updates.x = shape.x + (bounds.minX - sb.minX);
+          updates.x = sx + (bounds.minX - sb.minX);
           break;
         case 'right':
-          updates.x = shape.x + (bounds.maxX - sb.maxX);
+          updates.x = sx + (bounds.maxX - sb.maxX);
           break;
         case 'top':
-          updates.y = shape.y + (bounds.minY - sb.minY);
+          updates.y = sy + (bounds.minY - sb.minY);
           break;
         case 'bottom':
-          updates.y = shape.y + (bounds.maxY - sb.maxY);
+          updates.y = sy + (bounds.maxY - sb.maxY);
           break;
         case 'center-horizontal':
-          updates.x = shape.x + (bounds.centerX - sb.centerX);
+          updates.x = sx + (bounds.centerX - sb.centerX);
           break;
         case 'center-vertical':
-          updates.y = shape.y + (bounds.centerY - sb.centerY);
+          updates.y = sy + (bounds.centerY - sb.centerY);
           break;
       }
 
       if (Object.keys(updates).length > 0) {
-        // Apply boundary constraints
-        const newX = updates.x !== undefined ? updates.x : shape.x;
-        const newY = updates.y !== undefined ? updates.y : shape.y;
+        // Apply boundary constraints (only on the axis that was aligned)
+        const newX = updates.x !== undefined ? updates.x : sx;
+        const newY = updates.y !== undefined ? updates.y : sy;
 
         if (shape.type === SHAPE_TYPES.RECTANGLE || shape.type === SHAPE_TYPES.TEXT) {
           const constrained = constrainRectangle(
@@ -673,8 +678,8 @@ function handleAlignShapes(args, context) {
             CANVAS_WIDTH,
             CANVAS_HEIGHT
           );
-          updates.x = constrained.x;
-          updates.y = constrained.y;
+          if (updates.x !== undefined) updates.x = constrained.x;
+          if (updates.y !== undefined) updates.y = constrained.y;
         } else if (shape.type === SHAPE_TYPES.CIRCLE || shape.type === SHAPE_TYPES.POLYGON) {
           const constrained = constrainCircle(
             newX,
@@ -683,21 +688,35 @@ function handleAlignShapes(args, context) {
             CANVAS_WIDTH,
             CANVAS_HEIGHT
           );
-          updates.x = constrained.x;
-          updates.y = constrained.y;
+          if (updates.x !== undefined) updates.x = constrained.x;
+          if (updates.y !== undefined) updates.y = constrained.y;
         } else {
           if (updates.x !== undefined) updates.x = clamp(updates.x, 0, CANVAS_WIDTH);
           if (updates.y !== undefined) updates.y = clamp(updates.y, 0, CANVAS_HEIGHT);
+        }
+
+        // Guard against NaN — Firebase rejects NaN values
+        if (Number.isNaN(updates.x) || Number.isNaN(updates.y)) {
+          skipped++;
+          reportError('Alignment produced NaN', {
+            component: 'canvasTools',
+            action: 'handleAlignShapes',
+            shapeId: shape.id,
+            shapeType: shape.type,
+            alignment,
+          });
+          return;
         }
 
         updateShape(shape.id, updates);
       }
     });
 
+    const aligned = shapesToAlign.length - skipped;
     return {
-      success: true,
-      message: `Aligned ${shapesToAlign.length} shape${shapesToAlign.length > 1 ? 's' : ''} to ${alignment}`,
-      data: { count: shapesToAlign.length },
+      success: aligned > 0,
+      message: `Aligned ${aligned} shape${aligned !== 1 ? 's' : ''} to ${alignment}`,
+      data: { count: aligned },
     };
   } catch (error) {
     return {
@@ -729,7 +748,9 @@ function handleDistributeShapes(args, context) {
   try {
     // Sort shapes by position
     const sorted = [...shapesToDistribute].sort((a, b) => {
-      return direction === 'horizontal' ? a.x - b.x : a.y - b.y;
+      return direction === 'horizontal'
+        ? (Number(a.x) || 0) - (Number(b.x) || 0)
+        : (Number(a.y) || 0) - (Number(b.y) || 0);
     });
 
     const bounds = calculateShapesBounds(sorted);
@@ -740,22 +761,25 @@ function handleDistributeShapes(args, context) {
 
     const firstBounds = getShapeBounds(sorted[0]);
 
+    let skipped = 0;
     sorted.forEach((shape, index) => {
       if (index === 0) return; // Keep first shape in place
 
       const sb = getShapeBounds(shape);
+      const sx = Number(shape.x) || 0;
+      const sy = Number(shape.y) || 0;
       const updates = {};
       if (direction === 'horizontal') {
         const targetCenterX = firstBounds.centerX + gapSize * index;
-        updates.x = shape.x + (targetCenterX - sb.centerX);
+        updates.x = sx + (targetCenterX - sb.centerX);
       } else {
         const targetCenterY = firstBounds.centerY + gapSize * index;
-        updates.y = shape.y + (targetCenterY - sb.centerY);
+        updates.y = sy + (targetCenterY - sb.centerY);
       }
 
-      // Apply boundary constraints
-      const newX = updates.x !== undefined ? updates.x : shape.x;
-      const newY = updates.y !== undefined ? updates.y : shape.y;
+      // Apply boundary constraints (only on the axis being distributed)
+      const newX = updates.x !== undefined ? updates.x : sx;
+      const newY = updates.y !== undefined ? updates.y : sy;
 
       if (shape.type === SHAPE_TYPES.RECTANGLE || shape.type === SHAPE_TYPES.TEXT) {
         const constrained = constrainRectangle(
@@ -766,8 +790,8 @@ function handleDistributeShapes(args, context) {
           CANVAS_WIDTH,
           CANVAS_HEIGHT
         );
-        updates.x = constrained.x;
-        updates.y = constrained.y;
+        if (updates.x !== undefined) updates.x = constrained.x;
+        if (updates.y !== undefined) updates.y = constrained.y;
       } else if (shape.type === SHAPE_TYPES.CIRCLE || shape.type === SHAPE_TYPES.POLYGON) {
         const constrained = constrainCircle(
           newX,
@@ -776,20 +800,34 @@ function handleDistributeShapes(args, context) {
           CANVAS_WIDTH,
           CANVAS_HEIGHT
         );
-        updates.x = constrained.x;
-        updates.y = constrained.y;
+        if (updates.x !== undefined) updates.x = constrained.x;
+        if (updates.y !== undefined) updates.y = constrained.y;
       } else {
         if (updates.x !== undefined) updates.x = clamp(updates.x, 0, CANVAS_WIDTH);
         if (updates.y !== undefined) updates.y = clamp(updates.y, 0, CANVAS_HEIGHT);
       }
 
+      // Guard against NaN — Firebase rejects NaN values
+      if (Number.isNaN(updates.x) || Number.isNaN(updates.y)) {
+        skipped++;
+        reportError('Distribution produced NaN', {
+          component: 'canvasTools',
+          action: 'handleDistributeShapes',
+          shapeId: shape.id,
+          shapeType: shape.type,
+          direction,
+        });
+        return;
+      }
+
       updateShape(shape.id, updates);
     });
 
+    const distributed = sorted.length - skipped;
     return {
-      success: true,
-      message: `Distributed ${sorted.length} shapes ${direction}ly`,
-      data: { count: sorted.length, direction },
+      success: distributed > 0,
+      message: `Distributed ${distributed} shapes ${direction}ly`,
+      data: { count: distributed, direction },
     };
   } catch (error) {
     return {
