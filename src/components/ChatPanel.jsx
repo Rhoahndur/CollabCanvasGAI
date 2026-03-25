@@ -896,9 +896,25 @@ function ChatPanel({
                   <div className={styles['message-avatar']}>⚠️</div>
                   <div className={styles['message-content']}>
                     <div className={styles['message-text']} style={{ color: '#ff6b6b' }}>
-                      <strong>Error:</strong>{' '}
-                      {error.message ||
-                        'Failed to connect to Canny. Make sure the backend server is running and your OpenAI API key is configured.'}
+                      <strong>Oops — Canny couldn't respond.</strong>
+                      <br />
+                      {(() => {
+                        let msg = error.message || '';
+                        try {
+                          const parsed = JSON.parse(msg);
+                          msg = parsed.error || msg;
+                        } catch {
+                          // not JSON, use as-is
+                        }
+                        return msg && !/internal server error/i.test(msg)
+                          ? msg
+                          : 'The AI model failed to process this request. This can happen when the backend is unreachable or the model is temporarily unavailable.';
+                      })()}
+                      <br />
+                      <span style={{ opacity: 0.7, fontSize: '0.85em' }}>
+                        Try again in a moment, or simplify your message. If this keeps happening,
+                        the model provider may be experiencing issues.
+                      </span>
                     </div>
                   </div>
                 </div>
