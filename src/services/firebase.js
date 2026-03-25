@@ -22,7 +22,9 @@ const firebaseConfig = {
   storageBucket: validatedEnv.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: validatedEnv.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: validatedEnv.VITE_FIREBASE_APP_ID,
-  databaseURL: validatedEnv.VITE_FIREBASE_DATABASE_URL,
+  ...(validatedEnv.VITE_FIREBASE_DATABASE_URL && {
+    databaseURL: validatedEnv.VITE_FIREBASE_DATABASE_URL,
+  }),
 };
 
 // Initialize Firebase

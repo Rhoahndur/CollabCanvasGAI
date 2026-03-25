@@ -7,7 +7,10 @@ const envSchema = z.object({
   VITE_FIREBASE_STORAGE_BUCKET: z.string().min(1, 'Firebase storage bucket is required'),
   VITE_FIREBASE_MESSAGING_SENDER_ID: z.string().min(1, 'Firebase messaging sender ID is required'),
   VITE_FIREBASE_APP_ID: z.string().min(1, 'Firebase app ID is required'),
-  VITE_FIREBASE_DATABASE_URL: z.string().url('Firebase database URL must be a valid URL'),
+  VITE_FIREBASE_DATABASE_URL: z
+    .string()
+    .url('Firebase database URL must be a valid URL')
+    .optional(),
 });
 
 export type ValidatedEnv = z.infer<typeof envSchema>;
