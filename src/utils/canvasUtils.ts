@@ -2,6 +2,8 @@
  * Canvas utility functions for coordinate transformations and calculations
  */
 
+import { SHAPE_TYPES } from './constants';
+
 interface ViewportParams {
   offsetX: number;
   offsetY: number;
@@ -113,8 +115,8 @@ export function getShapeBounds(shape: {
   const y = Number(shape.y) || 0;
 
   switch (shape.type) {
-    case 'rectangle':
-    case 'text': {
+    case SHAPE_TYPES.RECTANGLE:
+    case SHAPE_TYPES.TEXT: {
       const w = Number(shape.width) || 100;
       const h = Number(shape.height) || 100;
       minX = x;
@@ -123,7 +125,7 @@ export function getShapeBounds(shape: {
       maxY = y + h;
       break;
     }
-    case 'image': {
+    case SHAPE_TYPES.IMAGE: {
       const w = Number(shape.width) || 200;
       const h = Number(shape.height) || 200;
       minX = x - w / 2;
@@ -132,8 +134,8 @@ export function getShapeBounds(shape: {
       maxY = y + h / 2;
       break;
     }
-    case 'circle':
-    case 'polygon': {
+    case SHAPE_TYPES.CIRCLE:
+    case SHAPE_TYPES.POLYGON: {
       const r = Number(shape.radius) || 50;
       minX = x - r;
       maxX = x + r;
@@ -141,7 +143,7 @@ export function getShapeBounds(shape: {
       maxY = y + r;
       break;
     }
-    case 'customPolygon': {
+    case SHAPE_TYPES.CUSTOM_POLYGON: {
       if (shape.vertices && shape.vertices.length > 0) {
         const xs = shape.vertices.map((v) => Number(v.x) || 0);
         const ys = shape.vertices.map((v) => Number(v.y) || 0);
@@ -178,6 +180,36 @@ export function getShapeBounds(shape: {
     width,
     height,
   };
+}
+
+/**
+ * Constrain a shape's position within canvas boundaries based on its type.
+ * Dispatches to constrainRectangle/constrainCircle/clamp as appropriate.
+ */
+export function constrainShapePosition(
+  shapeType: string,
+  x: number,
+  y: number,
+  dims: { width?: number; height?: number; radius?: number },
+  canvasWidth: number,
+  canvasHeight: number
+): { x: number; y: number } {
+  if (shapeType === SHAPE_TYPES.RECTANGLE || shapeType === SHAPE_TYPES.TEXT) {
+    const c = constrainRectangle(
+      x,
+      y,
+      dims.width || 100,
+      dims.height || 100,
+      canvasWidth,
+      canvasHeight
+    );
+    return { x: c.x, y: c.y };
+  }
+  if (shapeType === SHAPE_TYPES.CIRCLE || shapeType === SHAPE_TYPES.POLYGON) {
+    const c = constrainCircle(x, y, dims.radius || 50, canvasWidth, canvasHeight);
+    return { x: c.x, y: c.y };
+  }
+  return { x: clamp(x, 0, canvasWidth), y: clamp(y, 0, canvasHeight) };
 }
 
 export function constrainRectangle(
