@@ -6,26 +6,24 @@
   cursor: pointer;
   transition: all 0.2s;
   position: relative;
-  pointer-events: auto; /* Ensure card is always clickable */
-  z-index: 1; /* Base z-index */
+  pointer-events: auto;
+  z-index: 1;
 }
 
-/* Allow overflow when menu is open but clip otherwise */
 .canvas-card:not(.menu-open) {
   overflow: hidden;
 }
 
-/* When menu is open, elevate this card above others */
 .canvas-card.menu-open {
   z-index: 1000;
-  overflow: visible; /* Allow menu to overflow card bounds */
+  overflow: visible;
 }
 
 .canvas-card:hover {
   border-color: var(--accent-color);
   transform: translateY(-4px);
   box-shadow: var(--shadow-md);
-  z-index: 10; /* Elevate on hover */
+  z-index: 10;
 }
 
 /* Canvas Thumbnail */
@@ -36,7 +34,7 @@
   align-items: center;
   justify-content: center;
   border-bottom: 1px solid var(--border-color);
-  pointer-events: none; /* Allow clicks to pass through to parent */
+  pointer-events: none;
 }
 
 .canvas-thumbnail-placeholder {
@@ -44,19 +42,19 @@
   height: 60px;
   color: var(--text-tertiary);
   opacity: 0.5;
-  pointer-events: none; /* Allow clicks to pass through to parent */
+  pointer-events: none;
 }
 
 .canvas-thumbnail-placeholder svg {
   width: 100%;
   height: 100%;
-  pointer-events: none; /* Allow clicks to pass through to parent */
+  pointer-events: none;
 }
 
 /* Canvas Info */
 .canvas-info {
   padding: 1rem;
-  pointer-events: none; /* Allow clicks to pass through to parent */
+  pointer-events: none;
 }
 
 .canvas-name {
@@ -67,7 +65,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  pointer-events: none; /* Allow clicks to pass through to parent */
+  pointer-events: none;
 }
 
 .canvas-name-input {
@@ -81,7 +79,7 @@
   font-weight: 600;
   font-family: inherit;
   outline: none;
-  pointer-events: auto; /* Allow input to receive clicks */
+  pointer-events: auto;
 }
 
 .canvas-meta {
@@ -90,7 +88,7 @@
   gap: 0.5rem;
   font-size: 0.75rem;
   color: var(--text-secondary);
-  pointer-events: none; /* Allow clicks to pass through to parent */
+  pointer-events: none;
 }
 
 .canvas-role {
@@ -100,17 +98,17 @@
   color: var(--accent-color);
   border-radius: 4px;
   font-weight: 500;
-  pointer-events: none; /* Allow clicks to pass through to parent */
+  pointer-events: none;
 }
 
 .canvas-meta-divider {
   color: var(--text-tertiary);
-  pointer-events: none; /* Allow clicks to pass through to parent */
+  pointer-events: none;
 }
 
 .canvas-date {
   color: var(--text-tertiary);
-  pointer-events: none; /* Allow clicks to pass through to parent */
+  pointer-events: none;
 }
 
 /* Canvas Actions */
@@ -121,24 +119,19 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  z-index: 10; /* Ensure actions are above other elements */
-  pointer-events: none; /* Allow clicks to pass through container */
+  z-index: 10;
+  pointer-events: none;
 }
 
-/* In list view, actions are not absolutely positioned */
-.canvas-list .canvas-actions {
+/* List mode: actions not absolutely positioned */
+.card-list-mode .canvas-actions {
   position: static;
-  pointer-events: auto; /* Allow all actions to be clickable in list view */
-}
-
-/* In grid view, ensure actions container doesn't block card clicks */
-.canvas-grid .canvas-actions {
-  pointer-events: none; /* Allow clicks to pass through to card */
-}
-
-/* Explicitly ensure grid cards are clickable */
-.canvas-grid .canvas-card {
   pointer-events: auto;
+}
+
+/* Grid mode: actions don't block card clicks */
+.card-grid-mode .canvas-actions {
+  pointer-events: none;
 }
 
 .canvas-star-btn {
@@ -155,7 +148,7 @@
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
-  pointer-events: auto; /* Star button is clickable */
+  pointer-events: auto;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
@@ -181,7 +174,7 @@
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
-  pointer-events: auto; /* Menu button is clickable */
+  pointer-events: auto;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
@@ -204,13 +197,12 @@
   box-shadow:
     0 8px 24px rgba(0, 0, 0, 0.5),
     0 0 0 1px rgba(255, 255, 255, 0.1);
-  pointer-events: auto; /* Menu is interactive */
+  pointer-events: auto;
   animation: menuFadeIn 0.15s ease-out;
 }
 
-/* Portal menu (rendered outside card) */
 .canvas-menu-portal {
-  z-index: 10000; /* Very high z-index since it's at body level */
+  z-index: 10000;
 }
 
 @keyframes menuFadeIn {
@@ -239,7 +231,7 @@
   align-items: center;
   gap: 0.625rem;
   transition: all 0.15s ease;
-  pointer-events: auto; /* Menu buttons are clickable */
+  pointer-events: auto;
   white-space: nowrap;
 }
 
@@ -257,6 +249,22 @@
   color: var(--error-color);
 }
 
+/* List mode: card layout */
+.card-list-mode {
+  display: grid;
+  grid-template-columns: 200px 1fr auto;
+  align-items: center;
+  gap: 1rem;
+}
+
+.card-list-mode .canvas-thumbnail {
+  aspect-ratio: 16 / 9;
+}
+
+.card-list-mode .canvas-info {
+  padding: 0;
+}
+
 /* Responsive */
 @media (max-width: 640px) {
   .canvas-card {
@@ -272,4 +280,16 @@
   }
 }
 
-/* Theme handled by CSS variables in themes.css */
+@media (max-width: 768px) {
+  .card-list-mode {
+    grid-template-columns: 1fr;
+  }
+
+  .card-list-mode .canvas-thumbnail {
+    width: 100%;
+  }
+
+  .card-list-mode .canvas-info {
+    padding: 1rem;
+  }
+}

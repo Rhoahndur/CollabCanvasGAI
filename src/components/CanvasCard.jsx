@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import './CanvasCard.css';
+import styles from './CanvasCard.module.css';
 
 /**
  * CanvasCard - Individual canvas card in the dashboard
@@ -12,6 +12,7 @@ function CanvasCard({
   onRenameCanvas,
   onDuplicateCanvas,
   onToggleStar,
+  viewMode = 'grid',
 }) {
   const [showMenu, setShowMenu] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
@@ -132,7 +133,13 @@ function CanvasCard({
 
   return (
     <div
-      className={`canvas-card ${showMenu ? 'menu-open' : ''}`}
+      className={[
+        styles['canvas-card'],
+        styles[viewMode === 'list' ? 'card-list-mode' : 'card-grid-mode'],
+        showMenu && styles['menu-open'],
+      ]
+        .filter(Boolean)
+        .join(' ')}
       onClick={handleOpen}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -144,8 +151,8 @@ function CanvasCard({
       tabIndex={0}
     >
       {/* Canvas Thumbnail */}
-      <div className="canvas-thumbnail">
-        <div className="canvas-thumbnail-placeholder">
+      <div className={styles['canvas-thumbnail']}>
+        <div className={styles['canvas-thumbnail-placeholder']}>
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M3 3h18v18H3V3z" stroke="currentColor" strokeWidth="2" fill="none" />
             <path
@@ -159,7 +166,7 @@ function CanvasCard({
       </div>
 
       {/* Canvas Info */}
-      <div className="canvas-info">
+      <div className={styles['canvas-info']}>
         {isRenaming ? (
           // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
           <form
@@ -178,27 +185,27 @@ function CanvasCard({
               }}
               autoFocus
               maxLength={50}
-              className="canvas-name-input"
+              className={styles['canvas-name-input']}
             />
             {/* eslint-enable jsx-a11y/no-autofocus */}
           </form>
         ) : (
-          <h3 className="canvas-name" title={canvas.name}>
+          <h3 className={styles['canvas-name']} title={canvas.name}>
             {canvas.name}
           </h3>
         )}
 
-        <div className="canvas-meta">
-          <span className="canvas-role">{canvas.role}</span>
-          <span className="canvas-meta-divider">•</span>
-          <span className="canvas-date">{formatDate(canvas.lastAccessed)}</span>
+        <div className={styles['canvas-meta']}>
+          <span className={styles['canvas-role']}>{canvas.role}</span>
+          <span className={styles['canvas-meta-divider']}>•</span>
+          <span className={styles['canvas-date']}>{formatDate(canvas.lastAccessed)}</span>
         </div>
       </div>
 
       {/* Canvas Actions */}
-      <div className="canvas-actions">
+      <div className={styles['canvas-actions']}>
         <button
-          className="canvas-star-btn"
+          className={styles['canvas-star-btn']}
           onClick={handleToggleStar}
           title={canvas.starred ? 'Unstar canvas' : 'Star canvas'}
           aria-label={canvas.starred ? 'Unstar canvas' : 'Star canvas'}
@@ -208,7 +215,7 @@ function CanvasCard({
 
         <button
           ref={menuButtonRef}
-          className="canvas-menu-btn"
+          className={styles['canvas-menu-btn']}
           onClick={toggleMenu}
           aria-label="Canvas menu"
         >
@@ -219,7 +226,7 @@ function CanvasCard({
           createPortal(
             <div
               id={`canvas-menu-${canvas.id}`}
-              className="canvas-menu canvas-menu-portal"
+              className={`${styles['canvas-menu']} ${styles['canvas-menu-portal']}`}
               role="menu"
               tabIndex={-1}
               style={{

@@ -51,8 +51,8 @@
 /* Expanded sidebar */
 .presence-sidebar {
   position: fixed;
-  right: -280px; /* Hidden by default */
-  top: 64px; /* Below header */
+  right: -280px;
+  top: 64px;
   height: calc(100% - 64px);
   width: 280px;
   background: var(--sidebar-bg);
@@ -65,14 +65,12 @@
   z-index: 100;
 }
 
-/* Collapsed state - hidden */
-.presence-sidebar.collapsed {
+.collapsed {
   right: -280px;
   pointer-events: none;
 }
 
-/* Expanded state - fully visible */
-.presence-sidebar.expanded {
+.expanded {
   right: 0;
   pointer-events: auto;
 }

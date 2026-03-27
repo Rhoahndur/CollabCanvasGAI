@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import './UserSettingsModal.css';
+import styles from './UserSettingsModal.module.css';
 
 /**
  * UserSettingsModal - User preferences modal
@@ -49,16 +49,20 @@ export default function UserSettingsModal({ isOpen, onClose, theme, onThemeChang
   return (
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <div
-      className="settings-modal-overlay"
+      className={styles['settings-modal-overlay']}
       onClick={handleOverlayClick}
       onKeyDown={(e) => {
         if (e.key === 'Escape') onClose();
       }}
     >
-      <div className="settings-modal">
-        <div className="settings-modal-header">
+      <div className={styles['settings-modal']}>
+        <div className={styles['settings-modal-header']}>
           <h2>Settings</h2>
-          <button className="settings-modal-close" onClick={onClose} aria-label="Close settings">
+          <button
+            className={styles['settings-modal-close']}
+            onClick={onClose}
+            aria-label="Close settings"
+          >
             <svg
               viewBox="0 0 24 24"
               width="24"
@@ -72,26 +76,28 @@ export default function UserSettingsModal({ isOpen, onClose, theme, onThemeChang
           </button>
         </div>
 
-        <div className="settings-modal-content">
-          <div className="settings-section">
-            <h3 className="settings-section-title">Appearance</h3>
-            <p className="settings-section-description">Customize how CollabCanvas looks for you</p>
+        <div className={styles['settings-modal-content']}>
+          <div className={styles['settings-section']}>
+            <h3 className={styles['settings-section-title']}>Appearance</h3>
+            <p className={styles['settings-section-description']}>
+              Customize how CollabCanvas looks for you
+            </p>
 
-            <div className="theme-options">
+            <div className={styles['theme-options']}>
               {themeOptions.map((option) => (
                 <button
                   key={option.value}
-                  className={`theme-option ${selectedTheme === option.value ? 'active' : ''}`}
+                  className={`${styles['theme-option']} ${selectedTheme === option.value ? styles.active : ''}`}
                   onClick={() => handleThemeSelect(option.value)}
                 >
-                  <span className="theme-option-icon">{option.icon}</span>
-                  <div className="theme-option-content">
-                    <div className="theme-option-label">{option.label}</div>
-                    <div className="theme-option-description">{option.description}</div>
+                  <span className={styles['theme-option-icon']}>{option.icon}</span>
+                  <div className={styles['theme-option-content']}>
+                    <div className={styles['theme-option-label']}>{option.label}</div>
+                    <div className={styles['theme-option-description']}>{option.description}</div>
                   </div>
                   {selectedTheme === option.value && (
                     <svg
-                      className="theme-option-check"
+                      className={styles['theme-option-check']}
                       viewBox="0 0 24 24"
                       width="20"
                       height="20"
@@ -108,8 +114,10 @@ export default function UserSettingsModal({ isOpen, onClose, theme, onThemeChang
           </div>
         </div>
 
-        <div className="settings-modal-footer">
-          <p className="settings-info">Theme preference is saved locally on your device</p>
+        <div className={styles['settings-modal-footer']}>
+          <p className={styles['settings-info']}>
+            Theme preference is saved locally on your device
+          </p>
         </div>
       </div>
     </div>

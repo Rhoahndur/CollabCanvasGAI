@@ -59,11 +59,6 @@
   font-size: 0.7rem;
 }
 
-.btn-small {
-  padding: 0.3rem 0.6rem;
-  font-size: 0.75rem;
-}
-
 @media (max-width: 768px) {
   .canvas-header {
     flex-direction: row;
@@ -139,7 +134,6 @@
   color: var(--warning-color);
 }
 
-/* Responsive FPS Counter */
 @media (max-width: 768px) {
   .fps-counter {
     top: 60px;
@@ -196,50 +190,6 @@
   font-family: 'Monaco', 'Menlo', monospace;
 }
 
-/* Rectangle styling */
-.canvas-rectangle {
-  transition:
-    opacity 0.15s ease,
-    filter 0.15s ease;
-}
-
-.canvas-rectangle:hover {
-  opacity: 0.95;
-  filter: brightness(1.1);
-}
-
-.canvas-rectangle.locked {
-  opacity: 0.7;
-}
-
-.selection-highlight {
-  animation: selection-pulse 2s ease-in-out infinite;
-}
-
-@keyframes selection-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.6;
-  }
-}
-
-.preview-rectangle {
-  animation: preview-pulse 1s ease-in-out infinite;
-}
-
-@keyframes preview-pulse {
-  0%,
-  100% {
-    opacity: 0.4;
-  }
-  50% {
-    opacity: 0.6;
-  }
-}
-
 /* Grid styling is handled in SVG */
 .canvas-grid {
   pointer-events: none;
@@ -247,16 +197,6 @@
 
 .canvas-content {
   /* Content layer for rectangles, cursors, etc. */
-}
-
-/* Cursor styling */
-.cursor-group {
-  transition: transform 0.1s ease-out;
-  cursor: pointer;
-}
-
-.cursor-group:hover {
-  transform: scale(1.1);
 }
 
 /* Loading overlay */
@@ -465,7 +405,6 @@
   color: white;
 }
 
-/* Responsive */
 @media (max-width: 768px) {
   .layers-toggle-btn {
     bottom: 120px;

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { CANVAS_TEMPLATES, MAX_CANVASES_PER_USER } from '../utils/constants';
-import './CreateCanvasModal.css';
+import styles from './CreateCanvasModal.module.css';
 
 /**
  * CreateCanvasModal - Modal for creating a new canvas
@@ -87,9 +87,9 @@ function CreateCanvasModal({ isOpen, onClose, onCreateCanvas, userCanvasCount = 
     >
       <div className="modal-content">
         <div className="modal-header">
-          <div className="header-content">
+          <div className={styles['header-content']}>
             <h2>Create New Canvas</h2>
-            <div className="canvas-limit-badge">
+            <div className={styles['canvas-limit-badge']}>
               {userCanvasCount} / {MAX_CANVASES_PER_USER} canvases
             </div>
           </div>
@@ -105,7 +105,7 @@ function CreateCanvasModal({ isOpen, onClose, onCreateCanvas, userCanvasCount = 
 
         <form onSubmit={handleSubmit} className="modal-body">
           {/* Canvas Name Input */}
-          <div className="form-group">
+          <div className={styles['form-group']}>
             <label htmlFor="canvas-name">Canvas Name</label>
             {/* eslint-disable jsx-a11y/no-autofocus */}
             <input
@@ -122,21 +122,21 @@ function CreateCanvasModal({ isOpen, onClose, onCreateCanvas, userCanvasCount = 
           </div>
 
           {/* Template Selector */}
-          <div className="form-group">
+          <div className={styles['form-group']}>
             {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
             <label>Choose a Template</label>
-            <div className="template-grid">
+            <div className={styles['template-grid']}>
               {templates.map((template) => (
                 <button
                   key={template.id}
                   type="button"
-                  className={`template-card ${selectedTemplate === template.id ? 'selected' : ''}`}
+                  className={`${styles['template-card']} ${selectedTemplate === template.id ? styles.selected : ''}`}
                   onClick={() => setSelectedTemplate(template.id)}
                   disabled={isCreating}
                 >
-                  <div className="template-icon">{template.icon}</div>
-                  <div className="template-name">{template.name}</div>
-                  <div className="template-description">{template.description}</div>
+                  <div className={styles['template-icon']}>{template.icon}</div>
+                  <div className={styles['template-name']}>{template.name}</div>
+                  <div className={styles['template-description']}>{template.description}</div>
                 </button>
               ))}
             </div>
@@ -144,7 +144,7 @@ function CreateCanvasModal({ isOpen, onClose, onCreateCanvas, userCanvasCount = 
 
           {/* Canvas Limit Warning */}
           {userCanvasCount >= MAX_CANVASES_PER_USER - 1 && (
-            <div className="canvas-limit-warning">
+            <div className={styles['canvas-limit-warning']}>
               ⚠️ You have {userCanvasCount} of {MAX_CANVASES_PER_USER} canvases.
               {userCanvasCount >= MAX_CANVASES_PER_USER
                 ? ' Delete a canvas to create a new one.'
@@ -153,7 +153,7 @@ function CreateCanvasModal({ isOpen, onClose, onCreateCanvas, userCanvasCount = 
           )}
 
           {/* Error Message */}
-          {error && <div className="error-message">{error}</div>}
+          {error && <div className={styles['error-message']}>{error}</div>}
 
           {/* Actions */}
           <div className="modal-actions">

@@ -15,7 +15,7 @@ import { reportError } from '../utils/errorHandler';
 import CanvasCard from './CanvasCard';
 import CreateCanvasModal from './CreateCanvasModal';
 import UserSettingsModal from './UserSettingsModal';
-import './CanvasDashboard.css';
+import styles from './CanvasDashboard.module.css';
 
 // Canvas limit per user
 const CANVAS_LIMIT = 2;
@@ -187,8 +187,8 @@ function CanvasDashboard() {
 
   if (!user) {
     return (
-      <div className="dashboard-container">
-        <div className="dashboard-empty">
+      <div className={styles['dashboard-container']}>
+        <div className={styles['dashboard-empty']}>
           <h2>Please sign in to access your canvases</h2>
         </div>
       </div>
@@ -197,8 +197,8 @@ function CanvasDashboard() {
 
   if (loading) {
     return (
-      <div className="dashboard-container">
-        <div className="dashboard-loading">
+      <div className={styles['dashboard-container']}>
+        <div className={styles['dashboard-loading']}>
           <div className="loading-spinner"></div>
           <p>Loading your canvases...</p>
         </div>
@@ -208,8 +208,8 @@ function CanvasDashboard() {
 
   if (error) {
     return (
-      <div className="dashboard-container">
-        <div className="dashboard-error">
+      <div className={styles['dashboard-container']}>
+        <div className={styles['dashboard-error']}>
           <h2>⚠️ Error Loading Canvases</h2>
           <p>{error}</p>
           <button onClick={loadCanvases} className="btn btn-primary">
@@ -221,20 +221,20 @@ function CanvasDashboard() {
   }
 
   return (
-    <div className="dashboard-container">
+    <div className={styles['dashboard-container']}>
       {/* Dashboard Header */}
-      <header className="dashboard-header">
-        <div className="dashboard-title">
+      <header className={styles['dashboard-header']}>
+        <div className={styles['dashboard-title']}>
           <h1>My Canvases</h1>
-          <span className="canvas-count">
+          <span className={styles['canvas-count']}>
             {canvases.length} {canvases.length === 1 ? 'canvas' : 'canvases'}
           </span>
         </div>
 
-        <div className="dashboard-actions">
+        <div className={styles['dashboard-actions']}>
           {user && (
-            <div className="user-display">
-              <span className="user-name">{user.displayName || user.email}</span>
+            <div className={styles['user-display']}>
+              <span className={styles['user-name']}>{user.displayName || user.email}</span>
             </div>
           )}
 
@@ -269,21 +269,21 @@ function CanvasDashboard() {
 
       {/* Filter Tabs */}
       {canvases.length > 0 && (
-        <div className="filter-tabs">
+        <div className={styles['filter-tabs']}>
           <button
-            className={`filter-tab ${filterBy === 'all' ? 'active' : ''}`}
+            className={`${styles['filter-tab']} ${filterBy === 'all' ? styles.active : ''}`}
             onClick={() => setFilterBy('all')}
           >
             All Canvases
           </button>
           <button
-            className={`filter-tab ${filterBy === 'owned' ? 'active' : ''}`}
+            className={`${styles['filter-tab']} ${filterBy === 'owned' ? styles.active : ''}`}
             onClick={() => setFilterBy('owned')}
           >
             My Canvases
           </button>
           <button
-            className={`filter-tab ${filterBy === 'shared' ? 'active' : ''}`}
+            className={`${styles['filter-tab']} ${filterBy === 'shared' ? styles.active : ''}`}
             onClick={() => setFilterBy('shared')}
           >
             Shared with Me
@@ -293,9 +293,9 @@ function CanvasDashboard() {
 
       {/* Search and View Controls */}
       {canvases.length > 0 && (
-        <div className="dashboard-controls">
-          <div className="search-box">
-            <span className="search-icon">🔍</span>
+        <div className={styles['dashboard-controls']}>
+          <div className={styles['search-box']}>
+            <span className={styles['search-icon']}>🔍</span>
             <input
               type="text"
               placeholder="Search canvases..."
@@ -304,7 +304,7 @@ function CanvasDashboard() {
             />
           </div>
 
-          <div className="sort-select">
+          <div className={styles['sort-select']}>
             <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
               <option value="lastAccessed">Last Accessed</option>
               <option value="name">Name</option>
@@ -312,16 +312,16 @@ function CanvasDashboard() {
             </select>
           </div>
 
-          <div className="view-toggle">
+          <div className={styles['view-toggle']}>
             <button
-              className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`}
+              className={`${styles['view-btn']} ${viewMode === 'grid' ? styles.active : ''}`}
               onClick={() => setViewMode('grid')}
               title="Grid view"
             >
               ◫
             </button>
             <button
-              className={`view-btn ${viewMode === 'list' ? 'active' : ''}`}
+              className={`${styles['view-btn']} ${viewMode === 'list' ? styles.active : ''}`}
               onClick={() => setViewMode('list')}
               title="List view"
             >
@@ -333,11 +333,12 @@ function CanvasDashboard() {
 
       {/* Canvas Grid/List */}
       {filteredCanvases.length > 0 ? (
-        <div className={`canvas-${viewMode}`}>
+        <div className={styles[viewMode === 'list' ? 'canvas-list' : 'canvas-grid']}>
           {filteredCanvases.map((canvas) => (
             <CanvasCard
               key={canvas.id}
               canvas={canvas}
+              viewMode={viewMode}
               onOpenCanvas={onOpenCanvas}
               onDeleteCanvas={handleDeleteCanvas}
               onRenameCanvas={handleRenameCanvas}
@@ -347,13 +348,13 @@ function CanvasDashboard() {
           ))}
         </div>
       ) : canvases.length > 0 ? (
-        <div className="dashboard-empty">
+        <div className={styles['dashboard-empty']}>
           <h2>No canvases found</h2>
           <p>Try a different search term</p>
         </div>
       ) : (
-        <div className="dashboard-empty">
-          <div className="empty-icon">🎨</div>
+        <div className={styles['dashboard-empty']}>
+          <div className={styles['empty-icon']}>🎨</div>
           <h2>No canvases yet</h2>
           <p>Create your first canvas to get started!</p>
           <button className="btn btn-primary btn-large" onClick={() => setShowCreateModal(true)}>
@@ -382,7 +383,7 @@ function CanvasDashboard() {
             if (e.key === 'Escape') setShowLimitModal(false);
           }}
         >
-          <div className="modal-content limit-modal">
+          <div className={`modal-content ${styles['limit-modal']}`}>
             <div className="modal-header">
               <h2>Canvas Limit Reached</h2>
               <button className="modal-close" onClick={() => setShowLimitModal(false)}>
@@ -390,12 +391,12 @@ function CanvasDashboard() {
               </button>
             </div>
             <div className="modal-body">
-              <div className="limit-icon">🎨</div>
-              <p className="limit-message">
+              <div className={styles['limit-icon']}>🎨</div>
+              <p className={styles['limit-message']}>
                 You've reached the maximum of <strong>{CANVAS_LIMIT} canvases</strong> for your
                 account.
               </p>
-              <p className="limit-hint">
+              <p className={styles['limit-hint']}>
                 To create a new canvas, please delete an existing one first.
               </p>
             </div>

@@ -77,7 +77,7 @@ import ShapeRenderer from './ShapeRenderer';
 import MultiSelectionBox from './MultiSelectionBox';
 import ShapePreview from './ShapePreview';
 import CustomPolygonPreview from './CustomPolygonPreview';
-import './Canvas.css';
+import styles from './Canvas.module.css';
 
 /**
  * Canvas component — SVG-based collaborative canvas with pan and zoom.
@@ -1373,19 +1373,21 @@ function Canvas({
   // ----- JSX -----
 
   return (
-    <div className="canvas-container" ref={containerRef}>
+    <div className={styles['canvas-container']} ref={containerRef}>
       {/* Header */}
-      <div className="canvas-header">
-        <div className="canvas-header-left">
-          <span className="canvas-header-stats" role="status" aria-live="polite">
+      <div className={styles['canvas-header']}>
+        <div className={styles['canvas-header-left']}>
+          <span className={styles['canvas-header-stats']} role="status" aria-live="polite">
             {shapes.length} objects &bull; {onlineUsersCount}{' '}
             {onlineUsersCount === 1 ? 'user' : 'users'} online
           </span>
         </div>
-        <span className="canvas-header-hint">Hold Shift/Cmd to pan &bull; Scroll to zoom</span>
-        <div className="canvas-header-right">
+        <span className={styles['canvas-header-hint']}>
+          Hold Shift/Cmd to pan &bull; Scroll to zoom
+        </span>
+        <div className={styles['canvas-header-right']}>
           {SHOW_FPS_COUNTER && (
-            <span className="canvas-header-fps">
+            <span className={styles['canvas-header-fps']}>
               {fps} FPS &bull; {connectionStatus}
             </span>
           )}
@@ -1415,19 +1417,19 @@ function Canvas({
       />
 
       {canvasLoading && (
-        <div className="canvas-loading-overlay">
+        <div className={styles['canvas-loading-overlay']}>
           <div className="loading-spinner"></div>
           <p>Loading canvas...</p>
         </div>
       )}
 
       {canvasError && (
-        <div className="canvas-error-overlay">
-          <div className="error-content">
-            <div className="error-icon">⚠️</div>
+        <div className={styles['canvas-error-overlay']}>
+          <div className={styles['error-content']}>
+            <div className={styles['error-icon']}>⚠️</div>
             <h3>Connection Error</h3>
             <p>{canvasError}</p>
-            <p className="error-hint">
+            <p className={styles['error-hint']}>
               Please check your internet connection and refresh the page.
             </p>
           </div>
@@ -1436,13 +1438,13 @@ function Canvas({
 
       <svg
         ref={svgRef}
-        className="canvas-svg"
+        className={styles['canvas-svg']}
         viewBox={viewBox}
         onMouseDown={handleCanvasMouseDown}
         style={{ cursor: isPanning ? 'grabbing' : isDragging ? 'move' : 'crosshair' }}
       >
         <rect x={0} y={0} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} fill={backgroundColor} />
-        {gridVisible && <g className="canvas-grid">{gridLines}</g>}
+        {gridVisible && <g className={styles['canvas-grid']}>{gridLines}</g>}
         <rect
           x={0}
           y={0}
@@ -1453,7 +1455,7 @@ function Canvas({
           strokeWidth={BOUNDARY_WIDTH / viewport.zoom}
         />
 
-        <g className="canvas-content">
+        <g className={styles['canvas-content']}>
           <ShapeRenderer
             visibleShapes={visibleShapes}
             selectedShapeId={selectedShapeId}
@@ -1525,7 +1527,7 @@ function Canvas({
           )}
 
           {/* Cursors */}
-          <g className="cursors-layer">
+          <g className={styles['cursors-layer']}>
             {cursors.map((c) => (
               <Cursor key={c.sessionId} userId={c.userId} x={c.x} y={c.y} userName={c.userName} />
             ))}
@@ -1534,8 +1536,10 @@ function Canvas({
       </svg>
 
       {/* Connection status */}
-      <div className={`connection-status connection-status-${connectionStatus}`}>
-        <span className="status-dot"></span>
+      <div
+        className={`${styles['connection-status']} ${styles[`connection-status-${connectionStatus}`] || ''}`}
+      >
+        <span className={styles['status-dot']}></span>
         <span>
           {connectionStatus === 'connecting' && 'Connecting...'}
           {connectionStatus === 'connected' && 'Connected'}
@@ -1546,18 +1550,18 @@ function Canvas({
       </div>
 
       {SHOW_FPS_COUNTER && (
-        <div className="fps-counter">
-          <div className="fps-value">{fps} FPS</div>
-          <div className="fps-render">Render: {renderTime}ms</div>
-          <div className="fps-objects">
+        <div className={styles['fps-counter']}>
+          <div className={styles['fps-value']}>{fps} FPS</div>
+          <div className={styles['fps-render']}>Render: {renderTime}ms</div>
+          <div className={styles['fps-objects']}>
             Objects: {visibleShapes.length}/{shapes.length}
             {visibleShapes.length < shapes.length && ' (culled)'}
           </div>
-          <div className="fps-zoom">Zoom: {(viewport.zoom * 100).toFixed(0)}%</div>
-          <div className="fps-pos">
+          <div className={styles['fps-zoom']}>Zoom: {(viewport.zoom * 100).toFixed(0)}%</div>
+          <div className={styles['fps-pos']}>
             Pos: ({Math.round(viewport.offsetX)}, {Math.round(viewport.offsetY)})
           </div>
-          <div className={`fps-firestore ${firestoreStatus}`}>
+          <div className={`${styles['fps-firestore']} ${styles[firestoreStatus] || ''}`}>
             Firestore:{' '}
             {firestoreStatus === 'connected' ? '✓' : firestoreStatus === 'error' ? '✗' : '...'}
           </div>
@@ -1576,7 +1580,7 @@ function Canvas({
       />
 
       <button
-        className="layers-toggle-btn"
+        className={styles['layers-toggle-btn']}
         onClick={() => setIsLayersPanelOpen(!isLayersPanelOpen)}
         title="Toggle layers panel"
         aria-label="Toggle layers panel"
@@ -1585,7 +1589,7 @@ function Canvas({
           <rect x="3" y="3" width="18" height="18" rx="2" />
           <path d="M3 9h18M3 15h18" />
         </svg>
-        <span className="layers-count">{shapes.length}</span>
+        <span className={styles['layers-count']}>{shapes.length}</span>
       </button>
 
       <LayersPanel

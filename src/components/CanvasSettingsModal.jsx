@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getCanvasMetadata, updateCanvasMetadata } from '../services/canvasService';
 import { reportError } from '../utils/errorHandler';
-import './CanvasSettingsModal.css';
+import styles from './CanvasSettingsModal.module.css';
 
 /**
  * CanvasSettingsModal component - Manage canvas settings
@@ -111,7 +111,7 @@ function CanvasSettingsModal({ canvasId, canvasName, isOpen, onClose, onSettings
   return (
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <div
-      className="settings-modal-overlay"
+      className={styles['settings-modal-overlay']}
       onClick={(e) => {
         if (e.target === e.currentTarget) handleClose();
       }}
@@ -119,41 +119,49 @@ function CanvasSettingsModal({ canvasId, canvasName, isOpen, onClose, onSettings
         if (e.key === 'Escape') handleClose();
       }}
     >
-      <div className="settings-modal">
+      <div className={styles['settings-modal']}>
         {/* Header */}
-        <div className="settings-modal-header">
+        <div className={styles['settings-modal-header']}>
           <h2>Canvas Settings</h2>
-          <p className="settings-modal-subtitle">Background and grid settings for this canvas</p>
-          <button className="settings-modal-close" onClick={handleClose} aria-label="Close">
+          <p className={styles['settings-modal-subtitle']}>
+            Background and grid settings for this canvas
+          </p>
+          <button
+            className={styles['settings-modal-close']}
+            onClick={handleClose}
+            aria-label="Close"
+          >
             ✕
           </button>
         </div>
 
         {/* Content */}
-        <div className="settings-modal-content">
+        <div className={styles['settings-modal-content']}>
           {/* Error/Success Messages */}
-          {error && <div className="settings-modal-error">{error}</div>}
-          {successMessage && <div className="settings-modal-success">{successMessage}</div>}
+          {error && <div className={styles['settings-modal-error']}>{error}</div>}
+          {successMessage && (
+            <div className={styles['settings-modal-success']}>{successMessage}</div>
+          )}
 
           {/* Canvas Name Display */}
-          <div className="settings-canvas-name">
-            <span className="settings-label">Canvas:</span>
-            <span className="settings-value">{canvasName}</span>
+          <div className={styles['settings-canvas-name']}>
+            <span className={styles['settings-label']}>Canvas:</span>
+            <span className={styles['settings-value']}>{canvasName}</span>
           </div>
 
           {/* Background Color Section */}
-          <div className="settings-section">
+          <div className={styles['settings-section']}>
             <h3>Background Color</h3>
-            <p className="settings-section-description">
+            <p className={styles['settings-section-description']}>
               Choose a background color for your canvas
             </p>
 
-            <div className="settings-color-palette">
+            <div className={styles['settings-color-palette']}>
               {colorPalette.map((color) => (
                 <button
                   key={color.value}
-                  className={`settings-color-swatch ${
-                    backgroundColor === color.value ? 'selected' : ''
+                  className={`${styles['settings-color-swatch']} ${
+                    backgroundColor === color.value ? styles.selected : ''
                   }`}
                   style={{ backgroundColor: color.value }}
                   onClick={() => setBackgroundColor(color.value)}
@@ -161,39 +169,39 @@ function CanvasSettingsModal({ canvasId, canvasName, isOpen, onClose, onSettings
                   aria-label={`Set background to ${color.name}`}
                 >
                   {backgroundColor === color.value && (
-                    <span className="settings-color-check">✓</span>
+                    <span className={styles['settings-color-check']}>✓</span>
                   )}
                 </button>
               ))}
             </div>
 
             {/* Custom Color Picker */}
-            <div className="settings-custom-color">
+            <div className={styles['settings-custom-color']}>
               <label htmlFor="custom-color">Custom Color:</label>
               <input
                 id="custom-color"
                 type="color"
                 value={backgroundColor}
                 onChange={(e) => setBackgroundColor(e.target.value)}
-                className="settings-color-input"
+                className={styles['settings-color-input']}
               />
-              <span className="settings-color-value">{backgroundColor}</span>
+              <span className={styles['settings-color-value']}>{backgroundColor}</span>
             </div>
           </div>
 
           {/* Grid Visibility Section */}
-          <div className="settings-section">
+          <div className={styles['settings-section']}>
             <h3>Grid</h3>
-            <p className="settings-section-description">Show or hide the canvas grid</p>
+            <p className={styles['settings-section-description']}>Show or hide the canvas grid</p>
 
-            <label className="settings-toggle">
+            <label className={styles['settings-toggle']}>
               <input
                 type="checkbox"
                 checked={gridVisible}
                 onChange={(e) => setGridVisible(e.target.checked)}
               />
-              <span className="settings-toggle-slider"></span>
-              <span className="settings-toggle-label">
+              <span className={styles['settings-toggle-slider']}></span>
+              <span className={styles['settings-toggle-label']}>
                 {gridVisible ? 'Grid Visible' : 'Grid Hidden'}
               </span>
             </label>
@@ -201,11 +209,19 @@ function CanvasSettingsModal({ canvasId, canvasName, isOpen, onClose, onSettings
         </div>
 
         {/* Footer */}
-        <div className="settings-modal-footer">
-          <button className="settings-modal-cancel-btn" onClick={handleClose} disabled={loading}>
+        <div className={styles['settings-modal-footer']}>
+          <button
+            className={styles['settings-modal-cancel-btn']}
+            onClick={handleClose}
+            disabled={loading}
+          >
             Cancel
           </button>
-          <button className="settings-modal-save-btn" onClick={handleSave} disabled={loading}>
+          <button
+            className={styles['settings-modal-save-btn']}
+            onClick={handleSave}
+            disabled={loading}
+          >
             {loading ? 'Saving...' : 'Save Settings'}
           </button>
         </div>
