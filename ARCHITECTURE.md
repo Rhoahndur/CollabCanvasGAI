@@ -1,6 +1,6 @@
 # CollabCanvasGAI — Architecture
 
-A real-time collaborative canvas application with AI assistance, built with React, Firebase, and OpenAI GPT-4o.
+A real-time collaborative canvas application with AI assistance, built with React, Firebase, and OpenRouter.
 
 ---
 
@@ -18,15 +18,15 @@ A real-time collaborative canvas application with AI assistance, built with Reac
   +--------------+    +------------------+    +-------------------+
   |  Firebase    |    |  Vercel          |    |  Vercel Edge CDN  |
   |  Auth (OAuth)|    |  /api/chat       |    |  Production Build |
-  |  Realtime DB |    |  (GPT-4o SSE)   |    |  (vite build)     |
+  |  Realtime DB |    |  (SSE streaming) |    |  (vite build)     |
   |  Cloud Funcs |    +--------+---------+    +-------------------+
   |  (SendGrid)  |             |
   +--------------+             v
                     +------------------+
-                    |  OpenAI API      |
-                    |  GPT-4o          |
-                    |  (vision +       |
-                    |   tool calls)    |
+                    |  OpenRouter API   |
+                    |  (OpenAI-compat)  |
+                    |  vision +         |
+                    |  tool calls       |
                     +------------------+
 ```
 
@@ -44,8 +44,8 @@ A real-time collaborative canvas application with AI assistance, built with Reac
 | **Auth** | Firebase Auth | GitHub + Google OAuth providers |
 | **Database** | Firebase Realtime DB | All persistent data — shapes, presence, cursors, chat, permissions |
 | **Real-time Sync** | Firebase `onValue` listeners | Live shape updates, cursor tracking, presence |
-| **AI Backend** | Vercel Serverless Functions | `/api/chat` — proxies OpenAI with Zod validation + rate limiting |
-| **AI Model** | OpenAI GPT-4o | Vision (canvas screenshots) + function calling (9 tools) |
+| **AI Backend** | Vercel Serverless Functions | `/api/chat` — proxies OpenRouter (OpenAI-compatible) with Zod validation + rate limiting |
+| **AI Model** | Configurable via OpenRouter | Default: `nvidia/nemotron-nano-12b-v2-vl:free`; vision + function calling (9 tools) |
 | **AI Client** | Vercel AI SDK (`ai/react`) | `useChat` hook for streaming SSE responses |
 | **Validation** | Zod | Env var validation at startup, API request body validation |
 | **Error Tracking** | `reportError()` (errorHandler.ts) | Centralized — structured dev console, Sentry-ready in production |
@@ -317,7 +317,7 @@ isActive: true
 |  ChatPanel       | ----------------------->  |  Vercel          |
 |  (Canny tab)     |    { messages,            |  /api/chat       |
 |                  |      canvasContext,        |                  |
-|  useChat()       |      image? (base64) }    |  OpenAI GPT-4o   |
+|  useChat()       |      image? (base64) }    |  OpenRouter API  |
 |  (ai/react)      |                           |  (streaming)     |
 |                  | <---- SSE stream --------- |                  |
 |                  |    text + tool calls       |                  |
@@ -348,10 +348,10 @@ isActive: true
 1. User message contains visual keywords ("look at", "what do you see", etc.)
 2. `shouldUseVision()` detects keywords -> `captureCanvasImage()` renders SVG to JPEG
 3. Base64 image (max 800x600, 0.8 quality) sent alongside messages to `/api/chat`
-4. GPT-4o analyzes canvas visually and responds with tool calls or suggestions
+4. Model analyzes canvas visually and responds with tool calls or suggestions
 
 ### Tool Call Flow
-1. GPT-4o returns streaming response with `tool_calls` in delta chunks
+1. Model returns streaming response with `tool_calls` in delta chunks
 2. Server accumulates tool calls, appends `__TOOL_CALLS__...__END_TOOL_CALLS__` marker
 3. Client `useEffect` parses marker, calls `executeCanvasTool()` for each tool
 4. Results applied via `canvasService` (synced to all users via Firebase)
@@ -377,18 +377,20 @@ reportError(error, { component: 'Canvas', action: 'createShape', canvasId })
 
 Incremental migration with `allowJs: true` and `checkJs: false`:
 
-- **Converted to `.ts`:** constants, canvasUtils, colorUtils, envValidation, errorHandler
+- **Converted to `.ts` (6 files):** constants, canvasUtils, colorUtils, envValidation, errorHandler, canvas.ts (types)
 - **Type definitions:** `src/types/canvas.ts` — Shape (discriminated union), Viewport, Cursor, PresenceEntry, User, CanvasMetadata, HistoryAction
-- **Still `.js/.jsx`:** Components, hooks, services (can be migrated incrementally)
+- **Still `.js/.jsx` (72 files):** Components, hooks, services, tests
 - **CI:** `tsc --noEmit` runs in CI and as `npm run typecheck`
+- **Migration plan:** 4-tier plan in [FOLLOWUP_PLAN.md](./FOLLOWUP_PLAN.md) — utils/services first, then hooks, components, tests
 
 ---
 
 ## CSS Strategy
 
-- **Global:** `themes.css` (CSS custom properties for light/dark), `App.css` (layout)
-- **CSS Modules:** `ZoomControls.module.css`, `ErrorBoundary.module.css` (scoped, Vite-native)
-- **Component CSS:** Remaining components use `Component.css` (can be migrated to modules)
+- **Global themes:** `themes.css` (CSS custom properties for light/dark), `App.css` (layout, loading spinner)
+- **Shared classes:** `styles/shared.css` — buttons (`.btn`, `.btn-primary`, `.btn-secondary`, `.btn-large`, `.btn-small`), modals (`.modal-overlay`, `.modal-content`, `.modal-header`, `.modal-body`, `.modal-actions`, `.modal-footer`), SVG shape/cursor classes (`.canvas-rectangle`, `.selection-highlight`, `.cursor-group`), and shared `@keyframes` animations. Imported globally in `main.jsx`.
+- **CSS Modules:** All 16 component CSS files use `.module.css` (Vite-native scoping, bracket notation `styles['class-name']`). Components reference global shared classes as plain strings and module-scoped classes via `styles[...]`.
+- **`@keyframes` in modules:** Vite CSS Modules scope keyframe names, so modules that use animations define their own `@keyframes` locally (e.g. PresenceSidebar, CanvasSettingsModal, UserSettingsModal).
 - **Accessibility:** `.sr-only` utility class in `themes.css`
 
 ---
@@ -449,21 +451,29 @@ Local Development:
 
 **Configuration:** Pool `forks` with `maxForks: 1`, heap limit 6,144 MB.
 
-**Test suites (11 files, 130 tests):**
+**Test suites (19 files, 212 tests):**
 
 | Suite | Type | File |
 |---|---|---|
 | useAuth | Hook (renderHook) | `tests/hooks/useAuth.test.js` |
 | useHistory | Hook (renderHook) | `tests/hooks/useHistory.test.js` |
 | useTheme | Hook (renderHook) | `tests/hooks/useTheme.test.js` |
+| useViewport | Hook (renderHook) | `tests/hooks/useViewport.test.js` |
+| useSelection | Hook (renderHook) | `tests/hooks/useSelection.test.js` |
+| useShapeDrawing | Hook (renderHook) | `tests/hooks/useShapeDrawing.test.js` |
+| useShapeTransform | Hook (renderHook) | `tests/hooks/useShapeTransform.test.js` |
 | ErrorBoundary | Component (render) | `tests/components/ErrorBoundary.test.jsx` |
 | ZoomControls | Component (render) | `tests/components/ZoomControls.test.jsx` |
 | canvasService | Service (mocked Firebase) | `tests/services/canvasService.test.js` |
 | lockCleanupService | Service (mocked Firebase) | `tests/services/lockCleanupService.test.js` |
+| canvasMigration | Service (mocked Firebase) | `tests/services/canvasMigration.test.js` |
+| imageService | Service (stubbed globals) | `tests/services/imageService.test.js` |
 | canvasTools | Utility | `tests/utils/canvasTools.test.js` |
 | constants | Utility | `tests/utils/constants.test.js` |
 | canvasUtils | Utility | `tests/canvasUtils.test.js` |
 | colorUtils | Utility | `tests/colorUtils.test.js` |
+| errorHandler | Utility | `tests/utils/errorHandler.test.js` |
+| envValidation | Utility | `tests/utils/envValidation.test.js` |
 
 **Coverage thresholds:** 15% statements/lines, 50% branches, 30% functions.
 
