@@ -1,5 +1,9 @@
-import { useState, useEffect } from 'react';
-import { removeCanvasPermission, getCanvasMetadata } from '../services/canvasService';
+import { useState, useEffect, useCallback } from 'react';
+import {
+  createShareToken,
+  removeCanvasPermission,
+  getCanvasPermissions,
+} from '../services/canvasService';
 import { CANVAS_ROLE } from '../utils/constants';
 import { reportError } from '../utils/errorHandler';
 import styles from './ShareCanvasModal.module.css';
@@ -15,25 +19,17 @@ function ShareCanvasModal({ canvasId, canvasName, currentUserId, isOpen, onClose
   const [shareLinkRole, setShareLinkRole] = useState(CANVAS_ROLE.VIEWER); // Role for share link
   const [collaborators, setCollaborators] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [linkLoading, setLinkLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [copySuccess, setCopySuccess] = useState(false);
 
-  // Generate shareable link on mount
-  useEffect(() => {
-    if (isOpen && canvasId) {
-      const link = `${window.location.origin}/canvas/${canvasId}`;
-      setShareLink(link);
-      loadCollaborators();
-    }
-  }, [isOpen, canvasId]);
-
   // Load list of collaborators
-  const loadCollaborators = async () => {
+  const loadCollaborators = useCallback(async () => {
     try {
-      const metadata = await getCanvasMetadata(canvasId);
-      if (metadata?.permissions) {
-        const collabList = Object.entries(metadata.permissions).map(([userId, data]) => ({
+      const permissions = await getCanvasPermissions(canvasId);
+      if (permissions) {
+        const collabList = Object.entries(permissions).map(([userId, data]) => ({
           userId,
           role: data.role || data, // Handle both string and object format
           userName: data.userName || userId,
@@ -43,25 +39,39 @@ function ShareCanvasModal({ canvasId, canvasName, currentUserId, isOpen, onClose
     } catch (err) {
       reportError(err, { component: 'ShareCanvasModal', action: 'loadCollaborators' });
     }
-  };
+  }, [canvasId]);
 
-  // Copy shareable link to clipboard with role parameter
-  const handleCopyLink = () => {
-    const linkWithRole = `${shareLink}?role=${shareLinkRole}`;
-    navigator.clipboard
-      .writeText(linkWithRole)
-      .then(() => {
-        setCopySuccess(true);
-        setSuccessMessage(`${shareLinkRole === 'editor' ? 'Editor' : 'Viewer'} link copied!`);
-        setTimeout(() => {
-          setCopySuccess(false);
-          setSuccessMessage('');
-        }, 2000);
-      })
-      .catch((err) => {
-        reportError(err, { component: 'ShareCanvasModal', action: 'handleCopyLink' });
-        setError('Failed to copy link to clipboard');
-      });
+  // Generate shareable link on mount
+  useEffect(() => {
+    if (isOpen && canvasId) {
+      const link = `${window.location.origin}/canvas/${canvasId}`;
+      setShareLink(link);
+      loadCollaborators();
+    }
+  }, [isOpen, canvasId, loadCollaborators]);
+
+  // Copy shareable link after creating a role-scoped token.
+  const handleCopyLink = async () => {
+    setLinkLoading(true);
+    setError('');
+
+    try {
+      const token = await createShareToken(canvasId, currentUserId, shareLinkRole);
+      const linkWithToken = `${shareLink}?token=${encodeURIComponent(token)}`;
+      await navigator.clipboard.writeText(linkWithToken);
+
+      setCopySuccess(true);
+      setSuccessMessage(`${shareLinkRole === 'editor' ? 'Editor' : 'Viewer'} link copied!`);
+      setTimeout(() => {
+        setCopySuccess(false);
+        setSuccessMessage('');
+      }, 2000);
+    } catch (err) {
+      reportError(err, { component: 'ShareCanvasModal', action: 'handleCopyLink' });
+      setError('Failed to create or copy share link');
+    } finally {
+      setLinkLoading(false);
+    }
   };
 
   // Remove collaborator
@@ -158,15 +168,16 @@ function ShareCanvasModal({ canvasId, canvasName, currentUserId, isOpen, onClose
             <div className={styles['share-link-container']}>
               <input
                 type="text"
-                value={`${shareLink}?role=${shareLinkRole}`}
+                value={shareLink}
                 readOnly
                 className={styles['share-link-input']}
               />
               <button
                 className={`${styles['share-link-copy-btn']} ${copySuccess ? styles['copied'] : ''}`}
                 onClick={handleCopyLink}
+                disabled={linkLoading}
               >
-                {copySuccess ? '✓ Copied!' : '📋 Copy'}
+                {linkLoading ? 'Creating...' : copySuccess ? '✓ Copied!' : '📋 Copy'}
               </button>
             </div>
           </div>
