@@ -33,6 +33,9 @@ coverage
 # Vercel
 .vercel
 
+# Firebase deploy cache
+.firebase/
+
 # Running log (conversation history)
 running_log.txt
 *PLAN.md
