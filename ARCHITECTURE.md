@@ -34,27 +34,27 @@ A real-time collaborative canvas application with AI assistance, built with Reac
 
 ## Tech Stack
 
-| Layer | Technology | Role |
-|---|---|---|
-| **UI** | React 18.3 | Component rendering, state via hooks |
-| **Build** | Vite 5.4 | Dev server, HMR, Terser production bundling |
-| **Canvas** | Raw SVG | Shape rendering — no canvas libraries |
-| **Language** | JavaScript + TypeScript | Incremental TS migration (`allowJs: true`, `strict: true`) |
-| **Routing** | React Router v7 | `BrowserRouter`, `Routes`, `useParams`, `useNavigate` |
-| **Auth** | Firebase Auth | GitHub + Google OAuth providers |
-| **Database** | Firebase Realtime DB | All persistent data — shapes, presence, cursors, chat, permissions |
-| **Real-time Sync** | Firebase `onValue` listeners | Live shape updates, cursor tracking, presence |
-| **AI Backend** | Vercel Serverless Functions | `/api/chat` — proxies OpenRouter (OpenAI-compatible) with Zod validation + rate limiting |
-| **AI Model** | Configurable via OpenRouter | Default: `nvidia/nemotron-nano-12b-v2-vl:free`; vision + function calling (9 tools) |
-| **AI Client** | Vercel AI SDK (`ai/react`) | `useChat` hook for streaming SSE responses |
-| **Validation** | Zod | Env var validation at startup, API request body validation |
-| **Error Tracking** | `reportError()` (errorHandler.ts) | Centralized — structured dev console, Sentry-ready in production |
-| **Styling** | CSS + CSS Modules | Global themes.css, component `.module.css` files |
-| **Email** | Firebase Cloud Functions + SendGrid | Canvas invitation emails |
-| **Hosting** | Vercel | CDN + serverless; Firebase for DB/auth/functions |
-| **Testing** | Vitest + Testing Library + happy-dom | Behavioral tests (renderHook, render, fireEvent) |
-| **Linting** | ESLint 9 + Prettier + Husky | Pre-commit hooks via lint-staged |
-| **State** | React `useState` + `useRef` | No external state library — plain React throughout |
+| Layer              | Technology                           | Role                                                                                     |
+| ------------------ | ------------------------------------ | ---------------------------------------------------------------------------------------- |
+| **UI**             | React 18.3                           | Component rendering, state via hooks                                                     |
+| **Build**          | Vite 5.4                             | Dev server, HMR, Terser production bundling                                              |
+| **Canvas**         | Raw SVG                              | Shape rendering — no canvas libraries                                                    |
+| **Language**       | JavaScript + TypeScript              | Incremental TS migration (`allowJs: true`, `strict: true`)                               |
+| **Routing**        | React Router v7                      | `BrowserRouter`, `Routes`, `useParams`, `useNavigate`                                    |
+| **Auth**           | Firebase Auth                        | GitHub + Google OAuth providers                                                          |
+| **Database**       | Firebase Realtime DB                 | All persistent data — shapes, presence, cursors, chat, permissions                       |
+| **Real-time Sync** | Firebase `onValue` listeners         | Live shape updates, cursor tracking, presence                                            |
+| **AI Backend**     | Vercel Serverless Functions          | `/api/chat` — proxies OpenRouter (OpenAI-compatible) with Zod validation + rate limiting |
+| **AI Model**       | Configurable via OpenRouter          | Default: `nvidia/nemotron-nano-12b-v2-vl:free`; vision + function calling (9 tools)      |
+| **AI Client**      | Vercel AI SDK (`ai/react`)           | `useChat` hook for streaming SSE responses                                               |
+| **Validation**     | Zod                                  | Env var validation at startup, API request body validation                               |
+| **Error Tracking** | `reportError()` (errorHandler.ts)    | Centralized — structured dev console, Sentry-ready in production                         |
+| **Styling**        | CSS + CSS Modules                    | Global themes.css, component `.module.css` files                                         |
+| **Email**          | Firebase Cloud Functions + SendGrid  | Canvas invitation emails                                                                 |
+| **Hosting**        | Vercel                               | CDN + serverless; Firebase for DB/auth/functions                                         |
+| **Testing**        | Vitest + Testing Library + happy-dom | Behavioral tests (renderHook, render, fireEvent)                                         |
+| **Linting**        | ESLint 9 + Prettier + Husky          | Pre-commit hooks via lint-staged                                                         |
+| **State**          | React `useState` + `useRef`          | No external state library — plain React throughout                                       |
 
 ---
 
@@ -258,6 +258,7 @@ root/
 ## Real-Time Collaboration
 
 ### Session Model
+
 - Each browser tab = one session (`session_{timestamp}_{random9}`)
 - Sessions tracked in `presence/` and `cursors/` under each canvas
 - A single user can have multiple active sessions (multiple tabs)
@@ -304,6 +305,7 @@ isActive: true
 - Client-side 5-second re-filter catches stale users without new DB events
 
 ### Cursor Sync
+
 - Mouse movement throttled to 75ms updates
 - Client-side filter: exclude own session, stale cursors (> 45s), inactive cursors
 - Drag operations throttled to 50ms
@@ -345,12 +347,14 @@ isActive: true
 ```
 
 ### Vision Flow
+
 1. User message contains visual keywords ("look at", "what do you see", etc.)
 2. `shouldUseVision()` detects keywords -> `captureCanvasImage()` renders SVG to JPEG
 3. Base64 image (max 800x600, 0.8 quality) sent alongside messages to `/api/chat`
 4. Model analyzes canvas visually and responds with tool calls or suggestions
 
 ### Tool Call Flow
+
 1. Model returns streaming response with `tool_calls` in delta chunks
 2. Server accumulates tool calls, appends `__TOOL_CALLS__...__END_TOOL_CALLS__` marker
 3. Client `useEffect` parses marker, calls `executeCanvasTool()` for each tool
@@ -363,7 +367,7 @@ isActive: true
 All errors flow through `src/utils/errorHandler.ts`:
 
 ```typescript
-reportError(error, { component: 'Canvas', action: 'createShape', canvasId })
+reportError(error, { component: 'Canvas', action: 'createShape', canvasId });
 ```
 
 - **Development:** Structured `console.error` with `[component > action]` prefix
@@ -413,7 +417,7 @@ Incremental migration with `allowJs: true` and `checkJs: false`:
 |  +-------------+    +--------------------------+     |
 |  | Edge CDN    |    | Serverless Functions     |     |
 |  | Static SPA  |    | /api/chat (Node.js)      |     |
-|  | (vite build)|    | OpenAI proxy + streaming |     |
+|  | (vite build)|    | OpenRouter proxy + streaming |  |
 |  +-------------+    | 60s timeout, 1GB memory  |     |
 |                      | Zod validation           |     |
 |                      | 20 req/min rate limit    |     |
@@ -453,27 +457,27 @@ Local Development:
 
 **Test suites (19 files, 212 tests):**
 
-| Suite | Type | File |
-|---|---|---|
-| useAuth | Hook (renderHook) | `tests/hooks/useAuth.test.js` |
-| useHistory | Hook (renderHook) | `tests/hooks/useHistory.test.js` |
-| useTheme | Hook (renderHook) | `tests/hooks/useTheme.test.js` |
-| useViewport | Hook (renderHook) | `tests/hooks/useViewport.test.js` |
-| useSelection | Hook (renderHook) | `tests/hooks/useSelection.test.js` |
-| useShapeDrawing | Hook (renderHook) | `tests/hooks/useShapeDrawing.test.js` |
-| useShapeTransform | Hook (renderHook) | `tests/hooks/useShapeTransform.test.js` |
-| ErrorBoundary | Component (render) | `tests/components/ErrorBoundary.test.jsx` |
-| ZoomControls | Component (render) | `tests/components/ZoomControls.test.jsx` |
-| canvasService | Service (mocked Firebase) | `tests/services/canvasService.test.js` |
+| Suite              | Type                      | File                                        |
+| ------------------ | ------------------------- | ------------------------------------------- |
+| useAuth            | Hook (renderHook)         | `tests/hooks/useAuth.test.js`               |
+| useHistory         | Hook (renderHook)         | `tests/hooks/useHistory.test.js`            |
+| useTheme           | Hook (renderHook)         | `tests/hooks/useTheme.test.js`              |
+| useViewport        | Hook (renderHook)         | `tests/hooks/useViewport.test.js`           |
+| useSelection       | Hook (renderHook)         | `tests/hooks/useSelection.test.js`          |
+| useShapeDrawing    | Hook (renderHook)         | `tests/hooks/useShapeDrawing.test.js`       |
+| useShapeTransform  | Hook (renderHook)         | `tests/hooks/useShapeTransform.test.js`     |
+| ErrorBoundary      | Component (render)        | `tests/components/ErrorBoundary.test.jsx`   |
+| ZoomControls       | Component (render)        | `tests/components/ZoomControls.test.jsx`    |
+| canvasService      | Service (mocked Firebase) | `tests/services/canvasService.test.js`      |
 | lockCleanupService | Service (mocked Firebase) | `tests/services/lockCleanupService.test.js` |
-| canvasMigration | Service (mocked Firebase) | `tests/services/canvasMigration.test.js` |
-| imageService | Service (stubbed globals) | `tests/services/imageService.test.js` |
-| canvasTools | Utility | `tests/utils/canvasTools.test.js` |
-| constants | Utility | `tests/utils/constants.test.js` |
-| canvasUtils | Utility | `tests/canvasUtils.test.js` |
-| colorUtils | Utility | `tests/colorUtils.test.js` |
-| errorHandler | Utility | `tests/utils/errorHandler.test.js` |
-| envValidation | Utility | `tests/utils/envValidation.test.js` |
+| canvasMigration    | Service (mocked Firebase) | `tests/services/canvasMigration.test.js`    |
+| imageService       | Service (stubbed globals) | `tests/services/imageService.test.js`       |
+| canvasTools        | Utility                   | `tests/utils/canvasTools.test.js`           |
+| constants          | Utility                   | `tests/utils/constants.test.js`             |
+| canvasUtils        | Utility                   | `tests/canvasUtils.test.js`                 |
+| colorUtils         | Utility                   | `tests/colorUtils.test.js`                  |
+| errorHandler       | Utility                   | `tests/utils/errorHandler.test.js`          |
+| envValidation      | Utility                   | `tests/utils/envValidation.test.js`         |
 
 **Coverage thresholds:** 15% statements/lines, 50% branches, 30% functions.
 
@@ -483,19 +487,20 @@ Local Development:
 
 ## Performance Optimizations
 
-| Optimization | Implementation |
-|---|---|
-| Viewport culling | Only shapes within visible viewport are rendered |
-| React.memo | Shape components wrapped to prevent unnecessary re-renders |
-| useMemo | ViewBox, grid lines, visible shapes computed only when dependencies change |
-| Throttled cursors | 75ms interval (~13 updates/sec) |
-| Throttled drag | 50ms interval for shape position updates |
-| Code splitting | Manual chunks: vendor-react, vendor-firebase |
-| Terser | console.log removed in production builds |
-| IndexedDB persistence | Firebase offline support for faster loads |
-| FPS monitoring | Dev-mode overlay tracks render performance |
+| Optimization          | Implementation                                                             |
+| --------------------- | -------------------------------------------------------------------------- |
+| Viewport culling      | Only shapes within visible viewport are rendered                           |
+| React.memo            | Shape components wrapped to prevent unnecessary re-renders                 |
+| useMemo               | ViewBox, grid lines, visible shapes computed only when dependencies change |
+| Throttled cursors     | 75ms interval (~13 updates/sec)                                            |
+| Throttled drag        | 50ms interval for shape position updates                                   |
+| Code splitting        | Manual chunks: vendor-react, vendor-firebase                               |
+| Terser                | console.log removed in production builds                                   |
+| IndexedDB persistence | Firebase offline support for faster loads                                  |
+| FPS monitoring        | Dev-mode overlay tracks render performance                                 |
 
 **Targets:**
+
 - 60 FPS with 500+ objects
 - < 100ms object sync latency
 - < 75ms cursor sync latency
@@ -505,23 +510,27 @@ Local Development:
 ## Security
 
 ### Client-Side
+
 - Zod validates all `VITE_FIREBASE_*` env vars at startup (fails fast with descriptive error)
 - No `dangerouslySetInnerHTML` anywhere — React JSX escaping for all user text
 - SVG `<text>` elements don't interpret HTML
 
 ### API — Vercel Serverless (`api/chat.js`)
+
 - Zod schema validates `req.body.messages` (role enum, content max 50KB, array max 100)
 - CORS restricted to Vercel deploy domains + localhost:5173/4173
 - Rate limiting: 20 requests/min per IP (in-memory)
 - No stack traces in error responses
 
 ### API — Local Dev Server (`server.js`)
+
 - Helmet security headers
 - CORS restricted to localhost:5173/4173
 - 10MB body limit
 - No validation or rate limiting (dev-only)
 
 ### Firebase Security Rules (`database.rules.json`)
+
 - Authentication required for all reads/writes
 - Canvas-level read: user must have a `permissions` entry or `userCanvases` entry
 - Canvas-level write: owner-only for top-level canvas operations
