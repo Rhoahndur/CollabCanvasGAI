@@ -1,5 +1,6 @@
 const { z } = require('zod');
 const { parseTextToolCalls } = require('../lib/parseTextToolCalls.cjs');
+const { verifyAuthenticatedUser, enforceAiQuota } = require('../lib/firebaseAdmin.cjs');
 
 // --- CORS & Rate Limiting Configuration ---
 const ALLOWED_ORIGINS = [
@@ -57,7 +58,7 @@ module.exports = async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', origin);
   }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   // Handle preflight
   if (req.method === 'OPTIONS') {
@@ -69,7 +70,15 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Rate limiting
+  let authenticatedUser;
+  try {
+    authenticatedUser = await verifyAuthenticatedUser(req);
+    await enforceAiQuota(authenticatedUser.uid);
+  } catch (error) {
+    return res.status(error.statusCode || 401).json({ error: error.message || 'Unauthorized' });
+  }
+
+  // IP rate limiting remains as a secondary abuse control.
   const clientIp =
     req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
   if (isRateLimited(clientIp)) {
