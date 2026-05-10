@@ -2,40 +2,57 @@
   "rules": {
     "canvases": {
       "$canvasId": {
-        ".read": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).exists() || root.child('userCanvases').child(auth.uid).child($canvasId).exists())",
-        ".write": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'owner' || root.child('userCanvases').child(auth.uid).child($canvasId).child('role').val() == 'owner' || !root.child('canvases').child($canvasId).exists())",
+        ".read": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'owner' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'owner')",
+        ".write": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'owner' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'owner')",
         "metadata": {
-          ".read": "auth != null",
-          ".write": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'owner' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'editor' || root.child('userCanvases').child(auth.uid).child($canvasId).child('role').val() == 'owner' || root.child('userCanvases').child(auth.uid).child($canvasId).child('role').val() == 'editor' || !root.child('canvases').child($canvasId).child('metadata').exists())"
+          ".read": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'owner' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'editor' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'viewer' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'owner' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'editor' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'viewer')",
+          ".write": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'owner' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'editor' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'owner' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'editor')"
         },
         "permissions": {
-          ".read": "auth != null",
+          ".read": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'owner' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'owner')",
           "$userId": {
-            ".write": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'owner' || auth.uid == $userId)"
+            ".read": "auth != null && (auth.uid == $userId || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'owner' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'owner')",
+            ".write": "auth != null && ((root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'owner' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'owner') || (!root.child('canvases').child($canvasId).exists() && auth.uid == $userId && newData.val() == 'owner') || (auth.uid == $userId && !data.exists() && newData.child('token').isString() && (newData.child('role').val() == 'viewer' || newData.child('role').val() == 'editor') && root.child('canvases').child($canvasId).child('shareTokens').child(newData.child('token').val()).child('role').val() == newData.child('role').val()))",
+            ".validate": "!newData.exists() || (newData.isString() && (newData.val() == 'owner' || newData.val() == 'editor' || newData.val() == 'viewer')) || (newData.hasChildren(['role']) && (newData.child('role').val() == 'owner' || newData.child('role').val() == 'editor' || newData.child('role').val() == 'viewer'))"
+          }
+        },
+        "shareTokens": {
+          ".read": false,
+          "$token": {
+            ".read": "auth != null && data.exists()",
+            ".write": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'owner' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'owner')",
+            ".validate": "!newData.exists() || (newData.hasChildren(['role', 'createdBy', 'createdAt']) && (newData.child('role').val() == 'viewer' || newData.child('role').val() == 'editor') && newData.child('createdBy').val() == auth.uid && newData.child('createdAt').isNumber())"
           }
         },
         "objects": {
-          ".read": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).exists() || root.child('userCanvases').child(auth.uid).child($canvasId).exists())",
+          ".read": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'owner' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'editor' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'viewer' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'owner' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'editor' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'viewer')",
           "$objectId": {
-            ".write": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'owner' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'editor' || root.child('userCanvases').child(auth.uid).child($canvasId).child('role').val() == 'owner' || root.child('userCanvases').child(auth.uid).child($canvasId).child('role').val() == 'editor' || !root.child('canvases').child($canvasId).child('objects').exists())"
+            ".write": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'owner' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'editor' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'owner' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'editor')"
           }
         },
         "cursors": {
-          ".read": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).exists() || root.child('userCanvases').child(auth.uid).child($canvasId).exists())",
+          ".read": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'owner' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'editor' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'viewer' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'owner' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'editor' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'viewer')",
           "$sessionId": {
-            ".write": "auth != null"
+            ".write": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'owner' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'editor' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'viewer' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'owner' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'editor' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'viewer') && ((!newData.exists() && data.child('userId').val() == auth.uid) || newData.child('userId').val() == auth.uid)"
           }
         },
         "presence": {
-          ".read": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).exists() || root.child('userCanvases').child(auth.uid).child($canvasId).exists())",
+          ".read": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'owner' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'editor' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'viewer' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'owner' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'editor' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'viewer')",
           "$sessionId": {
-            ".write": "auth != null"
+            ".write": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'owner' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'editor' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'viewer' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'owner' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'editor' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'viewer') && ((!newData.exists() && data.child('userId').val() == auth.uid) || newData.child('userId').val() == auth.uid)"
           }
         },
         "chat": {
-          ".read": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).exists() || root.child('userCanvases').child(auth.uid).child($canvasId).exists())",
+          ".read": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'owner' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'editor' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'viewer' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'owner' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'editor' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'viewer')",
           "$messageId": {
-            ".write": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).exists() || root.child('userCanvases').child(auth.uid).child($canvasId).exists())"
+            ".write": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'owner' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'editor' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'viewer' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'owner' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'editor' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'viewer') && newData.child('userId').val() == auth.uid"
+          }
+        },
+        "invitations": {
+          ".read": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'owner' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'owner')",
+          "$invitationId": {
+            ".write": "auth != null && (root.child('canvases').child($canvasId).child('permissions').child(auth.uid).val() == 'owner' || root.child('canvases').child($canvasId).child('permissions').child(auth.uid).child('role').val() == 'owner')",
+            ".validate": "!newData.exists() || (newData.hasChildren(['email', 'role', 'canvasName', 'inviterName']) && newData.child('email').isString() && (newData.child('role').val() == 'viewer' || newData.child('role').val() == 'editor') && newData.child('canvasName').isString() && newData.child('inviterName').isString())"
           }
         }
       }
@@ -43,7 +60,9 @@
     "userCanvases": {
       "$userId": {
         ".read": "auth != null && auth.uid == $userId",
-        ".write": "auth != null && auth.uid == $userId"
+        "$canvasId": {
+          ".write": "auth != null && auth.uid == $userId && (!newData.exists() || ((newData.child('role').val() == root.child('canvases').child($canvasId).child('permissions').child($userId).val() || newData.child('role').val() == root.child('canvases').child($canvasId).child('permissions').child($userId).child('role').val()) && (newData.child('role').val() == 'owner' || newData.child('role').val() == 'editor' || newData.child('role').val() == 'viewer')))"
+        }
       }
     }
   }
