@@ -9,6 +9,7 @@ Multiple users can simultaneously draw shapes, see live cursors, chat, and use a
 ## Features
 
 ### Drawing & Shapes
+
 - **6 shape types** — Rectangles, circles, regular polygons, custom polygons (vertex-by-vertex), text boxes, and images
 - **Click-and-drag creation** — Draw shapes directly on a 5000x5000 SVG canvas
 - **Transform tools** — Move, resize, rotate any shape
@@ -20,6 +21,7 @@ Multiple users can simultaneously draw shapes, see live cursors, chat, and use a
 - **Color picker** — Per-shape color selection
 
 ### Real-Time Collaboration
+
 - **Live shape sync** — All changes broadcast instantly via Firebase Realtime Database
 - **Live cursors** — See other users' mouse positions with name labels
 - **Presence sidebar** — Online/away status for all connected users
@@ -28,12 +30,14 @@ Multiple users can simultaneously draw shapes, see live cursors, chat, and use a
 - **Canvas chat** — Real-time text chat between collaborators
 
 ### AI Assistant (Canny)
+
 - **Powered by OpenRouter** — Streaming responses via Vercel serverless functions (configurable model, default: `nvidia/nemotron-nano-12b-v2-vl:free`)
 - **Vision** — Captures canvas as JPEG screenshot for visual understanding ("look at the canvas", "what do you see")
 - **9 canvas tools** — createShape, createShapesBatch, alignShapes, distributeShapes, arrangeInGrid, updateShapeProperties, deleteShapes, getCanvasInfo, selectShapes
 - **Safety limits** — Max 50 shapes per batch, 1000 total shapes, all positions clamped to canvas bounds
 
 ### Multi-Canvas Dashboard
+
 - **Create canvases** from templates (blank, brainstorm, wireframe)
 - **Share via link** with role-based access (owner/editor/viewer)
 - **Canvas settings** — Background color, grid toggle
@@ -41,6 +45,7 @@ Multiple users can simultaneously draw shapes, see live cursors, chat, and use a
 - **Email invitations** via SendGrid (Firebase Cloud Functions)
 
 ### Authentication & Security
+
 - **GitHub and Google OAuth** via Firebase Auth
 - **Role-based permissions** — Owner, editor, viewer per canvas
 - **Environment validation** — Zod schemas validate all Firebase config at startup
@@ -49,6 +54,7 @@ Multiple users can simultaneously draw shapes, see live cursors, chat, and use a
 - **Firebase security rules** — Enforce auth, ownership, and lock constraints at the database level
 
 ### Performance
+
 - **60 FPS target** with 500+ objects via viewport culling
 - **Throttled updates** — Cursors at 75ms, drag operations at 50ms
 - **Code splitting** — Separate vendor chunks for React and Firebase
@@ -59,20 +65,20 @@ Multiple users can simultaneously draw shapes, see live cursors, chat, and use a
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Frontend | React 18, Vite 5, SVG canvas |
-| Language | JavaScript + TypeScript (incremental migration) |
-| Routing | React Router v7 |
-| Auth | Firebase Auth (GitHub + Google OAuth) |
-| Database | Firebase Realtime Database |
-| AI | OpenRouter (vision + function calling, configurable model) |
-| AI Client | Vercel AI SDK (`useChat` hook, SSE streaming) |
-| Hosting | Vercel (CDN + serverless) |
-| Email | Firebase Cloud Functions + SendGrid |
-| Testing | Vitest + Testing Library + happy-dom |
-| Linting | ESLint 9 + Prettier + Husky pre-commit hooks |
-| Validation | Zod |
+| Layer      | Technology                                                 |
+| ---------- | ---------------------------------------------------------- |
+| Frontend   | React 18, Vite 5, SVG canvas                               |
+| Language   | JavaScript + TypeScript (incremental migration)            |
+| Routing    | React Router v7                                            |
+| Auth       | Firebase Auth (GitHub + Google OAuth)                      |
+| Database   | Firebase Realtime Database                                 |
+| AI         | OpenRouter (vision + function calling, configurable model) |
+| AI Client  | Vercel AI SDK (`useChat` hook, SSE streaming)              |
+| Hosting    | Vercel (CDN + serverless)                                  |
+| Email      | Firebase Cloud Functions + SendGrid                        |
+| Testing    | Vitest + Testing Library + happy-dom                       |
+| Linting    | ESLint 9 + Prettier + Husky pre-commit hooks               |
+| Validation | Zod                                                        |
 
 ---
 
@@ -94,7 +100,7 @@ npm install
 
 # Configure environment
 cp env.template .env.local
-# Edit .env.local with your Firebase credentials and OpenAI key
+# Edit .env.local with your Firebase, Firebase Admin, and OpenRouter credentials
 
 # Deploy database rules
 firebase deploy --only database
@@ -108,6 +114,7 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 ### Environment Variables
 
 **Frontend (Vite) — required in `.env.local`:**
+
 ```env
 VITE_FIREBASE_API_KEY=...
 VITE_FIREBASE_AUTH_DOMAIN=...
@@ -119,34 +126,40 @@ VITE_FIREBASE_DATABASE_URL=...
 ```
 
 **Server — required for AI features:**
+
 ```env
 OPENROUTER_API_KEY=...
 OPENROUTER_MODEL=nvidia/nemotron-nano-12b-v2-vl:free   # optional, any OpenRouter model
+FIREBASE_PROJECT_ID=...
+FIREBASE_DATABASE_URL=...
+FIREBASE_SERVICE_ACCOUNT_JSON=...                      # required for API auth + durable quota
+AI_QUOTA_PER_MINUTE=20
 ```
 
 ---
 
 ## Scripts
 
-| Command | Description |
-|---|---|
-| `npm run dev` | Vite dev server (port 5173) |
-| `npm run server` | Express API server (port 3001) |
-| `npm run dev:all` | Both servers concurrently |
-| `npm run build` | Production build |
-| `npm run preview` | Preview production build locally |
-| `npm run test` | Run tests (Vitest) |
-| `npm run test:watch` | Tests in watch mode |
-| `npm run test:ui` | Vitest UI dashboard |
-| `npm run test:coverage` | Tests with coverage report |
-| `npm run lint` | ESLint check |
-| `npm run lint:fix` | ESLint with auto-fix |
-| `npm run typecheck` | TypeScript check (`tsc --noEmit`) |
-| `npm run format` | Prettier formatting |
-| `npm run format:check` | Prettier check (no write) |
-| `npm run deploy:vercel` | Deploy to Vercel |
-| `npm run deploy:hosting` | Deploy to Firebase Hosting |
-| `npm run deploy:database:rules` | Deploy Firebase Realtime DB rules |
+| Command                         | Description                                         |
+| ------------------------------- | --------------------------------------------------- |
+| `npm run dev`                   | Vite dev server (port 5173)                         |
+| `npm run server`                | Express API server (port 3001)                      |
+| `npm run dev:all`               | Both servers concurrently                           |
+| `npm run build`                 | Production build                                    |
+| `npm run preview`               | Preview production build locally                    |
+| `npm run test`                  | Run tests (Vitest)                                  |
+| `npm run test:watch`            | Tests in watch mode                                 |
+| `npm run test:ui`               | Vitest UI dashboard                                 |
+| `npm run test:coverage`         | Tests with coverage report                          |
+| `npm run test:rules`            | Firebase Realtime Database rules tests via emulator |
+| `npm run lint`                  | ESLint check                                        |
+| `npm run lint:fix`              | ESLint with auto-fix                                |
+| `npm run typecheck`             | TypeScript check (`tsc --noEmit`)                   |
+| `npm run format`                | Prettier formatting                                 |
+| `npm run format:check`          | Prettier check (no write)                           |
+| `npm run deploy:vercel`         | Deploy to Vercel                                    |
+| `npm run deploy:hosting`        | Deploy to Firebase Hosting                          |
+| `npm run deploy:database:rules` | Deploy Firebase Realtime DB rules                   |
 
 ---
 
@@ -155,7 +168,7 @@ OPENROUTER_MODEL=nvidia/nemotron-nano-12b-v2-vl:free   # optional, any OpenRoute
 ```
 CollabCanvasGAI/
 ├── api/
-│   └── chat.js                    # Vercel serverless function (GPT-4o proxy, Zod, rate limiting)
+│   └── chat.js                    # Vercel serverless function (OpenRouter proxy, auth, Zod, quotas)
 ├── functions/
 │   └── index.js                   # Firebase Cloud Functions (SendGrid invitation emails)
 ├── src/
@@ -273,15 +286,18 @@ Coverage thresholds: 15% statements/lines, 50% branches, 30% functions.
 ## Deployment
 
 **Vercel (frontend + API):**
+
 ```bash
 npm run deploy:vercel
 ```
+
 - Frontend served from Vercel Edge CDN with 1-year cache for hashed assets
 - `/api/chat` runs as a serverless function (60s timeout, 1GB memory)
 - SPA routing via `vercel.json` rewrites
 - Auto-deploys on push to `main` and `dev` branches
 
 **Firebase (database + auth + functions):**
+
 ```bash
 firebase deploy --only database   # Security rules
 firebase deploy --only functions  # Cloud functions (invitation emails)
@@ -291,26 +307,27 @@ firebase deploy --only functions  # Cloud functions (invitation emails)
 
 ## Keyboard Shortcuts
 
-| Shortcut | Action |
-|---|---|
-| Ctrl+C | Copy selected shapes |
-| Ctrl+V | Paste shapes (or paste image from clipboard) |
-| Ctrl+D | Duplicate selected shapes |
-| Ctrl+Z | Undo |
-| Ctrl+Shift+Z | Redo |
-| Ctrl+] | Bring to front |
-| Ctrl+[ | Send to back |
-| Ctrl+=/- | Zoom in/out |
-| Ctrl+0 | Reset zoom |
-| Delete/Backspace | Delete selected shapes |
-| Enter | Finish custom polygon |
-| Escape | Cancel custom polygon / deselect |
+| Shortcut         | Action                                       |
+| ---------------- | -------------------------------------------- |
+| Ctrl+C           | Copy selected shapes                         |
+| Ctrl+V           | Paste shapes (or paste image from clipboard) |
+| Ctrl+D           | Duplicate selected shapes                    |
+| Ctrl+Z           | Undo                                         |
+| Ctrl+Shift+Z     | Redo                                         |
+| Ctrl+]           | Bring to front                               |
+| Ctrl+[           | Send to back                                 |
+| Ctrl+=/-         | Zoom in/out                                  |
+| Ctrl+0           | Reset zoom                                   |
+| Delete/Backspace | Delete selected shapes                       |
+| Enter            | Finish custom polygon                        |
+| Escape           | Cancel custom polygon / deselect             |
 
 ---
 
 ## CI/CD
 
 GitHub Actions pipeline (`.github/workflows/ci.yml`):
+
 1. **Lint** — ESLint + Prettier check
 2. **Test** — Vitest with coverage (uploaded as artifact)
 3. **Build** — Vite production build (dummy env vars)
