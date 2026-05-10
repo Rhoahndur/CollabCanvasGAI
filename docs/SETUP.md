@@ -5,6 +5,7 @@ This guide covers everything you need to set up and deploy CollabCanvas.
 ---
 
 ## Table of Contents
+
 1. [Getting Started](#getting-started)
 2. [Firebase Setup](#firebase-setup)
 3. [SendGrid Setup (Email)](#sendgrid-setup)
@@ -17,10 +18,11 @@ This guide covers everything you need to set up and deploy CollabCanvas.
 ## Getting Started
 
 ### Prerequisites
-- Node.js v18 or higher
+
+- Node.js v22 or higher
 - npm or yarn
 - Firebase account
-- OpenAI API key (for Canny)
+- OpenRouter API key (for Canny)
 
 ### Installation
 
@@ -31,10 +33,7 @@ cd /path/to/CollabCanvasGAI
 # Install dependencies
 npm install
 
-# Install server dependencies
-cd api
-npm install
-cd ..
+# API dependencies are installed from the root package.json
 ```
 
 ### Environment Variables
@@ -51,8 +50,15 @@ VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 VITE_FIREBASE_APP_ID=your_app_id
 VITE_FIREBASE_DATABASE_URL=https://your_project.firebaseio.com
 
-# OpenAI (for Canny AI Assistant)
-OPENAI_API_KEY=your_openai_api_key
+# OpenRouter (for Canny AI Assistant)
+OPENROUTER_API_KEY=your_openrouter_api_key
+OPENROUTER_MODEL=nvidia/nemotron-nano-12b-v2-vl:free
+AI_QUOTA_PER_MINUTE=20
+
+# Firebase Admin (server-side API auth and durable AI quotas)
+FIREBASE_PROJECT_ID=your_project_id
+FIREBASE_DATABASE_URL=https://your_project-default-rtdb.firebaseio.com
+FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
 
 # SendGrid (for email invitations)
 SENDGRID_API_KEY=your_sendgrid_api_key
@@ -98,64 +104,19 @@ SENDGRID_FROM_EMAIL=your_verified_sender_email
 
 ### 5. Configure Security Rules
 
-#### Firestore Rules
-Copy the rules from `firestore.rules` file, or use:
-
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    // Allow users to read/write their own user document
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-    
-    // Canvas objects - require authentication
-    match /canvases/{canvasId}/objects/{objectId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
-    }
-  }
-}
-```
-
 #### Realtime Database Rules
-Copy the rules from `database.rules.json`, or use:
 
-```json
-{
-  "rules": {
-    "canvases": {
-      "$canvasId": {
-        ".read": "auth != null",
-        ".write": "auth != null"
-      }
-    },
-    "userCanvases": {
-      "$userId": {
-        ".read": "auth != null && auth.uid == $userId",
-        ".write": "auth != null && auth.uid == $userId"
-      }
-    },
-    "cursors": {
-      "$canvasId": {
-        ".read": "auth != null",
-        "$userId": {
-          ".write": "auth != null && auth.uid == $userId"
-        }
-      }
-    },
-    "presence": {
-      "$canvasId": {
-        ".read": "auth != null",
-        "$userId": {
-          ".write": "auth != null && auth.uid == $userId"
-        }
-      }
-    }
-  }
-}
+Realtime Database is the active store for canvases, objects, permissions, presence, cursors, and chat. Deploy the checked-in rules instead of copying examples:
+
+```bash
+firebase deploy --only database
 ```
+
+The rules use `canvases/{canvasId}/permissions` as the canonical access source. `userCanvases` is only a per-user dashboard index and does not grant canvas access.
+
+#### Firestore Rules
+
+Firestore is retained for compatibility and legacy setup, but active canvas data lives in Realtime Database.
 
 ### 6. Get Configuration
 
@@ -213,26 +174,25 @@ firebase deploy --only functions
 
 Canny is the AI assistant that can manipulate the canvas and see what's on it.
 
-### 1. Get OpenAI API Key
+### 1. Get OpenRouter API Key
 
-1. Go to [OpenAI Platform](https://platform.openai.com/)
+1. Go to [OpenRouter](https://openrouter.ai/)
 2. Sign up or log in
 3. Go to **API Keys**
 4. Click **Create new secret key**
 5. Copy the key and add to `.env.local`:
    ```
-   OPENAI_API_KEY=sk-xxxxx
+   OPENROUTER_API_KEY=sk-or-v1-xxxxx
    ```
 
 ### 2. Configure Model
 
-Canny uses GPT-4o (with vision) by default. If you want to change the model, edit:
-- `server.js` (for local development)
-- `api/chat.js` (for production/Vercel)
+Canny uses the model in `OPENROUTER_MODEL` and defaults to `nvidia/nemotron-nano-12b-v2-vl:free`.
 
 ### 3. Features
 
 Canny can:
+
 - **Create shapes** (rectangles, circles, polygons, text)
 - **Arrange shapes** (align, distribute, grid layout)
 - **Modify shapes** (change colors, sizes, rotation)
@@ -300,6 +260,7 @@ vercel --prod
 #### 4. Configure Environment Variables
 
 In Vercel Dashboard:
+
 1. Go to your project
 2. Click **Settings** > **Environment Variables**
 3. Add all variables from `.env.local`
@@ -328,21 +289,26 @@ firebase deploy --only hosting
 ### Common Issues
 
 **Firebase connection errors:**
+
 - Check that all environment variables are set correctly
 - Verify Firebase rules allow authenticated access
 - Check browser console for specific error messages
 
 **Canny not responding:**
-- Verify OpenAI API key is valid
+
+- Verify `OPENROUTER_API_KEY` is valid
+- Verify Firebase Admin env vars are configured so `/api/chat` can verify ID tokens
 - Check that `server.js` is running (for local dev)
 - Check Vercel function logs (for production)
 
 **Email invitations not sending:**
+
 - Verify SendGrid API key and sender email
 - Check Firebase Functions logs
 - Ensure sender email is verified in SendGrid
 
 **Canvas not loading:**
+
 - Check browser console for errors
 - Verify you're authenticated
 - Check Firebase Realtime Database rules
@@ -354,6 +320,7 @@ firebase deploy --only hosting
    - Error: `❌ Failed to save settings: PERMISSION_DENIED`
 
 2. **Verify database rules are deployed:**
+
    ```bash
    firebase deploy --only database
    ```
@@ -381,8 +348,8 @@ firebase deploy --only hosting
 ## Next Steps
 
 After setup is complete:
+
 1. Review [FEATURES.md](./FEATURES.md) for feature documentation
 2. Check [TECHNICAL.md](./TECHNICAL.md) for architecture details
 3. See [CHANGELOG.md](./CHANGELOG.md) for implementation history
 4. Read the main [README.md](../README.md) for project overview
-
