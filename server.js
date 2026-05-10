@@ -6,8 +6,10 @@ import cors from 'cors';
 import helmet from 'helmet';
 import OpenAI from 'openai';
 import parseTextToolCallsModule from './lib/parseTextToolCalls.cjs';
+import firebaseAdminModule from './lib/firebaseAdmin.cjs';
 
 const { parseTextToolCalls } = parseTextToolCallsModule;
+const { verifyAuthenticatedUser, enforceAiQuota } = firebaseAdminModule;
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -31,6 +33,7 @@ app.use(helmet());
 app.use(
   cors({
     origin: ['http://localhost:5173', 'http://localhost:4173'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
 
@@ -52,6 +55,9 @@ const openai = new OpenAI({
  */
 app.post('/api/chat', async (req, res) => {
   try {
+    const authenticatedUser = await verifyAuthenticatedUser(req);
+    await enforceAiQuota(authenticatedUser.uid);
+
     const { messages } = req.body;
 
     if (!process.env.OPENROUTER_API_KEY) {
@@ -147,14 +153,15 @@ Grid Examples:
         type: 'function',
         function: {
           name: 'createShape',
-          description: 'Create a new shape on the canvas. Use count for simple horizontal lines only. For text shapes, ALWAYS provide the text parameter with the desired content.',
+          description:
+            'Create a new shape on the canvas. Use count for simple horizontal lines only. For text shapes, ALWAYS provide the text parameter with the desired content.',
           parameters: {
             type: 'object',
             properties: {
-              shapeType: { 
-                type: 'string', 
+              shapeType: {
+                type: 'string',
                 enum: ['rectangle', 'circle', 'polygon', 'text', 'customPolygon'],
-                description: 'Type of shape to create'
+                description: 'Type of shape to create',
               },
               x: { type: 'number', description: 'X coordinate (optional, defaults to center)' },
               y: { type: 'number', description: 'Y coordinate (optional, defaults to center)' },
@@ -162,21 +169,25 @@ Grid Examples:
               height: { type: 'number', description: 'Height for rectangles and text boxes' },
               radius: { type: 'number', description: 'Radius for circles and polygons' },
               color: { type: 'string', description: 'Color in hex format (e.g., #646cff)' },
-              text: { 
-                type: 'string', 
-                description: 'REQUIRED for text shapes - the actual text content to display'
+              text: {
+                type: 'string',
+                description: 'REQUIRED for text shapes - the actual text content to display',
               },
-              count: { type: 'number', description: 'Number of shapes to create in a horizontal line (default: 1)' }
+              count: {
+                type: 'number',
+                description: 'Number of shapes to create in a horizontal line (default: 1)',
+              },
             },
-            required: ['shapeType']
-          }
-        }
+            required: ['shapeType'],
+          },
+        },
       },
       {
         type: 'function',
         function: {
           name: 'createShapesBatch',
-          description: 'Create multiple shapes at specific x,y positions in one call. Perfect for patterns (circle outlines, spirals, grids, drawings). Calculate positions using math (e.g., circle: x = centerX + radius*cos(angle), y = centerY + radius*sin(angle)). Use this for ANY creative arrangement.',
+          description:
+            'Create multiple shapes at specific x,y positions in one call. Perfect for patterns (circle outlines, spirals, grids, drawings). Calculate positions using math (e.g., circle: x = centerX + radius*cos(angle), y = centerY + radius*sin(angle)). Use this for ANY creative arrangement.',
           parameters: {
             type: 'object',
             properties: {
@@ -186,23 +197,26 @@ Grid Examples:
                 items: {
                   type: 'object',
                   properties: {
-                    shapeType: { type: 'string', enum: ['rectangle', 'circle', 'polygon', 'text', 'customPolygon'] },
+                    shapeType: {
+                      type: 'string',
+                      enum: ['rectangle', 'circle', 'polygon', 'text', 'customPolygon'],
+                    },
                     x: { type: 'number', description: 'X position' },
                     y: { type: 'number', description: 'Y position' },
                     width: { type: 'number' },
                     height: { type: 'number' },
                     radius: { type: 'number' },
                     color: { type: 'string' },
-                    text: { type: 'string' }
+                    text: { type: 'string' },
                   },
-                  required: ['shapeType', 'x', 'y']
+                  required: ['shapeType', 'x', 'y'],
                 },
-                maxItems: 50
-              }
+                maxItems: 50,
+              },
             },
-            required: ['shapes']
-          }
-        }
+            required: ['shapes'],
+          },
+        },
       },
       {
         type: 'function',
@@ -212,12 +226,15 @@ Grid Examples:
           parameters: {
             type: 'object',
             properties: {
-              alignment: { type: 'string', enum: ['left', 'right', 'top', 'bottom', 'center-horizontal', 'center-vertical'] },
-              useSelected: { type: 'boolean' }
+              alignment: {
+                type: 'string',
+                enum: ['left', 'right', 'top', 'bottom', 'center-horizontal', 'center-vertical'],
+              },
+              useSelected: { type: 'boolean' },
             },
-            required: ['alignment']
-          }
-        }
+            required: ['alignment'],
+          },
+        },
       },
       {
         type: 'function',
@@ -229,11 +246,11 @@ Grid Examples:
             properties: {
               direction: { type: 'string', enum: ['horizontal', 'vertical'] },
               spacing: { type: 'number' },
-              useSelected: { type: 'boolean' }
+              useSelected: { type: 'boolean' },
             },
-            required: ['direction']
-          }
-        }
+            required: ['direction'],
+          },
+        },
       },
       {
         type: 'function',
@@ -246,11 +263,11 @@ Grid Examples:
               rows: { type: 'number' },
               columns: { type: 'number' },
               spacing: { type: 'number' },
-              useSelected: { type: 'boolean' }
+              useSelected: { type: 'boolean' },
             },
-            required: ['rows', 'columns']
-          }
-        }
+            required: ['rows', 'columns'],
+          },
+        },
       },
       {
         type: 'function',
@@ -265,10 +282,10 @@ Grid Examples:
               height: { type: 'number' },
               radius: { type: 'number' },
               rotation: { type: 'number' },
-              useSelected: { type: 'boolean' }
-            }
-          }
-        }
+              useSelected: { type: 'boolean' },
+            },
+          },
+        },
       },
       {
         type: 'function',
@@ -279,19 +296,19 @@ Grid Examples:
             type: 'object',
             properties: {
               useSelected: { type: 'boolean' },
-              confirmation: { type: 'boolean' }
+              confirmation: { type: 'boolean' },
             },
-            required: ['confirmation']
-          }
-        }
+            required: ['confirmation'],
+          },
+        },
       },
       {
         type: 'function',
         function: {
           name: 'getCanvasInfo',
           description: 'Get canvas information',
-          parameters: { type: 'object', properties: {} }
-        }
+          parameters: { type: 'object', properties: {} },
+        },
       },
       {
         type: 'function',
@@ -301,12 +318,15 @@ Grid Examples:
           parameters: {
             type: 'object',
             properties: {
-              shapeType: { type: 'string', enum: ['rectangle', 'circle', 'polygon', 'text', 'customPolygon', 'image', 'all'] },
-              color: { type: 'string' }
-            }
-          }
-        }
-      }
+              shapeType: {
+                type: 'string',
+                enum: ['rectangle', 'circle', 'polygon', 'text', 'customPolygon', 'image', 'all'],
+              },
+              color: { type: 'string' },
+            },
+          },
+        },
+      },
     ];
 
     // Call OpenRouter API with streaming and tool support
@@ -317,7 +337,7 @@ Grid Examples:
       messages: [systemMessage, ...messages],
       tools: tools,
       tool_choice: 'auto',
-      max_tokens: 4096,  // Increased for vision processing
+      max_tokens: 4096, // Increased for vision processing
     });
 
     // Set headers for Server-Sent Events
@@ -342,12 +362,12 @@ Grid Examples:
           // AI SDK v3 expects this specific format for text
           res.write(`0:${JSON.stringify(content)}\n`);
         }
-        
+
         // Handle tool calls
         if (delta?.tool_calls) {
           for (const toolCall of delta.tool_calls) {
             const index = toolCall.index;
-            
+
             // Initialize tool call if it's new
             if (!toolCalls[index]) {
               toolCalls[index] = {
@@ -355,16 +375,16 @@ Grid Examples:
                 type: 'function',
                 function: {
                   name: toolCall.function?.name || '',
-                  arguments: ''
-                }
+                  arguments: '',
+                },
               };
             }
-            
+
             // Append to function name if provided
             if (toolCall.function?.name) {
               toolCalls[index].function.name = toolCall.function.name;
             }
-            
+
             // Append to arguments
             if (toolCall.function?.arguments) {
               toolCalls[index].function.arguments += toolCall.function.arguments;
@@ -384,14 +404,14 @@ Grid Examples:
       // If there were tool calls, send them as a hidden text message with special marker
       if (toolCalls.length > 0) {
         console.log(`✅ Stream complete. Tool calls detected: ${toolCalls.length}`);
-        
+
         // Send tool calls as text with a special prefix that frontend can detect
         const toolCallsMarker = `__TOOL_CALLS__${JSON.stringify(toolCalls)}__END_TOOL_CALLS__`;
         res.write(`0:${JSON.stringify(toolCallsMarker)}\n`);
       } else {
         console.log(`✅ Stream complete. Sent ${chunkCount} text chunks`);
       }
-      
+
       res.end();
     } catch (streamError) {
       console.error('Stream error:', streamError);
@@ -400,7 +420,7 @@ Grid Examples:
   } catch (error) {
     console.error('Chat API error:', error);
     if (!res.headersSent) {
-      res.status(500).json({ error: error.message });
+      res.status(error.statusCode || 500).json({ error: error.message });
     }
   }
 });
@@ -408,4 +428,3 @@ Grid Examples:
 app.listen(PORT, () => {
   console.log(`🤖 Canny AI server running on http://localhost:${PORT}`);
 });
-
