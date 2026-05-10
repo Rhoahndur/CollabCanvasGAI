@@ -2,9 +2,12 @@
 
 Technical details, architecture decisions, and implementation notes.
 
+> Current architecture note: active canvas data is stored in Firebase Realtime Database, Canny uses OpenRouter, and `/api/chat` requires Firebase-authenticated requests. Older Firestore/OpenAI references below are retained only where they describe legacy migration history.
+
 ---
 
 ## Table of Contents
+
 1. [Architecture Overview](#architecture-overview)
 2. [Technology Stack](#technology-stack)
 3. [Database Structure](#database-structure)
@@ -20,9 +23,10 @@ Technical details, architecture decisions, and implementation notes.
 CollabCanvas uses a modern client-server architecture with real-time capabilities.
 
 ### High-Level Architecture
+
 ```
 ┌─────────────┐     ┌──────────────┐     ┌─────────────┐
-│   Client    │────▶│   Firebase   │────▶│   OpenAI    │
+│   Client    │────▶│   Firebase   │────▶│ OpenRouter  │
 │  (React)    │     │ (Auth + DB)  │     │   (Canny)   │
 └─────────────┘     └──────────────┘     └─────────────┘
        │                    │                     │
@@ -32,6 +36,7 @@ CollabCanvas uses a modern client-server architecture with real-time capabilitie
 ```
 
 ### Component Structure
+
 ```
 src/
 ├── components/        # React components
@@ -61,24 +66,27 @@ src/
 ## Technology Stack
 
 ### Frontend
+
 - **React 18.3.1**: UI framework
 - **Vite 5.4.2**: Build tool & dev server
 - **SVG**: Vector graphics for canvas shapes
 - **CSS Variables**: Theme system
 
 ### Backend Services
+
 - **Firebase Authentication**: User auth (Google, GitHub)
-- **Firestore**: Object storage (shapes, images, metadata)
-- **Realtime Database**: Live data (cursors, presence, canvas state)
-- **Firebase Storage**: Image file storage
+- **Realtime Database**: Primary store for canvases, shapes, permissions, cursors, presence, and chat
+- **Firestore**: Retained for legacy compatibility
 - **Firebase Functions**: Serverless email sending
 
 ### AI & APIs
-- **OpenAI GPT-4o**: Canny AI assistant with vision
+
+- **OpenRouter**: Canny AI assistant with configurable vision/tool-capable models
 - **Vercel AI SDK**: Streaming chat interface
 - **SendGrid**: Email invitation delivery
 
 ### Deployment
+
 - **Vercel**: Frontend hosting & serverless functions
 - **Firebase Hosting**: Alternative deployment option
 
@@ -86,18 +94,16 @@ src/
 
 ## Database Structure
 
-### Firestore (Persistent Data)
+### Realtime Database (Persistent and Live Data)
 
 **Structure:**
+
 ```
-firestore/
-├── users/{userId}
-│   ├── displayName: string
-│   ├── email: string
-│   ├── photoURL: string
-│   └── createdAt: timestamp
-│
+realtimeDB/
 └── canvases/{canvasId}/
+    ├── metadata
+    ├── permissions/{userId}: "owner" | "editor" | "viewer" | { role, ... }
+    ├── shareTokens/{token}: { role, createdBy, createdAt }
     └── objects/{objectId}
         ├── type: 'rectangle' | 'circle' | 'polygon' | 'text' | 'image' | 'customPolygon'
         ├── x, y: number (position)
@@ -112,56 +118,24 @@ firestore/
         └── ... (type-specific fields)
 ```
 
-### Realtime Database (Live Data)
+### Dashboard Index
 
 **Structure:**
+
 ```
-realtimeDB/
-├── canvases/{canvasId}
-│   ├── name: string
-│   ├── createdBy: userId
-│   ├── createdAt: timestamp
-│   ├── lastAccessed: timestamp
-│   ├── settings/
-│   │   ├── backgroundColor: string
-│   │   └── gridVisible: boolean
-│   ├── collaborators/{userId}
-│   │   ├── role: 'owner' | 'editor' | 'viewer'
-│   │   ├── addedAt: timestamp
-│   │   └── addedBy: userId
-│   └── metadata/
-│       ├── objectCount: number
-│       └── lastModified: timestamp
-│
-├── userCanvases/{userId}/{canvasId}
+userCanvases/{userId}/{canvasId}
 │   ├── role: 'owner' | 'editor' | 'viewer'
 │   ├── starred: boolean
 │   ├── lastAccessed: timestamp
 │   └── name: string
-│
-├── cursors/{canvasId}/{userId}
-│   ├── x, y: number
-│   ├── userName: string
-│   ├── color: string
-│   └── timestamp: number
-│
-├── presence/{canvasId}/{userId}
-│   ├── userName: string
-│   ├── online: boolean
-│   ├── lastSeen: timestamp
-│   └── status: 'active' | 'away'
-│
-└── canvasChat/{canvasId}/{messageId}
-    ├── userId: string
-    ├── userName: string
-    ├── message: string
-    ├── timestamp: number
-    └── color: string
 ```
+
+`userCanvases` is only an index for dashboard queries. Security rules use `canvases/{canvasId}/permissions` as the canonical authorization source.
 
 ### Firebase Storage
 
 **Structure:**
+
 ```
 storage/
 └── canvasImages/{canvasId}/{imageId}.{ext}
@@ -181,7 +155,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow read, write: if request.auth.uid == userId;
     }
-    
+
     // Canvas objects - authenticated users only
     match /canvases/{canvasId}/objects/{objectId} {
       allow read: if request.auth != null;
@@ -206,7 +180,7 @@ service cloud.firestore {
         )"
       }
     },
-    
+
     // User's canvas list
     "userCanvases": {
       "$userId": {
@@ -214,7 +188,7 @@ service cloud.firestore {
         ".write": "auth.uid == $userId"
       }
     },
-    
+
     // Cursors - user can only write their own
     "cursors": {
       "$canvasId": {
@@ -224,7 +198,7 @@ service cloud.firestore {
         }
       }
     },
-    
+
     // Presence - user can only write their own
     "presence": {
       "$canvasId": {
@@ -234,7 +208,7 @@ service cloud.firestore {
         }
       }
     },
-    
+
     // Canvas chat - authenticated users can read/write
     "canvasChat": {
       "$canvasId": {
@@ -249,6 +223,7 @@ service cloud.firestore {
 ### Role-Based Access Control (RBAC)
 
 **Role Hierarchy:**
+
 ```
 Owner > Editor > Viewer
 ```
@@ -273,12 +248,14 @@ Owner > Editor > Viewer
 ### Multiplayer Cursors
 
 **Implementation:**
+
 - Firebase Realtime Database for low-latency updates
 - Throttled updates (60 FPS max)
 - Automatic cleanup on disconnect
 - Color-coded per user
 
 **Code Pattern:**
+
 ```javascript
 // Update cursor position
 const updateCursor = throttle((x, y) => {
@@ -299,12 +276,14 @@ onDisconnect(cursorRef).remove();
 ### Presence System
 
 **Features:**
+
 - Online/offline detection
 - Last seen timestamp
 - Active/away status
 - Connection state monitoring
 
 **Stale Lock Cleanup:**
+
 - Integrated with presence system
 - Locks auto-release when user disconnects
 - Prevents permanent lock issues
@@ -313,12 +292,14 @@ onDisconnect(cursorRef).remove();
 ### Object Synchronization
 
 **Optimistic Updates:**
+
 1. Update local state immediately (feels instant)
 2. Write to Firebase in background
 3. Listen for confirmation/conflicts
 4. Resolve conflicts (last-write-wins)
 
 **Throttling:**
+
 - Drag operations: Throttled to 100ms
 - Cursor movements: Throttled to 16ms (60 FPS)
 - Resize/rotate: Throttled to 100ms
@@ -337,12 +318,12 @@ const isShapeVisible = (shape, viewport) => {
   const { offsetX, offsetY, zoom } = viewport;
   const screenWidth = window.innerWidth;
   const screenHeight = window.innerHeight;
-  
+
   const viewLeft = offsetX - buffer;
-  const viewRight = offsetX + (screenWidth / zoom) + buffer;
+  const viewRight = offsetX + screenWidth / zoom + buffer;
   const viewTop = offsetY - buffer;
-  const viewBottom = offsetY + (screenHeight / zoom) + buffer;
-  
+  const viewBottom = offsetY + screenHeight / zoom + buffer;
+
   // Check if shape bounds intersect viewport
   return (
     shape.x + shape.width > viewLeft &&
@@ -354,6 +335,7 @@ const isShapeVisible = (shape, viewport) => {
 ```
 
 **Results:**
+
 - Canvas with 1000 shapes: Only ~50-100 rendered at once
 - Maintains 60 FPS even with thousands of shapes
 - Smooth pan/zoom regardless of object count
@@ -386,9 +368,9 @@ const isShapeVisible = (shape, viewport) => {
 ### Canny Architecture
 
 ```
-┌──────────┐    HTTP/SSE     ┌───────────┐    OpenAI API    ┌──────────┐
-│  Client  │ ───────────────▶│  Server   │ ────────────────▶│  OpenAI  │
-│ (React)  │                 │ (Express) │                  │ (GPT-4o) │
+┌──────────┐    HTTP/SSE     ┌───────────┐  OpenRouter API  ┌──────────┐
+│  Client  │ ───────────────▶│  Server   │ ────────────────▶│  Model   │
+│ (React)  │                 │ (Express) │                  │          │
 └──────────┘                 └───────────┘                  └──────────┘
      │                              │                              │
      │                              │                              │
@@ -411,6 +393,7 @@ Canny has access to these tools:
 9. **selectShapes**: Select shapes by type or color
 
 **Tool Definition Example:**
+
 ```javascript
 {
   type: 'function',
@@ -420,9 +403,9 @@ Canny has access to these tools:
     parameters: {
       type: 'object',
       properties: {
-        shapeType: { 
-          type: 'string', 
-          enum: ['rectangle', 'circle', 'polygon', 'text', 'customPolygon'] 
+        shapeType: {
+          type: 'string',
+          enum: ['rectangle', 'circle', 'polygon', 'text', 'customPolygon']
         },
         x: { type: 'number', description: 'X position' },
         y: { type: 'number', description: 'Y position' },
@@ -436,6 +419,7 @@ Canny has access to these tools:
 ```
 
 **Batch Shape Creation Tool:**
+
 ```javascript
 {
   type: 'function',
@@ -466,6 +450,7 @@ Canny has access to these tools:
 ```
 
 **Use Cases:**
+
 - Drawing patterns (circle outlines, spirals, stars)
 - Creating shapes based on mathematical calculations
 - Visual arrangements requiring precise positioning
@@ -473,19 +458,22 @@ Canny has access to these tools:
 
 ### Vision Integration
 
-**GPT-4o with Vision:**
-- Model: `gpt-4o` (multimodal)
+**OpenRouter Vision Model:**
+
+- Model: configured by `OPENROUTER_MODEL`
 - Max tokens: 4096 (increased for vision processing)
 - Image format: Base64-encoded PNG from SVG
 
 **Canvas Capture Process:**
+
 1. User asks question with spatial context
 2. Check if vision is needed (keyword detection)
 3. Capture SVG canvas → convert to PNG → base64
-4. Send image + text to GPT-4o
+4. Send image + text to OpenRouter
 5. Stream response with visual understanding
 
 **Smart Activation Keywords:**
+
 - Spatial: "near", "around", "left of", "above", "below"
 - Demonstrative: "these", "those", "that", "this"
 - Visual: "see", "look", "show", "appears", "looks like"
@@ -495,6 +483,7 @@ Canny has access to these tools:
 ### Streaming Implementation
 
 **Server-Sent Events (SSE):**
+
 ```javascript
 // Server: Stream responses
 res.setHeader('Content-Type', 'text/event-stream');
@@ -512,7 +501,7 @@ const { messages, input, handleSubmit, isLoading } = useChat({
   experimental_onToolCall: async (toolCall) => {
     // Execute tool and return result
     return executeCanvasTool(toolCall, canvasContext);
-  }
+  },
 });
 ```
 
@@ -525,12 +514,14 @@ const { messages, input, handleSubmit, isLoading } = useChat({
 **Why:** Originally used Firestore for everything, migrated live data to Realtime Database for better performance.
 
 **Benefits:**
+
 - Lower latency for cursors/presence
 - Better support for disconnect detection
 - More efficient for frequently changing data
 - Reduced Firestore costs
 
 **What Moved:**
+
 - ✅ Cursors
 - ✅ Presence
 - ✅ Canvas metadata
@@ -539,6 +530,7 @@ const { messages, input, handleSubmit, isLoading } = useChat({
 - ✅ Canvas chat
 
 **What Stayed:**
+
 - ✅ Canvas objects (shapes)
 - ✅ User profiles
 - ✅ Images (Firestore + Storage)
@@ -548,12 +540,14 @@ const { messages, input, handleSubmit, isLoading } = useChat({
 **Why:** Originally built with only rectangles, later added multiple shape types.
 
 **Changes:**
+
 - `rectangles` → `shapes` in code
 - `createRectangle()` → `createShape()`
 - `Rectangle.jsx` → kept for backward compatibility
 - Added: `Circle.jsx`, `Polygon.jsx`, `TextBox.jsx`, `Image.jsx`
 
 **Backward Compatibility:**
+
 - Old `createRectangle()` still works (calls `createShape()`)
 - Database field remains `objects` (generic)
 - Type field distinguishes shape types
@@ -565,23 +559,26 @@ const { messages, input, handleSubmit, isLoading } = useChat({
 ### Fixed Canvas Boundaries
 
 **Implementation:**
+
 - Canvas size: 5000×5000 pixels (0,0 to 5000,5000)
 - All shape creation/movement constrained to boundaries
 - Applies to both manual operations and Canny AI tools
 
 **Constraint Functions:**
+
 ```javascript
 // For rectangles and text boxes
-constrainRectangle(x, y, width, height, CANVAS_WIDTH, CANVAS_HEIGHT)
+constrainRectangle(x, y, width, height, CANVAS_WIDTH, CANVAS_HEIGHT);
 
 // For circles and polygons
-constrainCircle(x, y, radius, CANVAS_WIDTH, CANVAS_HEIGHT)
+constrainCircle(x, y, radius, CANVAS_WIDTH, CANVAS_HEIGHT);
 
 // Generic clamping
-clamp(value, min, max)
+clamp(value, min, max);
 ```
 
 **Tools with Boundary Enforcement:**
+
 - ✅ `createShape()` - All new shapes constrained
 - ✅ `createShapesBatch()` - All batch shapes constrained
 - ✅ `updateShapeProperties()` - Position updates constrained
@@ -590,6 +587,7 @@ clamp(value, min, max)
 - ✅ `arrangeInGrid()` - Grid layouts constrained
 
 **Benefits:**
+
 - Prevents shapes from being lost off-canvas
 - Consistent behavior between manual and AI operations
 - No performance impact (simple math operations)
@@ -601,13 +599,14 @@ clamp(value, min, max)
 ### Keyboard Shortcuts
 
 **Copy (Ctrl/Cmd + C):**
+
 ```javascript
 // Extract selected shapes, remove IDs and locks
 const copiedShapes = shapes
-  .filter(s => selectedShapeIds.includes(s.id))
-  .map(shape => ({
+  .filter((s) => selectedShapeIds.includes(s.id))
+  .map((shape) => ({
     ...shape,
-    id: undefined,        // New ID on paste
+    id: undefined, // New ID on paste
     timestamp: undefined, // New timestamp on paste
     lockedBy: null,
     lockedByUserName: null,
@@ -617,6 +616,7 @@ setClipboard(copiedShapes);
 ```
 
 **Paste (Ctrl/Cmd + V):**
+
 ```javascript
 // Create new shapes with 20px offset
 for (const shape of clipboard) {
@@ -631,7 +631,7 @@ for (const shape of clipboard) {
 }
 
 // Update clipboard for repeated pasting
-const updatedClipboard = clipboard.map(shape => ({
+const updatedClipboard = clipboard.map((shape) => ({
   ...shape,
   x: shape.x + 20,
   y: shape.y + 20,
@@ -640,6 +640,7 @@ setClipboard(updatedClipboard);
 ```
 
 **Features:**
+
 - Persistent clipboard (copy once, paste multiple times)
 - Auto-incrementing offset for pattern creation
 - Multi-shape support
@@ -675,12 +676,14 @@ setClipboard(updatedClipboard);
 ```
 
 **Result:**
+
 - ✅ No crashes when userName is undefined
 - ✅ Shows "Anonymous" as fallback name
 - ✅ Shows "A" as fallback avatar initial
 - ✅ Improved robustness of presence system
 
 **When This Occurs:**
+
 - Firebase auth data incomplete
 - User object created before displayName set
 - Race condition during authentication
@@ -691,4 +694,3 @@ setClipboard(updatedClipboard);
 For setup instructions, see [SETUP.md](./SETUP.md)  
 For feature documentation, see [FEATURES.md](./FEATURES.md)  
 For implementation history, see [CHANGELOG.md](./CHANGELOG.md)
-
