@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useChat } from 'ai/react';
 import { ref, push, onValue, query, orderByChild, limitToLast } from 'firebase/database';
-import { realtimeDb } from '../services/firebase';
+import { auth, realtimeDb } from '../services/firebase';
 import { executeCanvasTool } from '../utils/canvasTools';
 import { captureCanvasImage, shouldUseVision, getVisionReason } from '../utils/canvasCapture';
 import { reportError } from '../utils/errorHandler';
@@ -122,8 +122,25 @@ function ChatPanel({
   // In development, uses localhost:3001/api/chat
   const apiEndpoint = import.meta.env.PROD ? '/api/chat' : 'http://localhost:3001/api/chat';
 
+  const authenticatedFetch = async (input, init = {}) => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error('You must be signed in to use Canny.');
+    }
+
+    const token = await currentUser.getIdToken();
+    return fetch(input, {
+      ...init,
+      headers: {
+        ...(init.headers || {}),
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  };
+
   const { messages, input, setInput, handleInputChange, isLoading, error, append } = useChat({
     api: apiEndpoint,
+    fetch: authenticatedFetch,
     maxToolRoundtrips: 5, // Allow automatic tool execution
     initialMessages: [
       {
