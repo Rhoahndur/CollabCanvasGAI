@@ -25,6 +25,8 @@ const getCanvasMetadataRef = (canvasId = DEFAULT_CANVAS_ID) =>
   ref(realtimeDb, `canvases/${canvasId}/metadata`);
 const getCanvasPermissionsRef = (canvasId = DEFAULT_CANVAS_ID) =>
   ref(realtimeDb, `canvases/${canvasId}/permissions`);
+const getCanvasShareTokenRef = (canvasId = DEFAULT_CANVAS_ID, token) =>
+  ref(realtimeDb, `canvases/${canvasId}/shareTokens/${token}`);
 const getObjectsRef = (canvasId = DEFAULT_CANVAS_ID) =>
   ref(realtimeDb, `canvases/${canvasId}/objects`);
 const getObjectRef = (canvasId = DEFAULT_CANVAS_ID, objectId) =>
@@ -71,6 +73,30 @@ export const generateObjectId = (userId) => {
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 9); // 7-char random string
   return `${userId}_${timestamp}_${random}`;
+};
+
+const normalizePermissionRole = (permission) => {
+  if (typeof permission === 'string') {
+    return permission;
+  }
+
+  if (permission && typeof permission === 'object') {
+    return permission.role || null;
+  }
+
+  return null;
+};
+
+const isShareRole = (role) => role === 'viewer' || role === 'editor';
+
+const generateShareToken = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const bytes = new Uint8Array(24);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+  }
+
+  return `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 18)}`;
 };
 
 // ============================================================================
@@ -851,16 +877,59 @@ export const getCanvasMetadata = async (canvasId) => {
 };
 
 /**
+ * Get canvas permissions.
+ * @param {string} canvasId - Canvas ID
+ * @returns {Promise<Object>} Permission map keyed by user ID
+ */
+export const getCanvasPermissions = async (canvasId) => {
+  try {
+    const snapshot = await get(getCanvasPermissionsRef(canvasId));
+    return snapshot.exists() ? snapshot.val() : {};
+  } catch (error) {
+    reportError(error, { component: 'canvasService', action: 'getCanvasPermissions' });
+    throw error;
+  }
+};
+
+/**
+ * Create a share token for a canvas link.
+ * Tokens are role-scoped and grant only viewer/editor access when redeemed.
+ * @param {string} canvasId - Canvas ID
+ * @param {string} userId - User creating the token
+ * @param {string} role - Role granted by the token ('viewer' | 'editor')
+ * @returns {Promise<string>} Share token
+ */
+export const createShareToken = async (canvasId, userId, role = 'viewer') => {
+  if (!isShareRole(role)) {
+    throw new Error('Share links can only grant viewer or editor access');
+  }
+
+  try {
+    const token = generateShareToken();
+    await set(getCanvasShareTokenRef(canvasId, token), {
+      role,
+      createdBy: userId,
+      createdAt: Date.now(),
+    });
+    return token;
+  } catch (error) {
+    reportError(error, { component: 'canvasService', action: 'createShareToken' });
+    throw error;
+  }
+};
+
+/**
  * Request access to a canvas via shared link
- * Automatically grants viewer access if canvas exists
+ * Grants access only when a valid role-scoped share token is supplied.
  * @param {string} canvasId - Canvas ID
  * @param {string} userId - User ID requesting access
  * @param {string} userName - User display name
+ * @param {string|null} shareToken - Share token from the URL
  * @returns {Promise<Object>} { success: boolean, role: string, canvasName: string }
  */
-export const requestCanvasAccess = async (canvasId, userId, userName, requestedRole = 'viewer') => {
+export const requestCanvasAccess = async (canvasId, userId, userName, shareToken = null) => {
   try {
-    // Check if user already has access
+    // Use the index only as a convenience cache, not as canonical authorization.
     const userCanvasRef = getUserCanvasRef(userId, canvasId);
     const userCanvasSnapshot = await get(userCanvasRef);
 
@@ -869,21 +938,76 @@ export const requestCanvasAccess = async (canvasId, userId, userName, requestedR
       const canvasData = userCanvasSnapshot.val();
       return {
         success: true,
-        role: canvasData.role,
+        role: normalizePermissionRole(canvasData.role),
         canvasName: canvasData.name,
         alreadyHadAccess: true,
       };
     }
 
-    // Check if canvas exists
+    // If a canonical permission exists but the index is missing, repair the index.
+    try {
+      const permissionSnapshot = await get(
+        ref(realtimeDb, `canvases/${canvasId}/permissions/${userId}`)
+      );
+      if (permissionSnapshot.exists()) {
+        const role = normalizePermissionRole(permissionSnapshot.val());
+        const canvasMetadata = await getCanvasMetadata(canvasId);
+        const canvasName = canvasMetadata?.name || 'Shared Canvas';
+
+        await set(getUserCanvasRef(userId, canvasId), {
+          name: canvasName,
+          role,
+          lastAccessed: Date.now(),
+          starred: false,
+        });
+
+        return {
+          success: true,
+          role,
+          canvasName,
+          alreadyHadAccess: true,
+        };
+      }
+    } catch {
+      // Non-members cannot read permissions. A token redemption below can still grant access.
+    }
+
+    if (!shareToken) {
+      return { success: false, error: 'A valid share link is required to access this canvas' };
+    }
+
+    const tokenSnapshot = await get(getCanvasShareTokenRef(canvasId, shareToken));
+    if (!tokenSnapshot.exists()) {
+      return { success: false, error: 'This share link is invalid or has been revoked' };
+    }
+
+    const tokenData = tokenSnapshot.val();
+    const role = normalizePermissionRole(tokenData?.role);
+    if (!isShareRole(role)) {
+      return { success: false, error: 'This share link has an invalid role' };
+    }
+
+    // Write the canonical permission first. Rules validate this against the token.
+    await set(ref(realtimeDb, `canvases/${canvasId}/permissions/${userId}`), {
+      role,
+      userName,
+      grantedAt: Date.now(),
+      grantedVia: 'share-link',
+      token: shareToken,
+    });
+
+    // Permission now exists, so metadata can be read and the user's index can be updated.
     const canvasMetadata = await getCanvasMetadata(canvasId);
     if (!canvasMetadata) {
       return { success: false, error: 'Canvas not found' };
     }
 
-    // Validate and grant the requested role (viewer or editor, never owner via link)
-    const role = ['viewer', 'editor'].includes(requestedRole) ? requestedRole : 'viewer';
-    await addCanvasPermission(canvasId, userId, role, canvasMetadata.name);
+    await set(getUserCanvasRef(userId, canvasId), {
+      name: canvasMetadata.name,
+      role,
+      lastAccessed: Date.now(),
+      starred: false,
+    });
 
     return {
       success: true,
@@ -906,16 +1030,8 @@ export const requestCanvasAccess = async (canvasId, userId, userName, requestedR
  */
 export const duplicateCanvas = async (sourceCanvasId, userId, newName) => {
   try {
-    // Verify user is owner of source canvas by checking their userCanvases
-    const userCanvasRef = getUserCanvasRef(userId, sourceCanvasId);
-    const userCanvasSnapshot = await get(userCanvasRef);
-
-    if (!userCanvasSnapshot.exists()) {
-      throw new Error('Canvas not found in your list');
-    }
-
-    const userCanvasData = userCanvasSnapshot.val();
-    if (userCanvasData.role !== 'owner') {
+    const userRole = await getUserRole(sourceCanvasId, userId);
+    if (userRole !== 'owner') {
       throw new Error('Only the owner can duplicate the canvas');
     }
 
@@ -931,27 +1047,20 @@ export const duplicateCanvas = async (sourceCanvasId, userId, newName) => {
     const timestamp = Date.now();
     const newCanvasId = `canvas_${userId}_${timestamp}`;
 
-    // Create new canvas with duplicated data
-    const newCanvasData = {
-      metadata: {
-        name: newName,
-        createdBy: userId,
-        createdAt: timestamp,
-        lastModified: timestamp,
-        template: sourceData.metadata?.template || 'blank',
-        settings: {
-          backgroundColor: sourceData.metadata?.settings?.backgroundColor || '#1a1a1a',
-          gridVisible: sourceData.metadata?.settings?.gridVisible === true,
-          ...sourceData.metadata?.settings,
-        },
+    const newMetadata = {
+      name: newName,
+      createdBy: userId,
+      createdAt: timestamp,
+      lastModified: timestamp,
+      template: sourceData.metadata?.template || 'blank',
+      settings: {
+        backgroundColor: sourceData.metadata?.settings?.backgroundColor || '#1a1a1a',
+        gridVisible: sourceData.metadata?.settings?.gridVisible === true,
+        ...sourceData.metadata?.settings,
       },
-      permissions: {
-        [userId]: 'owner',
-      },
-      objects: {},
-      cursors: {},
-      presence: {},
     };
+
+    const duplicatedObjects = {};
 
     // Copy all objects with slight position offset
     if (sourceData.objects) {
@@ -973,7 +1082,7 @@ export const duplicateCanvas = async (sourceCanvasId, userId, newName) => {
         const newId = generateObjectId(userId);
 
         // Copy object with offset position
-        newCanvasData.objects[newId] = {
+        duplicatedObjects[newId] = {
           ...obj,
           id: newId,
           x: objX + offsetX,
@@ -986,8 +1095,13 @@ export const duplicateCanvas = async (sourceCanvasId, userId, newName) => {
       });
     }
 
-    // Save new canvas
-    await set(getCanvasRef(newCanvasId), newCanvasData);
+    // Create in rule-compatible order: permission first, then metadata and objects.
+    await set(ref(realtimeDb, `canvases/${newCanvasId}/permissions/${userId}`), 'owner');
+    await set(getCanvasMetadataRef(newCanvasId), newMetadata);
+
+    if (Object.keys(duplicatedObjects).length > 0) {
+      await set(getObjectsRef(newCanvasId), duplicatedObjects);
+    }
 
     // Add to user's canvas list
     await set(getUserCanvasRef(userId, newCanvasId), {
@@ -1193,18 +1307,17 @@ export const toggleCanvasStarred = async (canvasId, userId) => {
  */
 export const getUserRole = async (canvasId, userId) => {
   try {
-    // Try to get role from userCanvases first (faster)
-    const userCanvasSnapshot = await get(getUserCanvasRef(userId, canvasId));
-    if (userCanvasSnapshot.exists()) {
-      return userCanvasSnapshot.val().role;
-    }
-
-    // Fallback: check canvas permissions
+    // Canvas permissions are the canonical source of authorization.
     const permissionSnapshot = await get(
       ref(realtimeDb, `canvases/${canvasId}/permissions/${userId}`)
     );
     if (permissionSnapshot.exists()) {
-      return permissionSnapshot.val();
+      return normalizePermissionRole(permissionSnapshot.val());
+    }
+
+    const userCanvasSnapshot = await get(getUserCanvasRef(userId, canvasId));
+    if (userCanvasSnapshot.exists()) {
+      return normalizePermissionRole(userCanvasSnapshot.val().role);
     }
 
     return null;
