@@ -5,6 +5,7 @@ Complete guide to all features in CollabCanvas.
 ---
 
 ## Table of Contents
+
 1. [Core Canvas Features](#core-canvas-features)
 2. [Drawing Tools](#drawing-tools)
 3. [Multi-Canvas System](#multi-canvas-system)
@@ -17,6 +18,7 @@ Complete guide to all features in CollabCanvas.
 ## Core Canvas Features
 
 ### Pan and Zoom
+
 - **Pan**: Hold `Shift`, `Cmd`, or `Ctrl` and drag to move around the canvas
 - **Zoom**: Scroll wheel to zoom in/out
 - **Zoom Controls**: Bottom-right corner for precise zoom control
@@ -25,6 +27,7 @@ Complete guide to all features in CollabCanvas.
   - Fit Canvas button (shows entire canvas)
 
 ### Fixed Canvas
+
 - Canvas has fixed boundaries: 5000×5000 pixels (0,0 to 5000,5000)
 - Shapes cannot be created or moved outside these boundaries
 - Viewport culling optimizes performance (only visible shapes render)
@@ -32,6 +35,7 @@ Complete guide to all features in CollabCanvas.
 - Customizable canvas background color (persists per canvas)
 
 ### Object Manipulation
+
 - **Select**: Click to select shapes
 - **Multi-Select**: Drag selection rectangle to select multiple shapes
 - **Move**: Drag selected shapes to reposition
@@ -42,6 +46,7 @@ Complete guide to all features in CollabCanvas.
 - **Duplicate**: `Ctrl/Cmd+D` or use duplicate button in tool palette
 
 ### Undo/Redo
+
 - Full history tracking of all changes
 - Undo: `Cmd+Z` / `Ctrl+Z`
 - Redo: `Cmd+Shift+Z` / `Ctrl+Shift+Z`
@@ -53,32 +58,38 @@ Complete guide to all features in CollabCanvas.
 Located in the left sidebar tool palette:
 
 ### SELECT Tool (Cursor Icon)
+
 - Default tool for selecting and manipulating objects
 - Click to select individual shapes
 - Drag to create selection rectangle for multi-select
 
 ### RECTANGLE Tool
+
 - Click and drag to create rectangles
 - Customizable fill color, border, and size
 - Supports rotation and resizing after creation
 
 ### CIRCLE Tool
+
 - Click and drag to create circles
 - Radius adjusts based on drag distance
 - Supports all standard manipulations
 
 ### POLYGON Tool (Pentagon)
+
 - Click and drag to create regular pentagons
 - Can be resized to create larger/smaller polygons
 - Supports rotation
 
 ### CUSTOM POLYGON Tool
+
 - Click multiple points to define custom polygon vertices
 - Press `Enter` to finish and close the polygon
 - Press `Escape` to cancel
 - Great for creating irregular shapes
 
 ### TEXT Tool
+
 - Click to place text boxes on canvas
 - Double-click to edit text
 - Customizable font size, weight, style, and color
@@ -89,6 +100,7 @@ Located in the left sidebar tool palette:
   - Hex input for precise colors
 
 ### IMAGE Tool
+
 - Upload images (JPEG, PNG, GIF, WebP)
 - Images are resizable and rotatable
 - Maintain aspect ratio
@@ -101,11 +113,13 @@ Located in the left sidebar tool palette:
 ### Canvas Management
 
 #### Create Canvas
+
 - Click "New Canvas" on dashboard
 - Canvases are private by default
 - Each canvas has a unique URL
 
 #### Canvas List
+
 - **List View**: Detailed view with metadata
 - **Grid View**: Visual thumbnail preview
 - **Sort Options**: Last accessed, name, date created
@@ -114,6 +128,7 @@ Located in the left sidebar tool palette:
 - **Star**: Mark favorites (appear at top)
 
 #### Canvas Limits
+
 - Free tier: 10 canvases per user
 - Upgrade prompt when limit reached
 - Shared canvases don't count toward your limit
@@ -121,6 +136,7 @@ Located in the left sidebar tool palette:
 ### Collaboration & Sharing
 
 #### Roles
+
 - **Owner**: Full control, can delete canvas
 - **Editor**: Can edit and invite others
 - **Viewer**: Read-only access
@@ -128,25 +144,27 @@ Located in the left sidebar tool palette:
 #### Share Methods
 
 **1. Share Link**
+
 - Click "Share" button
 - Choose "Viewer" or "Editor" access
 - Copy link and send to collaborators
 - Anyone with link can access (must be signed in)
 
 **2. Email Invitation**
-- Click "Share" > "Invite by Email"
-- Enter email address
-- Choose "Viewer" or "Editor" role
-- Recipient receives email with access link
-- Powered by SendGrid
+
+- Firebase Function support exists for SendGrid invitation records
+- Invitation links use role-scoped share tokens
+- Frontend email-invite controls are not currently exposed in the share modal
 
 #### Collaborator Management
+
 - View all collaborators in canvas settings
 - Change roles (viewer ↔ editor)
 - Remove collaborators
 - See who's currently active (presence indicator)
 
 ### Canvas Settings
+
 - **Name**: Rename canvas
 - **Background Color**: Customize canvas background
   - Grid color auto-adjusts for contrast
@@ -163,6 +181,7 @@ Located in the left sidebar tool palette:
 Canny is your AI-powered canvas assistant with vision capabilities.
 
 ### Access
+
 - Click "Chat" button at bottom-center of canvas
 - Resizable chat panel (drag left edge to resize)
 - Two tabs: "Users" (canvas chat) and "Canny" (AI assistant)
@@ -170,33 +189,39 @@ Canny is your AI-powered canvas assistant with vision capabilities.
 ### Capabilities
 
 #### 1. Canvas Manipulation
+
 Canny can create, arrange, and modify shapes on your canvas.
 
 **Create Shapes**
+
 - "Create 5 blue rectangles"
 - "Add 3 red circles in a row"
 - "Make a text box that says Hello"
 - Shapes appear in your current viewport (where you're looking)
 
 **Arrange Shapes**
+
 - "Align these shapes to the left"
 - "Distribute them horizontally"
 - "Arrange in a 2x3 grid"
 - "Center everything on the canvas"
 
 **Modify Shapes**
+
 - "Make them all green"
 - "Rotate selected shapes 45 degrees"
 - "Increase the size by 50%"
 - "Change opacity to 50%"
 
 **Delete Shapes**
+
 - "Delete all shapes"
 - "Remove the selected shapes"
 - "Clear the canvas"
 
 **Batch Shape Creation**
 Canny can create multiple shapes at specific positions in one call:
+
 - "Draw a circle outline using 12 small circles"
 - "Create a smiley face with circles"
 - "Draw a star pattern"
@@ -204,10 +229,12 @@ Canny can create multiple shapes at specific positions in one call:
 - Maximum 50 shapes per batch call
 
 #### 2. Vision Capabilities
+
 Canny can SEE your canvas using GPT-4 Vision!
 
 **Automatic Vision Activation**
 Vision triggers when you use phrases like:
+
 - "What colors am I using?"
 - "Create rectangles around the blue circle"
 - "Fill the empty space"
@@ -217,6 +244,7 @@ Vision triggers when you use phrases like:
 Visual indicator shows when Canny is analyzing the canvas.
 
 **Smart Context Understanding**
+
 - Understands spatial relationships ("left of", "above", "around")
 - Respects existing designs when adding elements
 - Considers color harmony and visual balance
@@ -226,18 +254,21 @@ Visual indicator shows when Canny is analyzing the canvas.
 
 **Example Prompts**
 Quick-start prompts in 5 categories:
+
 - 🎨 Create: Shape creation examples
-- 📐 Arrange: Layout examples  
+- 📐 Arrange: Layout examples
 - 👁️ Vision: Visual analysis examples
 - ✨ Transform: Modification examples
 - ❓ Ask: Question examples
 
 **Stop Button**
+
 - Appears during active requests
 - Click to abort long-running operations
 - Prevents runaway shape generation
 
 **Guardrails**
+
 - Message length limit: 2000 characters
 - Rate limiting: 2 seconds between requests
 - Shape creation limits:
@@ -246,6 +277,7 @@ Quick-start prompts in 5 categories:
 - Context management: Last 15 messages only
 
 ### Best Practices
+
 - Be specific in your requests
 - Use vision for spatial tasks ("near the circle")
 - Combine operations ("create and arrange")
@@ -257,11 +289,13 @@ Quick-start prompts in 5 categories:
 ## Collaboration Features
 
 ### Real-Time Multiplayer
+
 - See other users' cursors in real-time
 - Colored cursor with user name
 - Updates 60 times per second for smooth motion
 
 ### Presence Awareness
+
 - **Presence Sidebar** (right side)
   - Shows all active users
   - User avatars with initials
@@ -272,6 +306,7 @@ Quick-start prompts in 5 categories:
   - Click to expand
 
 ### Object Locking
+
 - Automatic locking when user manipulates an object
 - Lock icon appears on locked objects
 - Locked by username shown
@@ -279,6 +314,7 @@ Quick-start prompts in 5 categories:
 - **Stale Lock Cleanup**: Locks auto-release when users disconnect
 
 ### Canvas Chat
+
 - Real-time chat with all collaborators on the canvas
 - Each user has a unique color
 - Usernames displayed with messages
@@ -290,6 +326,7 @@ Quick-start prompts in 5 categories:
 ## User Interface
 
 ### Theme System
+
 - **Light Theme** (default): Clean, professional appearance
 - **Dark Theme**: Easy on the eyes for low-light work
 - **System Theme**: Follows OS preference
@@ -297,6 +334,7 @@ Quick-start prompts in 5 categories:
 - Settings accessible from ⚙️ button
 
 ### Tool Palette (Left Side)
+
 - Icon-only design for compact view
 - Tooltips on hover show tool names
 - Active tool highlighted in blue
@@ -306,6 +344,7 @@ Quick-start prompts in 5 categories:
   - 🗑️ Clear: Delete all shapes
 
 ### Zoom Controls (Bottom-Right)
+
 - Horizontal layout for compact design
 - Zoom in/out buttons
 - Manual percentage input
@@ -313,6 +352,7 @@ Quick-start prompts in 5 categories:
 - Responsive on mobile
 
 ### Canvas Header (Top)
+
 - Canvas name (click to rename)
 - Object count and FPS display
 - User avatar with name
@@ -320,6 +360,7 @@ Quick-start prompts in 5 categories:
 - Sign out button
 
 ### Dashboard
+
 - Clean card-based layout
 - Quick actions on each card:
   - ⭐ Star/unstar canvas
@@ -331,6 +372,7 @@ Quick-start prompts in 5 categories:
 - Settings and sign out
 
 ### Keyboard Shortcuts
+
 - `Shift/Cmd/Ctrl + Drag`: Pan canvas
 - `Scroll`: Zoom in/out
 - `Delete/Backspace`: Delete selected shapes
@@ -344,6 +386,7 @@ Quick-start prompts in 5 categories:
 - `Double-Click`: Edit text
 
 ### Performance Features
+
 - **Viewport Culling**: Only renders visible shapes
 - **Optimistic Updates**: Smooth interaction before server confirms
 - **Throttled Sync**: Reduces database writes during rapid changes
@@ -355,6 +398,7 @@ Quick-start prompts in 5 categories:
 ## Upcoming Features
 
 Based on the PRD, features in development or planned:
+
 - **Version History**: Time-travel through canvas changes
 - **Comments**: Add annotations and discussions
 - **Export**: Download as PNG, SVG, or PDF
@@ -367,4 +411,3 @@ Based on the PRD, features in development or planned:
 For setup instructions, see [SETUP.md](./SETUP.md)  
 For technical details, see [TECHNICAL.md](./TECHNICAL.md)  
 For implementation history, see [CHANGELOG.md](./CHANGELOG.md)
-
