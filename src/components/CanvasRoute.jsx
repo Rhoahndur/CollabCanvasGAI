@@ -21,6 +21,7 @@ function CanvasRoute({ sessionId }) {
 
   const [canvasName, setCanvasName] = useState('');
   const [accessChecked, setAccessChecked] = useState(false);
+  const [userRole, setUserRole] = useState(null);
 
   // Canvas settings
   const [canvasSettings, setCanvasSettings] = useState({
@@ -41,17 +42,18 @@ function CanvasRoute({ sessionId }) {
     if (!user || !canvasId) return;
 
     const checkAccess = async () => {
-      const requestedRole = searchParams.get('role') || 'viewer';
+      const shareToken = searchParams.get('token');
 
       const accessResult = await requestCanvasAccess(
         canvasId,
         user.uid,
         user.displayName || user.email,
-        requestedRole
+        shareToken
       );
 
       if (accessResult.success) {
         setCanvasName(accessResult.canvasName || 'Shared Canvas');
+        setUserRole(accessResult.role);
         setAccessChecked(true);
       } else {
         reportError(accessResult.error, { component: 'CanvasRoute', action: 'checkAccess' });
@@ -111,41 +113,45 @@ function CanvasRoute({ sessionId }) {
           <h1>CollabCanvas</h1>
         </div>
         <div className="header-right">
-          <button
-            className="btn-canvas-settings"
-            onClick={() => setIsCanvasSettingsModalOpen(true)}
-            title="Canvas Settings (Background, Grid)"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              width="18"
-              height="18"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
+          {userRole !== 'viewer' && (
+            <button
+              className="btn-canvas-settings"
+              onClick={() => setIsCanvasSettingsModalOpen(true)}
+              title="Canvas Settings (Background, Grid)"
             >
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-              <path d="M3 9h18M9 21V9" />
-            </svg>
-            Canvas
-          </button>
-          <button
-            className="btn-share"
-            onClick={() => setIsShareModalOpen(true)}
-            title="Share Canvas"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              width="18"
-              height="18"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
+              <svg
+                viewBox="0 0 24 24"
+                width="18"
+                height="18"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <path d="M3 9h18M9 21V9" />
+              </svg>
+              Canvas
+            </button>
+          )}
+          {userRole === 'owner' && (
+            <button
+              className="btn-share"
+              onClick={() => setIsShareModalOpen(true)}
+              title="Share Canvas"
             >
-              <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" />
-            </svg>
-            Share
-          </button>
+              <svg
+                viewBox="0 0 24 24"
+                width="18"
+                height="18"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" />
+              </svg>
+              Share
+            </button>
+          )}
           <button
             className="btn-user-settings"
             onClick={() => setIsUserSettingsModalOpen(true)}
