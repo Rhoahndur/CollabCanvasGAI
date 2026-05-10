@@ -12,6 +12,32 @@ if (SENDGRID_API_KEY) {
   sgMail.setApiKey(SENDGRID_API_KEY);
 }
 
+const VALID_ROLES = new Set(['viewer', 'editor']);
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function sanitizeText(value, maxLength = 200) {
+  return String(value ?? '')
+    .replace(/[\r\n]+/g, ' ')
+    .trim()
+    .slice(0, maxLength);
+}
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function generateInvitationToken() {
+  return admin.database().ref().push().key;
+}
+
 /**
  * Send Canvas Invitation Email
  * 
@@ -39,6 +65,25 @@ exports.sendCanvasInvitation = functions.database
         console.error('Missing required invitation fields:', invitation);
         return null;
       }
+
+      const recipientEmail = sanitizeText(invitation.email, 254).toLowerCase();
+      const role = sanitizeText(invitation.role, 20).toLowerCase();
+      const canvasName = sanitizeText(invitation.canvasName, 120);
+      const inviterName = sanitizeText(invitation.inviterName, 120);
+
+      if (!isValidEmail(recipientEmail) || !VALID_ROLES.has(role) || !canvasName || !inviterName) {
+        console.error('Invalid invitation fields:', {
+          email: recipientEmail,
+          role,
+          hasCanvasName: Boolean(canvasName),
+          hasInviterName: Boolean(inviterName),
+        });
+        return null;
+      }
+
+      const escapedCanvasName = escapeHtml(canvasName);
+      const escapedInviterName = escapeHtml(inviterName);
+      const escapedRole = escapeHtml(role);
       
       // Check if SendGrid is configured
       if (!SENDGRID_API_KEY) {
@@ -46,14 +91,26 @@ exports.sendCanvasInvitation = functions.database
         return null;
       }
       
-      // Generate canvas link with role
-      const canvasLink = `${functions.config().app?.url || 'https://your-app-url.com'}/canvas/${canvasId}?role=${invitation.role}`;
+      const shareToken = generateInvitationToken();
+      await admin
+        .database()
+        .ref(`canvases/${canvasId}/shareTokens/${shareToken}`)
+        .set({
+          role,
+          createdBy: sanitizeText(invitation.inviterId || invitation.createdBy || 'invitation', 120),
+          createdAt: admin.database.ServerValue.TIMESTAMP,
+          invitationId: context.params.invitationId,
+        });
+
+      // Generate canvas link with a share token instead of trusting a role query param.
+      const canvasLink = `${functions.config().app?.url || 'https://your-app-url.com'}/canvas/${encodeURIComponent(canvasId)}?token=${encodeURIComponent(shareToken)}`;
+      const escapedCanvasLink = escapeHtml(canvasLink);
       
       // Email content
       const msg = {
-        to: invitation.email,
+        to: recipientEmail,
         from: functions.config().sendgrid?.from || 'noreply@collabcanvasgai.com', // Verified sender in SendGrid
-        subject: `${invitation.inviterName} invited you to collaborate on "${invitation.canvasName}"`,
+        subject: `${inviterName} invited you to collaborate on "${canvasName}"`,
         html: `
           <!DOCTYPE html>
           <html>
@@ -73,19 +130,19 @@ exports.sendCanvasInvitation = functions.database
               <p style="font-size: 18px; margin-top: 0;">Hi there! 👋</p>
               
               <p style="font-size: 16px;">
-                <strong>${invitation.inviterName}</strong> has invited you to collaborate on their canvas:
+                <strong>${escapedInviterName}</strong> has invited you to collaborate on their canvas:
               </p>
               
               <div style="background: white; padding: 20px; border-radius: 8px; border-left: 4px solid #667eea; margin: 20px 0;">
-                <h2 style="margin: 0 0 10px 0; font-size: 20px; color: #667eea;">${invitation.canvasName}</h2>
+                <h2 style="margin: 0 0 10px 0; font-size: 20px; color: #667eea;">${escapedCanvasName}</h2>
                 <p style="margin: 0; color: #666;">
-                  Role: <strong style="color: ${invitation.role === 'editor' ? '#10b981' : '#6b7280'}; text-transform: capitalize;">${invitation.role}</strong>
-                  ${invitation.role === 'editor' ? '(Can view & edit)' : '(Can view only)'}
+                  Role: <strong style="color: ${role === 'editor' ? '#10b981' : '#6b7280'}; text-transform: capitalize;">${escapedRole}</strong>
+                  ${role === 'editor' ? '(Can view & edit)' : '(Can view only)'}
                 </p>
               </div>
               
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${canvasLink}" 
+                <a href="${escapedCanvasLink}" 
                    style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(102, 126, 234, 0.4);">
                   Open Canvas →
                 </a>
@@ -108,9 +165,9 @@ exports.sendCanvasInvitation = functions.database
         text: `
 Hi there!
 
-${invitation.inviterName} has invited you to collaborate on their canvas: "${invitation.canvasName}"
+${inviterName} has invited you to collaborate on their canvas: "${canvasName}"
 
-Role: ${invitation.role} ${invitation.role === 'editor' ? '(Can view & edit)' : '(Can view only)'}
+Role: ${role} ${role === 'editor' ? '(Can view & edit)' : '(Can view only)'}
 
 Open the canvas here:
 ${canvasLink}
@@ -124,7 +181,7 @@ If you didn't expect this invitation, you can safely ignore this email.
       
       // Send email
       await sgMail.send(msg);
-      console.log(`✅ Invitation email sent to ${invitation.email} for canvas ${invitation.canvasName}`);
+      console.log(`✅ Invitation email sent to ${recipientEmail} for canvas ${canvasName}`);
       
       // Mark invitation as sent
       await snapshot.ref.update({ 
@@ -190,4 +247,3 @@ exports.cleanupOldInvitations = functions.pubsub
       return null;
     }
   });
-
