@@ -15,9 +15,18 @@ const ALLOWED_ORIGINS = [
 const rateLimitMap = new Map();
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 20;
+const MAX_RATE_LIMIT_ENTRIES = 1000;
 
 function isRateLimited(ip) {
   const now = Date.now();
+
+  // Basic memory bound for the rate limit map (edge / serverless isolates)
+  if (rateLimitMap.size > MAX_RATE_LIMIT_ENTRIES) {
+    // crude eviction of a random old entry
+    const firstKey = rateLimitMap.keys().next().value;
+    rateLimitMap.delete(firstKey);
+  }
+
   const entry = rateLimitMap.get(ip);
 
   if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
